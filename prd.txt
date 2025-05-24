@@ -1,0 +1,136 @@
+**Product Requirements Document (PRD)**
+
+**Product Name:** (TBD)
+**Owner:** Udit
+**Version:** v1.0 MVP
+**Date:** 2025-05-23
+
+---
+
+## 1. Purpose
+
+The app is designed to help students and self-learners consume educational content more efficiently. It uses AI to provide summarization, flashcards, quizzes, audio content, and interactive tutoring from PDFs or YouTube links. The goal is to improve knowledge retention and reduce content overload.
+
+---
+
+## 2. Target Audience
+
+* Students (ages 16–30)
+* Competitive exam aspirants
+* Lifelong learners
+* Content-heavy learners (e.g., medical, law, UPSC, MBA prep)
+
+---
+
+## 3. Core Features
+
+### 3.1 PDF/YouTube Summarizer
+
+* Upload PDF or paste YouTube link
+* Generate AI-based text summary
+* Usage Limits: Free (2/day), Premium (unlimited)
+
+### 3.2 Lecture summary
+
+* Record lectures on phone 
+* Generate AI-based lecture summary
+* Usage limits : Free(3/week), Premium (unlimited)
+
+### 3.3 Flashcards Generator
+
+* Auto-generate flashcards from content
+* Flashcard = Question + Answer format
+* Stored in user's Supabase account
+* Usage Limits: Free (3 sets/week), Premium (unlimited)
+
+### 3.4 Quiz Generator
+
+* Generate 5–10 MCQs with answers & explanations
+* Optional export to PDF (premium-only)
+* Usage Limits: Free (3/week), Premium (unlimited)
+
+### 3.5 AI Tutor Chat
+
+* Ask context-aware questions based on uploaded content
+* Usage Limits: Free (10 Qs/day), Premium (unlimited)
+
+### 3.6 Audio Summarizer
+
+* Convert text summary to speech
+* Usage Limits: Free (first 300 words), Premium (full)
+
+### 3.7 Multi-device Sync
+
+* Sync across devices using Supabase
+* Free: 1 device; Premium: Unlimited
+
+---
+
+## 4. Monetization: Dodo Payments Integration
+
+* **Plans**:
+
+  * Monthly: ₹99
+  * Yearly: ₹999
+* **Free Trial**: 7-day Premium trial for new users
+* Payment via Dodo Payments (WebView or redirect)
+* Backend receives webhook on success and updates Supabase `plan`
+
+---
+
+## 5. Tech Stack
+
+| Layer        | Tool                  |
+| ------------ | --------------------- |
+| Frontend     | React Native (Expo)   |
+| Backend      | Node.js + Express     |
+| Database     | Supabase (PostgreSQL) |
+| Auth         | Supabase Auth         |
+| File Storage | Supabase Storage      |
+| AI APIs      | OpenAI / Gemini (TBD) |
+| Audio        | Google TTS / Others   |
+| Payments     | Dodo Payments         |
+
+---
+
+## 6. Roles & Access
+
+| Role    | Permissions                                   |
+| ------- | --------------------------------------------- |
+| Guest   | Browse landing, sign up                       |
+| Free    | Limited access, upsell modals                 |
+| Premium | Full access to all features                   |
+| Admin   | Internal analytics dashboard (future feature) |
+
+---
+
+## 7. Success Metrics
+
+* 1,000 users in 3 months
+* 10% premium conversion by month 6
+* Avg. session length > 6 mins
+* Week 1 retention > 40%
+
+---
+
+## 8. Timeline (MVP)
+
+| Phase   | Task                                            | Duration |
+| ------- | ----------------------------------------------- | -------- |
+| Phase 1 | Setup project, auth, UI, Supabase integration   | 1 week   |
+| Phase 2 | Implement summarizer (PDF & YouTube)            | 1 week   |
+| Phase 3 | Flashcards & Quiz Generator                     | 1 week   |
+| Phase 4 | AI Tutor Chat + Audio Summarizer                | 1 week   |
+| Phase 5 | Payment flow with Dodo, premium gating, testing | 1 week   |
+| Phase 6 | Bug fixing, QA, analytics, launch               | 1 week   |
+
+---
+
+## 9. Future Features (Post-MVP)
+
+* **Mind Maps from Content**: Auto-generate interactive mind maps
+* **Study Plan Generator**: Custom time-bound learning plans
+* **Daily Revision Reminders**: Based on spaced repetition
+* **Leaderboard**: Gamified user engagement metrics
+* **Note-taking with AI Highlights**: AI-enhanced notes
+* **B2B Partnerships**: Institutional collaboration

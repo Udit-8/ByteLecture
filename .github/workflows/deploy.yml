@@ -1,0 +1,54 @@
+name: Manual Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: 'Version to deploy'
+        required: false
+        default: 'latest'
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install and build backend
+        run: |
+          cd backend
+          npm ci
+          npm run build
+          
+      - name: Run tests
+        run: |
+          cd backend
+          npm run lint
+          npm test
+          
+      - name: Deploy to ${{ github.event.inputs.environment }}
+        run: |
+          echo "🚀 Deploying ByteLecture backend to ${{ github.event.inputs.environment }}"
+          echo "📦 Version: ${{ github.event.inputs.version }}"
+          # Add deployment commands here based on your hosting platform
+          
+      - name: Notify deployment
+        run: |
+          echo "✅ Deployment to ${{ github.event.inputs.environment }} completed successfully!" 

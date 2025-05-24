@@ -4,6 +4,9 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 
+// Import routes
+import authRoutes from './routes/auth';
+
 // Load environment variables
 dotenv.config();
 
@@ -26,7 +29,9 @@ app.get('/', (req, res) => {
   });
 });
 
-// API routes will be added here later
+// API routes
+app.use('/api/auth', authRoutes);
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'healthy', uptime: process.uptime() });
 });

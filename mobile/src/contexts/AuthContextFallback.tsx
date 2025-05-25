@@ -16,6 +16,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<{ error?: string }>;
   resetPassword: (email: string) => Promise<{ error?: string }>;
+  resendVerificationEmail: () => Promise<{ error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -200,6 +201,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const resendVerificationEmail = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/resend-verification-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return { error: data.message || data.error || 'Resend verification email failed' };
+      }
+
+      return {};
+    } catch (error) {
+      return { 
+        error: error instanceof Error ? error.message : 'Network error occurred' 
+      };
+    }
+  };
+
   const value: AuthContextType = {
     user,
     session,
@@ -208,6 +232,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signIn,
     signOut,
     resetPassword,
+    resendVerificationEmail,
   };
 
   return (

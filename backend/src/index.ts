@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 
 // Import routes
 import authRoutes from './routes/auth';
+import pdfRoutes from './routes/pdfRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -31,6 +32,7 @@ app.get('/', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/pdf', pdfRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'healthy', uptime: process.uptime() });

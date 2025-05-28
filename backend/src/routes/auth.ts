@@ -237,6 +237,42 @@ router.post('/reset-password', async (req, res) => {
 });
 
 /**
+ * POST /api/auth/resend-verification-email
+ * Resend email verification
+ */
+router.post('/resend-verification-email', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        error: 'Missing email',
+        message: 'Email is required for resending verification',
+      });
+    }
+
+    const result = await authService.resendVerificationEmail(email);
+
+    if (result.error) {
+      return res.status(400).json({
+        error: 'Resend verification failed',
+        message: result.error,
+      });
+    }
+
+    res.json({
+      message: 'Verification email sent',
+    });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to resend verification email',
+    });
+  }
+});
+
+/**
  * POST /api/auth/refresh
  * Refresh access token
  */

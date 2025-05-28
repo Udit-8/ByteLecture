@@ -1,32 +1,40 @@
 const { getDefaultConfig } = require('expo/metro-config');
 
+/** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Add platform-specific extensions
-config.resolver.platforms = ['native', 'android', 'ios', 'web'];
-
-// Block WebSocket packages from being bundled for mobile
-config.resolver.resolverMainFields = ['react-native', 'browser', 'main'];
-config.resolver.alias = {
-  'ws': false,
-  'ws/lib/stream.js': false,
-  'utf-8-validate': false,
-  'bufferutil': false,
+// Add resolver for React Native compatibility
+config.resolver = {
+  ...config.resolver,
+  alias: {
+    // Resolve WebSocket to our polyfill
+    'ws': require.resolve('./src/config/websocket-polyfill.js'),
+    // Handle other Node.js modules that might cause issues
+    'crypto': 'react-native-get-random-values',
+  },
+  resolverMainFields: ['react-native', 'browser', 'main'],
+  platforms: ['ios', 'android', 'native', 'web'],
+  // Block problematic modules from being bundled
+  blockList: [
+    // Block ws and related WebSocket modules
+    /node_modules\/ws\//,
+    /node_modules\/utf-8-validate\//,
+    /node_modules\/bufferutil\//,
+    // Block realtime-js if causing issues
+    /node_modules\/@supabase\/realtime-js\/.*ws/,
+  ],
 };
 
-// Block problematic packages from being included in the bundle
-config.resolver.blockList = [
-  /node_modules\/ws\//,
-  /node_modules\/utf-8-validate\//,
-  /node_modules\/bufferutil\//,
-];
-
-// Transform configuration
-config.transformer.getTransformOptions = async () => ({
-  transform: {
-    experimentalImportSupport: false,
-    inlineRequires: true,
+// Configure transformer for better compatibility
+config.transformer = {
+  ...config.transformer,
+  minifierConfig: {
+    // Ensure proper minification for React Native
+    keep_fnames: true,
+    mangle: {
+      keep_fnames: true,
+    },
   },
-});
+};
 
 module.exports = config; 

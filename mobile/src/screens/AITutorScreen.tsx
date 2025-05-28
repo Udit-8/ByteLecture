@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Header, Button, Card, LoadingIndicator } from '../components';
 import { theme } from '../constants/theme';
+import { useNavigation } from '../contexts/NavigationContext';
 
 interface Message {
   id: string;
@@ -24,13 +25,31 @@ interface Message {
 
 interface AITutorScreenProps {
   navigation: any;
+  route?: {
+    params?: {
+      noteTitle?: string;
+      noteContext?: string;
+      fromNote?: boolean;
+    };
+  };
 }
 
-export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation }) => {
+export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route }) => {
+  const { selectedNote,mode } = useNavigation();
+  const isFromNote = route?.params?.fromNote || mode === 'note-detail';
+  const noteTitle = selectedNote?.title || 'Quantum Physics Basics';
+  
+  const getInitialMessage = () => {
+    if (isFromNote) {
+      return `Hi! I'm your AI tutor for "${noteTitle}". I can help you understand the concepts, answer questions, and provide additional explanations about this specific content. What would you like to know?`;
+    }
+    return "Hi! I'm your AI tutor. I'm here to help you understand your course materials better. What would you like to learn about today?";
+  };
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hi! I'm your AI tutor. I'm here to help you understand your course materials better. What would you like to learn about today?",
+      text: getInitialMessage(),
       isUser: false,
       timestamp: new Date(),
     },
@@ -63,9 +82,13 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation }) => {
 
     // Simulate AI response (in real app, this would call an AI API)
     setTimeout(() => {
+      const contextualResponse = isFromNote 
+        ? `Based on "${noteTitle}", let me help explain that concept. This is a simulated AI response that would analyze your specific note content and provide detailed explanations.`
+        : "Thanks for your question! This is a simulated AI response. In the full version, I would provide detailed explanations based on your course materials and help you understand complex concepts step by step.";
+        
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: "Thanks for your question! This is a simulated AI response. In the full version, I would provide detailed explanations based on your course materials and help you understand complex concepts step by step.",
+        text: contextualResponse,
         isUser: false,
         timestamp: new Date(),
       };
@@ -79,12 +102,32 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation }) => {
     inputRef.current?.focus();
   };
 
-  const quickQuestions = [
-    "Can you explain this concept?",
-    "Help me understand this formula",
-    "Give me a practice problem",
-    "Summarize the key points",
-  ];
+  const getQuickQuestions = () => {
+    if (isFromNote) {
+      return [
+        "Explain this concept in simple terms",
+        "Give me examples of this",
+        "Create a practice question",
+        "Summarize the key points",
+      ];
+    }
+    return [
+      "Can you explain this concept?",
+      "Help me understand this formula",
+      "Give me a practice problem",
+      "Summarize the key points",
+    ];
+  };
+
+  const quickQuestions = getQuickQuestions();
+
+  const getHeaderTitle = () => {
+    return isFromNote ? `${noteTitle} - Chat` : 'AI Tutor';
+  };
+
+  const handleBackPress = () => {
+    navigation.goBack();
+  };
 
   const renderMessage = (message: Message) => (
     <View
@@ -135,16 +178,18 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <Header 
-        title="AI Tutor"
+        title={getHeaderTitle()}
         leftAction={{
           icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[600]} />,
-          onPress: () => navigation.goBack(),
+          onPress: handleBackPress,
         }}
         rightAction={{
           icon: <Ionicons name="information-circle-outline" size={24} color={theme.colors.gray[600]} />,
           onPress: () => Alert.alert(
-            'AI Tutor',
-            'Your personal AI tutor is here to help explain concepts, answer questions, and provide additional practice problems based on your learning materials.'
+            isFromNote ? 'Note Chat' : 'AI Tutor',
+            isFromNote 
+              ? `Chat about "${noteTitle}". Ask questions about this specific content and get detailed explanations.`
+              : 'Your personal AI tutor is here to help explain concepts, answer questions, and provide additional practice problems based on your learning materials.'
           ),
         }}
       />
@@ -198,20 +243,17 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation }) => {
               style={styles.textInput}
               value={inputText}
               onChangeText={setInputText}
-              placeholder="Ask me anything about your course..."
-              placeholderTextColor={theme.colors.gray[400]}
+              placeholder={isFromNote ? "Ask about this note..." : "Ask me anything..."}
               multiline
               maxLength={500}
-              onSubmitEditing={handleSendMessage}
-              returnKeyType="send"
             />
             <TouchableOpacity
               style={[
                 styles.sendButton,
-                inputText.trim() ? styles.sendButtonActive : styles.sendButtonInactive,
+                inputText.trim() ? styles.sendButtonActive : styles.sendButtonDisabled
               ]}
               onPress={handleSendMessage}
-              disabled={!inputText.trim() || isTyping}
+              disabled={!inputText.trim()}
             >
               <Ionicons 
                 name="send" 
@@ -387,7 +429,7 @@ const styles = StyleSheet.create({
   sendButtonActive: {
     backgroundColor: theme.colors.primary[600],
   },
-  sendButtonInactive: {
+  sendButtonDisabled: {
     backgroundColor: theme.colors.gray[300],
   },
 }); 

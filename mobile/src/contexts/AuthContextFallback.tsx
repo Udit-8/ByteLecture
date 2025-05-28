@@ -6,6 +6,8 @@ interface User {
   email: string;
   full_name?: string;
   created_at: string;
+  email_confirmed_at?: string;
+  plan_type?: string;
 }
 
 interface AuthContextType {
@@ -203,11 +205,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const resendVerificationEmail = async () => {
     try {
+      // Get the current user's email from user state or stored data
+      const userEmail = user?.email;
+      
+      if (!userEmail) {
+        return { error: 'No email address found. Please try registering again.' };
+      }
+
       const response = await fetch(`${API_BASE_URL}/auth/resend-verification-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ email: userEmail }),
       });
 
       const data = await response.json();

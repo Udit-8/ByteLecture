@@ -41,7 +41,7 @@ class AuthService {
           data: {
             full_name: fullName || '',
           },
-          emailRedirectTo: 'ByteLecture://auth/verify-email',
+          emailRedirectTo: 'bytelecture://auth/verify-email',
         },
       });
 
@@ -205,7 +205,7 @@ class AuthService {
   async resetPassword(email: string): Promise<AuthResponse> {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.FRONTEND_URL}/reset-password`,
+        redirectTo: 'bytelecture://auth/reset-password',
       });
 
       if (error) {
@@ -216,6 +216,27 @@ class AuthService {
     } catch (error) {
       console.error('Reset password error:', error);
       return { error: 'Failed to send reset email' };
+    }
+  }
+
+  async resendVerificationEmail(email: string): Promise<AuthResponse> {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: 'bytelecture://auth/verify-email',
+        },
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      return { message: 'Verification email sent' };
+    } catch (error) {
+      console.error('Resend verification email error:', error);
+      return { error: 'Failed to resend verification email' };
     }
   }
 

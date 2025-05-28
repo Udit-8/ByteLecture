@@ -55,6 +55,10 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
     navigation.navigate('Login');
   };
 
+  const handleAuthDebug = () => {
+    navigation.navigate('AuthDebug');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -155,6 +159,14 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
               variant="outline"
               size="lg"
               style={styles.secondaryCta}
+            />
+            
+            <Button
+              title="🔍 Debug Authentication"
+              onPress={handleAuthDebug}
+              variant="outline"
+              size="sm"
+              style={styles.debugCta}
             />
           </View>
         </View>
@@ -284,5 +296,9 @@ const styles = StyleSheet.create({
   },
   secondaryCta: {
     borderColor: theme.colors.white,
+  },
+  debugCta: {
+    borderColor: theme.colors.white,
+    marginTop: 10,
   },
 }); 

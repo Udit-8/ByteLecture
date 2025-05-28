@@ -49,7 +49,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       description: 'Get concise summaries of your learning materials',
       icon: <Ionicons name="document-text" size={24} color={theme.colors.primary[600]} />,
       color: theme.colors.primary[100],
-      onPress: () => Alert.alert('Coming Soon', 'AI Summaries feature will be available soon!'),
+      onPress: () => Alert.alert('Coming Soon', 'AI Summaries will be available when you import content!'),
     },
     {
       id: 'flashcards',
@@ -57,7 +57,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       description: 'Auto-generated cards to boost retention',
       icon: <Ionicons name="library" size={24} color={theme.colors.success[600]} />,
       color: theme.colors.success[100],
-      onPress: () => Alert.alert('Coming Soon', 'Smart Flashcards feature will be available soon!'),
+      onPress: () => Alert.alert('Coming Soon', 'Smart Flashcards will be available when you import content!'),
     },
     {
       id: 'quiz',
@@ -65,7 +65,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       description: 'Test your knowledge with AI-created quizzes',
       icon: <Ionicons name="help-circle" size={24} color={theme.colors.warning[600]} />,
       color: theme.colors.warning[100],
-      onPress: () => Alert.alert('Coming Soon', 'Practice Quizzes feature will be available soon!'),
+      onPress: () => Alert.alert('Coming Soon', 'Practice Quizzes will be available when you import content!'),
     },
     {
       id: 'tutor',
@@ -73,7 +73,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       description: 'Get personalized help when you need it',
       icon: <Ionicons name="chatbubbles" size={24} color={theme.colors.error[600]} />,
       color: theme.colors.error[100],
-      onPress: () => navigation.navigate('AITutor'),
+      onPress: () => Alert.alert('Coming Soon', 'AI Tutor will be available when you import content!'),
     },
   ];
 
@@ -119,7 +119,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
         <Text style={styles.sectionTitle}>Learning Tools</Text>
         
-        <View style={styles.featuresGrid}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.featuresContainer}
+        >
           {features.map((feature) => (
             <FeatureCard
               key={feature.id}
@@ -130,7 +134,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               onPress={feature.onPress}
             />
           ))}
-        </View>
+        </ScrollView>
 
         <Text style={styles.sectionTitle}>Recent Content</Text>
         
@@ -225,11 +229,9 @@ const styles = StyleSheet.create({
     color: theme.colors.gray[900],
     marginBottom: theme.spacing.base,
   },
-  featuresGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
+  featuresContainer: {
+    paddingHorizontal: theme.spacing.xs,
+    paddingBottom: theme.spacing.sm,
   },
   recentContent: {
     gap: theme.spacing.md,

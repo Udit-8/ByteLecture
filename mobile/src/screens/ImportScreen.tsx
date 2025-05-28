@@ -8,14 +8,38 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Header, Button, Card, FeatureCard } from '../components';
+import { Header, Button, Card, FeatureCard, PDFUpload } from '../components';
+import type { PDFFile, UploadResult } from '../components';
 import { theme } from '../constants/theme';
 
 export const ImportScreen: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
+  const [showPDFUpload, setShowPDFUpload] = useState(false);
 
   const handlePDFUpload = () => {
-    Alert.alert('Coming Soon', 'PDF upload functionality will be available soon!');
+    setShowPDFUpload(true);
+  };
+
+  const handleFileSelected = (file: PDFFile) => {
+    console.log('File selected:', file);
+    Alert.alert('File Selected', `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+  };
+
+  const handleUploadProgress = (progress: number) => {
+    console.log('Upload progress:', progress);
+  };
+
+  const handleUploadComplete = (result: UploadResult) => {
+    console.log('Upload complete:', result);
+    if (result.success) {
+      Alert.alert('Success', 'PDF uploaded and processing started!');
+      setShowPDFUpload(false);
+    }
+  };
+
+  const handleUploadError = (error: string) => {
+    console.error('Upload error:', error);
+    Alert.alert('Upload Error', error);
   };
 
   const handleYouTubeImport = () => {
@@ -67,18 +91,39 @@ export const ImportScreen: React.FC = () => {
 
         <Text style={styles.sectionTitle}>Choose Import Method</Text>
         
-        <View style={styles.optionsGrid}>
-          {importOptions.map((option) => (
-            <FeatureCard
-              key={option.id}
-              title={option.title}
-              description={option.description}
-              icon={option.icon}
-              color={option.color}
-              onPress={option.onPress}
+        {!showPDFUpload ? (
+          <View style={styles.optionsGrid}>
+            {importOptions.map((option) => (
+              <FeatureCard
+                key={option.id}
+                title={option.title}
+                description={option.description}
+                icon={option.icon}
+                color={option.color}
+                onPress={option.onPress}
+              />
+            ))}
+          </View>
+        ) : (
+          <View style={styles.uploadSection}>
+            <View style={styles.uploadHeader}>
+              <Button
+                title="← Back to Options"
+                onPress={() => setShowPDFUpload(false)}
+                variant="ghost"
+                style={styles.backButton}
+              />
+            </View>
+            <PDFUpload
+              onFileSelected={handleFileSelected}
+              onUploadProgress={handleUploadProgress}
+              onUploadComplete={handleUploadComplete}
+              onUploadError={handleUploadError}
+              maxFileSize={10}
+              disabled={isUploading}
             />
-          ))}
-        </View>
+          </View>
+        )}
 
         <Card style={styles.infoCard}>
           <Text style={styles.infoTitle}>💡 Pro Tips</Text>
@@ -145,5 +190,14 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[700],
     lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+  },
+  uploadSection: {
+    marginBottom: theme.spacing.lg,
+  },
+  uploadHeader: {
+    marginBottom: theme.spacing.base,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
   },
 }); 

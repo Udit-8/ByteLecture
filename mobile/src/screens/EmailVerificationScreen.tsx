@@ -30,6 +30,14 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
 
   const userEmail = user?.email || route?.params?.email || '';
 
+  // Check if user is already verified and redirect
+  useEffect(() => {
+    if (user && user.email_confirmed_at) {
+      // User is already verified, redirect to main app
+      navigation.replace('Main');
+    }
+  }, [user, navigation]);
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (resendCooldown > 0) {

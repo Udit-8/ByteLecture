@@ -12,6 +12,7 @@ import { SummaryScreen } from '../screens/SummaryScreen';
 import { FlashcardsScreen } from '../screens/FlashcardsScreen';
 import { QuizScreen } from '../screens/QuizScreen';
 import { AudioLearningScreen } from '../screens/AudioLearningScreen';
+import { AITutorScreen } from '../screens/AITutorScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -19,7 +20,7 @@ export const BottomTabNavigator: React.FC = () => {
   const { mode } = useNavigation();
 
   if (mode === 'note-detail') {
-    // Show note detail tabs: Summary, Cards, Quiz, Audio Summary
+    // Show note detail tabs: Summary, Cards, Quiz, Audio Summary, Chat
     return (
       <Tab.Navigator
         screenOptions={{
@@ -72,6 +73,15 @@ export const BottomTabNavigator: React.FC = () => {
           options={{
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="headset-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tab.Screen 
+          name="Chat" 
+          component={AITutorScreen}
+          options={{
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="chatbubbles-outline" size={size} color={color} />
             ),
           }}
         />

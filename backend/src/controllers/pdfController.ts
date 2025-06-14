@@ -1,19 +1,69 @@
 import { Request, Response } from 'express';
 import { pdfService } from '../services/pdfService';
+import { usageTrackingService } from '../services/usageTrackingService';
 import { PDFProcessingOptions } from '../types/pdf';
+
+// Define authenticated request interface
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+  };
+}
 
 export class PDFController {
   /**
    * Process a PDF file from storage
    */
-  async processPDF(req: Request, res: Response): Promise<void> {
+  async processPDF(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const userId = req.user?.id;
+    
     try {
+      // Check authentication
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required',
+          message: 'You must be logged in to process PDFs',
+        });
+        return;
+      }
+
       const { filePath, options } = req.body;
 
       if (!filePath) {
+        await usageTrackingService.logError({
+          user_id: userId,
+          error_type: 'validation_error',
+          error_message: 'File path is required for PDF processing',
+          request_path: req.path,
+          user_agent: req.get('User-Agent'),
+          ip_address: req.ip
+        });
+
         res.status(400).json({
           success: false,
           error: 'File path is required',
+        });
+        return;
+      }
+
+      // Check quota before processing
+      const quotaCheck = await usageTrackingService.canUploadPDF(userId);
+      if (!quotaCheck.allowed) {
+        await usageTrackingService.logError({
+          user_id: userId,
+          error_type: 'quota_exceeded',
+          error_message: quotaCheck.reason || 'PDF processing quota exceeded',
+          request_path: req.path,
+          error_details: { quota: quotaCheck.quota }
+        });
+
+        res.status(429).json({
+          success: false,
+          error: 'quota_exceeded',
+          message: quotaCheck.reason,
+          quota: quotaCheck.quota,
         });
         return;
       }
@@ -44,9 +94,23 @@ export class PDFController {
         }
       }
 
+      // Record PDF processing usage
+      const usageResult = await usageTrackingService.recordPDFUpload(userId);
+      if (!usageResult.success) {
+        res.status(429).json({
+          success: false,
+          error: 'quota_exceeded',
+          message: usageResult.error,
+        });
+        return;
+      }
+
       const result = await pdfService.processPDFFromStorage(filePath, processingOptions);
 
       if (result.success) {
+        // Log AI processing usage if applicable
+        await usageTrackingService.incrementUsage(userId, 'ai_processing');
+
         res.status(200).json({
           success: true,
           data: {
@@ -59,6 +123,14 @@ export class PDFController {
           message: 'PDF processed successfully',
         });
       } else {
+        await usageTrackingService.logError({
+          user_id: userId,
+          error_type: 'processing_error',
+          error_message: result.error || 'PDF processing failed',
+          request_path: req.path,
+          error_details: { filePath, options: processingOptions }
+        });
+
         res.status(500).json({
           success: false,
           error: result.error,
@@ -67,6 +139,15 @@ export class PDFController {
       }
     } catch (error) {
       console.error('PDF processing controller error:', error);
+      
+      await usageTrackingService.logError({
+        user_id: userId,
+        error_type: 'server_error',
+        error_message: error instanceof Error ? error.message : 'Unknown error during PDF processing',
+        request_path: req.path,
+        error_details: { error: error instanceof Error ? error.stack : String(error) }
+      });
+
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

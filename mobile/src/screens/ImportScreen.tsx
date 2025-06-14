@@ -9,12 +9,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Header, Button, Card, FeatureCard, PDFUpload } from '../components';
+import { YouTubeInput, VideoData } from '../components/YouTubeInput';
 import type { PDFFile, UploadResult } from '../components';
 import { theme } from '../constants/theme';
 
 export const ImportScreen: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [showPDFUpload, setShowPDFUpload] = useState(false);
+  const [showYouTubeInput, setShowYouTubeInput] = useState(false);
+  const [isProcessingVideo, setIsProcessingVideo] = useState(false);
 
   const handlePDFUpload = () => {
     setShowPDFUpload(true);
@@ -43,7 +46,39 @@ export const ImportScreen: React.FC = () => {
   };
 
   const handleYouTubeImport = () => {
-    Alert.alert('Coming Soon', 'YouTube import functionality will be available soon!');
+    setShowYouTubeInput(true);
+  };
+
+  const handleVideoProcessed = (videoData: VideoData) => {
+    console.log('Video processed:', videoData);
+    Alert.alert(
+      'Video Processed Successfully!',
+      `Video: ${videoData.title}\nTranscript extracted and ready for AI analysis.`,
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            setShowYouTubeInput(false);
+            // TODO: Navigate to chat screen with video context
+          },
+        },
+      ]
+    );
+  };
+
+  const handleVideoProcessingStart = (videoId: string) => {
+    console.log('Processing started for video:', videoId);
+    setIsProcessingVideo(true);
+  };
+
+  const handleVideoProcessingProgress = (progress: number) => {
+    console.log('Video processing progress:', progress);
+  };
+
+  const handleVideoProcessingError = (error: string) => {
+    console.error('Video processing error:', error);
+    setIsProcessingVideo(false);
+    Alert.alert('Processing Error', error);
   };
 
   const handleRecordLecture = () => {
@@ -91,7 +126,7 @@ export const ImportScreen: React.FC = () => {
 
         <Text style={styles.sectionTitle}>Choose Import Method</Text>
         
-        {!showPDFUpload ? (
+        {!showPDFUpload && !showYouTubeInput ? (
           <View style={styles.optionsGrid}>
             {importOptions.map((option) => (
               <FeatureCard
@@ -104,7 +139,7 @@ export const ImportScreen: React.FC = () => {
               />
             ))}
           </View>
-        ) : (
+        ) : showPDFUpload ? (
           <View style={styles.uploadSection}>
             <View style={styles.uploadHeader}>
               <Button
@@ -123,7 +158,26 @@ export const ImportScreen: React.FC = () => {
               disabled={isUploading}
             />
           </View>
-        )}
+        ) : showYouTubeInput ? (
+          <View style={styles.uploadSection}>
+            <View style={styles.uploadHeader}>
+              <Button
+                title="← Back to Options"
+                onPress={() => setShowYouTubeInput(false)}
+                variant="ghost"
+                style={styles.backButton}
+              />
+            </View>
+            <YouTubeInput
+              onVideoProcessed={handleVideoProcessed}
+              onProcessingStart={handleVideoProcessingStart}
+              onProcessingProgress={handleVideoProcessingProgress}
+              onProcessingError={handleVideoProcessingError}
+              disabled={isProcessingVideo}
+              maxVideosPerDay={2}
+            />
+          </View>
+        ) : null}
 
         <Card style={styles.infoCard}>
           <Text style={styles.infoTitle}>💡 Pro Tips</Text>

@@ -12,6 +12,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { theme } from '../constants/theme';
 import { Card, LoadingIndicator } from './';
+import { UploadErrorBoundary } from './ErrorBoundary';
 import { validatePDFFile, getValidationErrorMessage, formatFileSize } from '../utils';
 import { 
   uploadPDFToSupabase, 
@@ -204,7 +205,31 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
       }
     } catch (error) {
       console.error('Upload error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to upload PDF. Please try again.';
+      
+      // Enhanced error handling for different error types
+      let errorMessage = error instanceof Error ? error.message : 'Failed to upload PDF. Please try again.';
+      let alertTitle = 'Upload Failed';
+      
+      // Check for quota exceeded errors
+      if (errorMessage.includes('quota') || errorMessage.includes('limit') || errorMessage.includes('exceeded')) {
+        alertTitle = 'Upload Limit Reached';
+        errorMessage = 'You have reached your daily upload limit. Please try again tomorrow or upgrade your plan for unlimited uploads.';
+      }
+      // Check for authentication errors
+      else if (errorMessage.includes('Authentication') || errorMessage.includes('auth') || errorMessage.includes('login')) {
+        alertTitle = 'Authentication Error';
+        errorMessage = 'Please sign in again and try uploading your file.';
+      }
+      // Check for network errors
+      else if (errorMessage.includes('Network') || errorMessage.includes('network') || errorMessage.includes('connection')) {
+        alertTitle = 'Connection Error';
+        errorMessage = 'Please check your internet connection and try again.';
+      }
+      // Check for file validation errors
+      else if (errorMessage.includes('file') || errorMessage.includes('format') || errorMessage.includes('size')) {
+        alertTitle = 'File Error';
+        errorMessage = 'There was an issue with your file. Please ensure it is a valid PDF under 10MB.';
+      }
       
       const uploadResult: UploadResult = {
         success: false,
@@ -213,7 +238,7 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
       
       onUploadError?.(errorMessage);
       onUploadComplete?.(uploadResult);
-      Alert.alert('Upload Failed', `❌ ${errorMessage}`);
+      Alert.alert(alertTitle, `❌ ${errorMessage}`);
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -241,134 +266,139 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
     }
   }, [uploadController, isUploading]);
 
-
-
   return (
-    <View style={styles.container}>
-      {!selectedFile ? (
-        <TouchableOpacity
-          style={[
-            styles.uploadArea,
-            disabled && styles.uploadAreaDisabled,
-          ]}
-          onPress={handleDocumentPicker}
-          disabled={disabled || isUploading || isValidating}
-          activeOpacity={0.7}
-        >
-          <View style={styles.uploadContent}>
-            <View style={styles.iconContainer}>
-              {isValidating ? (
-                <LoadingIndicator size="large" />
-              ) : (
-                <Ionicons 
-                  name="cloud-upload-outline" 
-                  size={48} 
-                  color={disabled ? theme.colors.gray[400] : theme.colors.primary[600]} 
-                />
-              )}
-            </View>
-            <Text style={[
-              styles.uploadTitle,
-              disabled && styles.uploadTitleDisabled,
-            ]}>
-              {isValidating ? 'Validating PDF...' : 'Upload PDF File'}
-            </Text>
-            <Text style={[
-              styles.uploadSubtitle,
-              disabled && styles.uploadSubtitleDisabled,
-            ]}>
-              {isValidating ? 'Please wait while we validate your file' : 'Tap to select a PDF file from your device'}
-            </Text>
-            <Text style={[
-              styles.uploadHint,
-              disabled && styles.uploadHintDisabled,
-            ]}>
-              Maximum file size: {maxFileSize}MB
-            </Text>
-          </View>
-        </TouchableOpacity>
-      ) : (
-        <Card style={styles.fileCard}>
-          <View style={styles.fileInfo}>
-            <View style={styles.fileIcon}>
-              <Ionicons name="document-text" size={24} color={theme.colors.error[600]} />
-            </View>
-            <View style={styles.fileDetails}>
-              <Text style={styles.fileName} numberOfLines={2}>
-                {selectedFile.name}
-              </Text>
-              <Text style={styles.fileSize}>
-                {formatFileSize(selectedFile.size)}
-              </Text>
-            </View>
-            {!isUploading && (
-              <TouchableOpacity
-                style={styles.removeButton}
-                onPress={handleRemoveFile}
-              >
-                <Ionicons name="close-circle" size={24} color={theme.colors.gray[400]} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {isUploading && (
-            <View style={styles.progressContainer}>
-              <View style={styles.progressHeader}>
-                <Text style={styles.progressText}>
-                  {detailedProgress ? getProgressText(detailedProgress) : `Uploading... ${uploadProgress}%`}
-                </Text>
-                {allowCancellation && (
-                  <TouchableOpacity
-                    style={styles.cancelButton}
-                    onPress={handleCancelUpload}
-                  >
-                    <Ionicons name="close" size={16} color={theme.colors.gray[600]} />
-                    <Text style={styles.cancelText}>Cancel</Text>
-                  </TouchableOpacity>
+    <UploadErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('PDFUpload error boundary caught:', error, errorInfo);
+        onUploadError?.('An unexpected error occurred during upload. Please try again.');
+      }}
+    >
+      <View style={styles.container}>
+        {!selectedFile ? (
+          <TouchableOpacity
+            style={[
+              styles.uploadArea,
+              disabled && styles.uploadAreaDisabled,
+            ]}
+            onPress={handleDocumentPicker}
+            disabled={disabled || isUploading || isValidating}
+            activeOpacity={0.7}
+          >
+            <View style={styles.uploadContent}>
+              <View style={styles.iconContainer}>
+                {isValidating ? (
+                  <LoadingIndicator size="large" />
+                ) : (
+                  <Ionicons 
+                    name="cloud-upload-outline" 
+                    size={48} 
+                    color={disabled ? theme.colors.gray[400] : theme.colors.primary[600]} 
+                  />
                 )}
               </View>
-              <View style={styles.progressBar}>
-                <View 
-                  style={[
-                    styles.progressFill, 
-                    { width: `${uploadProgress}%` }
-                  ]} 
-                />
+              <Text style={[
+                styles.uploadTitle,
+                disabled && styles.uploadTitleDisabled,
+              ]}>
+                {isValidating ? 'Validating PDF...' : 'Upload PDF File'}
+              </Text>
+              <Text style={[
+                styles.uploadSubtitle,
+                disabled && styles.uploadSubtitleDisabled,
+              ]}>
+                {isValidating ? 'Please wait while we validate your file' : 'Tap to select a PDF file from your device'}
+              </Text>
+              <Text style={[
+                styles.uploadHint,
+                disabled && styles.uploadHintDisabled,
+              ]}>
+                Maximum file size: {maxFileSize}MB
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <Card style={styles.fileCard}>
+            <View style={styles.fileInfo}>
+              <View style={styles.fileIcon}>
+                <Ionicons name="document-text" size={24} color={theme.colors.error[600]} />
               </View>
-              {bucketReady === false && (
-                <Text style={styles.warningText}>
-                  ⚠️ Storage connection may be unstable
+              <View style={styles.fileDetails}>
+                <Text style={styles.fileName} numberOfLines={2}>
+                  {selectedFile.name}
                 </Text>
+                <Text style={styles.fileSize}>
+                  {formatFileSize(selectedFile.size)}
+                </Text>
+              </View>
+              {!isUploading && (
+                <TouchableOpacity
+                  style={styles.removeButton}
+                  onPress={handleRemoveFile}
+                >
+                  <Ionicons name="close-circle" size={24} color={theme.colors.gray[400]} />
+                </TouchableOpacity>
               )}
             </View>
-          )}
 
-          {!isUploading && (
-            <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={styles.selectAnotherButton}
-                onPress={handleDocumentPicker}
-              >
-                <Text style={styles.selectAnotherText}>Select Another</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.uploadButton}
-                onPress={handleUpload}
-                disabled={isUploading}
-              >
-                <Text style={styles.uploadButtonText}>Upload PDF</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </Card>
-      )}
+            {isUploading && (
+              <View style={styles.progressContainer}>
+                <View style={styles.progressHeader}>
+                  <Text style={styles.progressText}>
+                    {detailedProgress ? getProgressText(detailedProgress) : `Uploading... ${uploadProgress}%`}
+                  </Text>
+                  {allowCancellation && (
+                    <TouchableOpacity
+                      style={styles.cancelButton}
+                      onPress={handleCancelUpload}
+                    >
+                      <Ionicons name="close" size={16} color={theme.colors.gray[600]} />
+                      <Text style={styles.cancelText}>Cancel</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={styles.progressBar}>
+                  <View 
+                    style={[
+                      styles.progressFill, 
+                      { width: `${uploadProgress}%` }
+                    ]} 
+                  />
+                </View>
+                {bucketReady === false && (
+                  <Text style={styles.warningText}>
+                    ⚠️ Storage connection may be unstable
+                  </Text>
+                )}
+              </View>
+            )}
 
-      {isUploading && (
-        <View style={styles.loadingOverlay}>
-          <LoadingIndicator size="large" />
-        </View>
-      )}
-    </View>
+            {!isUploading && (
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={styles.selectAnotherButton}
+                  onPress={handleDocumentPicker}
+                >
+                  <Text style={styles.selectAnotherText}>Select Another</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={handleUpload}
+                  disabled={isUploading}
+                >
+                  <Text style={styles.uploadButtonText}>Upload PDF</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </Card>
+        )}
+
+        {isUploading && (
+          <View style={styles.loadingOverlay}>
+            <LoadingIndicator size="large" />
+          </View>
+        )}
+      </View>
+    </UploadErrorBoundary>
   );
 };
 

@@ -1,1 +1,2 @@
-export * from './uploadService'; 
+export * from './uploadService';
+export * from './youtubeAPI'; 

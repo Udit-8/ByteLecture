@@ -336,6 +336,65 @@ class UsageTrackingService {
         return 'An unexpected error occurred. Please try again or contact support if the problem persists.';
     }
   }
+
+  /**
+   * Reset user usage for premium upgrade (method for PaymentController)
+   */
+  async resetUserUsage(userId: string): Promise<void> {
+    try {
+      // Reset all usage counters for this user for today
+      await supabaseAdmin
+        .from('user_usage_tracking')
+        .delete()
+        .eq('user_id', userId)
+        .eq('date', new Date().toISOString().split('T')[0]);
+
+      console.log(`Reset usage for user ${userId}`);
+    } catch (error) {
+      console.error('UsageTrackingService.resetUserUsage error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user usage data (method for PaymentController)
+   */
+  async getUserUsage(userId: string): Promise<Record<string, number>> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('user_usage_tracking')
+        .select('resource_type, count')
+        .eq('user_id', userId)
+        .eq('date', new Date().toISOString().split('T')[0]);
+
+      if (error) {
+        console.error('Error getting user usage:', error);
+        return {};
+      }
+
+      // Convert array to object with resource_type as keys
+      const usage: Record<string, number> = {};
+      data?.forEach(item => {
+        // Map database resource types to frontend names
+        const resourceMap: Record<string, string> = {
+          'pdf_upload': 'pdfProcessing',
+          'quiz_generation': 'quizGeneration',
+          'flashcard_generation': 'flashcardGeneration',
+          'ai_processing': 'aiTutorQuestions',
+          'audio_transcription': 'audioTranscription',
+          'youtube_processing': 'youtubeProcessing',
+        };
+        
+        const mappedKey = resourceMap[item.resource_type] || item.resource_type;
+        usage[mappedKey] = item.count || 0;
+      });
+
+      return usage;
+    } catch (error) {
+      console.error('UsageTrackingService.getUserUsage error:', error);
+      return {};
+    }
+  }
 }
 
 export const usageTrackingService = new UsageTrackingService();

@@ -13,7 +13,11 @@ import { YouTubeInput, VideoData } from '../components/YouTubeInput';
 import type { PDFFile, UploadResult } from '../components';
 import { theme } from '../constants/theme';
 
-export const ImportScreen: React.FC = () => {
+interface ImportScreenProps {
+  navigation: any;
+}
+
+export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [showPDFUpload, setShowPDFUpload] = useState(false);
   const [showYouTubeInput, setShowYouTubeInput] = useState(false);
@@ -82,7 +86,7 @@ export const ImportScreen: React.FC = () => {
   };
 
   const handleRecordLecture = () => {
-    Alert.alert('Coming Soon', 'Lecture recording functionality will be available soon!');
+    navigation.navigate('AudioRecording');
   };
 
   const importOptions = [

@@ -5,9 +5,11 @@ export const theme = {
       100: '#DBEAFE',
       200: '#BFDBFE',
       300: '#93C5FD',
+      400: '#60A5FA',
       500: '#3B82F6',
       600: '#2563EB',
       700: '#1D4ED8',
+      800: '#1E40AF',
     },
     gray: {
       50: '#F9FAFB',
@@ -24,9 +26,11 @@ export const theme = {
     success: {
       50: '#F0FDF4',
       100: '#DCFCE7',
+      200: '#BBF7D0',
       500: '#22C55E',
       600: '#16A34A',
       700: '#15803D',
+      800: '#166534',
     },
     warning: {
       50: '#FFFBEB',
@@ -35,6 +39,7 @@ export const theme = {
       500: '#F59E0B',
       600: '#D97706',
       700: '#B45309',
+      800: '#92400E',
     },
     error: {
       50: '#FEF2F2',
@@ -45,6 +50,13 @@ export const theme = {
     },
     white: '#FFFFFF',
     black: '#000000',
+    
+    // Additional convenience colors
+    background: '#F9FAFB', // gray[50]
+    text: '#111827', // gray[900]
+    textSecondary: '#6B7280', // gray[500]
+    border: '#E5E7EB', // gray[200]
+    secondary: '#9CA3AF', // gray[400]
   },
   typography: {
     fontSize: {
@@ -82,6 +94,7 @@ export const theme = {
   borderRadius: {
     sm: 6,
     base: 8,
+    md: 10,
     lg: 12,
     xl: 16,
     full: 999,

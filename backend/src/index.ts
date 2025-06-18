@@ -10,6 +10,7 @@ import pdfRoutes from './routes/pdfRoutes';
 import youtubeRoutes from './routes/youtube';
 import audioRoutes from './routes/audioRoutes';
 import paymentRoutes from './routes/paymentRoutes';
+import summaryRoutes from './routes/summaryRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -39,6 +40,7 @@ app.use('/api/pdf', pdfRoutes);
 app.use('/api/youtube', youtubeRoutes);
 app.use('/api/audio', audioRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/summaries', summaryRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'healthy', uptime: process.uptime() });

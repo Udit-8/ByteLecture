@@ -160,6 +160,7 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
               onUploadError={handleUploadError}
               maxFileSize={10}
               disabled={isUploading}
+              navigation={navigation}
             />
           </View>
         ) : showYouTubeInput ? (
@@ -179,6 +180,7 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
               onProcessingError={handleVideoProcessingError}
               disabled={isProcessingVideo}
               maxVideosPerDay={2}
+              navigation={navigation}
             />
           </View>
         ) : null}

@@ -21,6 +21,7 @@ export interface YouTubeInputProps {
   onProcessingError?: (error: string) => void;
   disabled?: boolean;
   maxVideosPerDay?: number;
+  navigation?: any; // Optional navigation prop for quota exceeded cases
 }
 
 export interface VideoData {
@@ -43,6 +44,7 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
   onProcessingError,
   disabled = false,
   maxVideosPerDay = 2,
+  navigation,
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -140,7 +142,28 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
       const errorMessage = error instanceof Error ? error.message : 'Failed to process video';
       console.error('YouTube processing error:', error);
       onProcessingError?.(errorMessage);
-      Alert.alert('Processing Error', errorMessage);
+      
+      // Check for quota exceeded errors
+      if (errorMessage.includes('quota') || errorMessage.includes('limit') || errorMessage.includes('exceeded')) {
+        if (navigation) {
+          Alert.alert(
+            'Daily Limit Reached',
+            'You have reached your daily YouTube processing limit. Upgrade to premium for unlimited processing.',
+            [
+              { text: 'Cancel' },
+              { 
+                text: 'Upgrade Plan', 
+                style: 'default',
+                onPress: () => navigation.navigate('Subscription', { from: 'youtube-quota' })
+              }
+            ]
+          );
+        } else {
+          Alert.alert('Daily Limit Reached', 'You have reached your daily YouTube processing limit. Please try again tomorrow or upgrade your plan.');
+        }
+      } else {
+        Alert.alert('Processing Error', errorMessage);
+      }
     } finally {
       setIsProcessing(false);
       setProgress(0);

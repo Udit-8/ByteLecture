@@ -15,6 +15,7 @@ import { AITutorScreen } from '../screens/AITutorScreen';
 import { AudioLearningScreen } from '../screens/AudioLearningScreen';
 import { AudioRecordingScreen } from '../screens/AudioRecordingScreen';
 import { AuthDebugScreen } from '../screens/AuthDebugScreen';
+import SubscriptionScreen from '../screens/SubscriptionScreen';
 import { BottomTabNavigator } from './BottomTabNavigator';
 
 const Stack = createNativeStackNavigator();
@@ -47,6 +48,7 @@ export const AppNavigator: React.FC = () => {
               <Stack.Screen name="AITutor" component={AITutorScreen} />
               <Stack.Screen name="AudioLearning" component={AudioLearningScreen} />
               <Stack.Screen name="AudioRecording" component={AudioRecordingScreen} />
+              <Stack.Screen name="Subscription" component={SubscriptionScreen} />
               <Stack.Screen 
                 name="AuthDebug" 
                 component={AuthDebugScreen} 

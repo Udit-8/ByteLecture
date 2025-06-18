@@ -46,6 +46,24 @@ class PaymentService {
   }
 
   /**
+   * Check if we're running in development mode
+   */
+  private isDevelopmentMode(): boolean {
+    // Check various development indicators
+    try {
+      // @ts-ignore - __DEV__ is a React Native global
+      if (typeof __DEV__ !== 'undefined' && __DEV__) {
+        return true;
+      }
+    } catch (e) {
+      // Ignore if __DEV__ is not available
+    }
+    
+    // Check if running in simulator/emulator
+    return Platform.OS === 'ios' ? Platform.constants.systemName === 'iOS Simulator' : false;
+  }
+
+  /**
    * Initialize the payment service
    */
   async initialize(): Promise<boolean> {
@@ -55,6 +73,14 @@ class PaymentService {
       }
 
       console.log('[PaymentService] Initializing payment service...');
+      
+      // Check if we're in development mode
+      if (this.isDevelopmentMode()) {
+        console.log('[PaymentService] Running in development mode - using mock payment service');
+        this.isInitialized = true;
+        return true;
+      }
+
       const result = await initConnection();
       this.isInitialized = result;
       
@@ -68,8 +94,16 @@ class PaymentService {
       }
       
       return this.isInitialized;
-    } catch (error) {
+    } catch (error: any) {
       console.error('[PaymentService] Failed to initialize:', error);
+      
+      // If IAP is not available (development mode), use mock service
+      if (error.code === 'E_IAP_NOT_AVAILABLE' || error.message?.includes('E_IAP_NOT_AVAILABLE')) {
+        console.log('[PaymentService] IAP not available - using mock payment service for development');
+        this.isInitialized = true;
+        return true;
+      }
+      
       return false;
     }
   }
@@ -81,6 +115,11 @@ class PaymentService {
     try {
       if (!this.isInitialized) {
         await this.initialize();
+      }
+
+      // Return mock products in development mode
+      if (this.isDevelopmentMode()) {
+        return this.getMockProducts();
       }
 
       const productIds = [
@@ -100,6 +139,12 @@ class PaymentService {
       return products.map(product => this.mapToSubscriptionProduct(product));
     } catch (error) {
       console.error('[PaymentService] Failed to get products:', error);
+      
+      // Fallback to mock products if store fetch fails
+      if (this.isDevelopmentMode()) {
+        return this.getMockProducts();
+      }
+      
       throw this.createPaymentError('PRODUCTS_FETCH_FAILED', 'Failed to fetch subscription products');
     }
   }
@@ -121,6 +166,18 @@ class PaymentService {
         : this.configuration.yearlyProductId;
 
       console.log('[PaymentService] Purchasing subscription:', productId);
+
+      // Return mock success in development mode
+      if (this.isDevelopmentMode()) {
+        console.log('[PaymentService] Mock purchase successful in development mode');
+        return {
+          success: true,
+          transactionId: `mock_${Date.now()}`,
+          productId,
+          transactionDate: new Date().toISOString(),
+          transactionReceipt: 'mock_receipt',
+        };
+      }
 
       const purchaseResult = await requestSubscription({
         sku: productId,
@@ -187,6 +244,16 @@ class PaymentService {
       }
 
       console.log('[PaymentService] Restoring purchases...');
+
+      // Return empty results in development mode
+      if (this.isDevelopmentMode()) {
+        console.log('[PaymentService] No purchases to restore in development mode');
+        return {
+          success: true,
+          restoredPurchases: [],
+        };
+      }
+
       const purchases = await getAvailablePurchases();
 
       const restoredPurchases: PurchaseResult[] = [];
@@ -232,6 +299,11 @@ class PaymentService {
    */
   async getSubscriptionStatus(): Promise<SubscriptionStatus> {
     try {
+      // Return mock status in development mode
+      if (this.isDevelopmentMode()) {
+        return this.getMockSubscriptionStatus();
+      }
+
       const purchases = await getAvailablePurchases();
       
       // Find the most recent active subscription
@@ -355,12 +427,52 @@ class PaymentService {
   }
 
   /**
+   * Get mock products for development mode
+   */
+  private getMockProducts(): SubscriptionProduct[] {
+    return [
+      {
+        productId: this.configuration.monthlyProductId,
+        type: 'monthly',
+        price: '99',
+        currency: 'INR',
+        localizedPrice: '₹99',
+        title: 'ByteLecture Premium Monthly',
+        description: 'Monthly subscription to ByteLecture Premium features',
+        platform: this.platform,
+      },
+      {
+        productId: this.configuration.yearlyProductId,
+        type: 'yearly',
+        price: '999',
+        currency: 'INR',
+        localizedPrice: '₹999',
+        title: 'ByteLecture Premium Yearly',
+        description: 'Yearly subscription to ByteLecture Premium features (Save ₹189)',
+        platform: this.platform,
+      },
+    ];
+  }
+
+  /**
+   * Get mock subscription status for development mode
+   */
+  private getMockSubscriptionStatus(): SubscriptionStatus {
+    return {
+      isActive: false, // Default to inactive for testing
+      platform: this.platform,
+    };
+  }
+
+  /**
    * Clean up resources
    */
   async cleanup(): Promise<void> {
     try {
       if (this.isInitialized) {
-        await endConnection();
+        if (!this.isDevelopmentMode()) {
+          await endConnection();
+        }
         this.isInitialized = false;
         console.log('[PaymentService] Payment service cleaned up');
       }

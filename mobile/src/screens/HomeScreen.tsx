@@ -100,6 +100,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           icon: <Ionicons name="log-out-outline" size={24} color={theme.colors.gray[600]} />,
           onPress: handleLogout,
         }}
+        leftAction={{
+          icon: <Ionicons name="diamond-outline" size={24} color={theme.colors.primary[600]} />,
+          onPress: () => navigation.navigate('Subscription', { from: 'home' }),
+        }}
       />
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>

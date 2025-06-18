@@ -32,6 +32,7 @@ interface PDFUploadProps {
   allowCancellation?: boolean;
   maxFileSize?: number; // in MB
   disabled?: boolean;
+  navigation?: any; // Optional navigation prop for quota exceeded cases
 }
 
 export interface PDFFile {
@@ -58,6 +59,7 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
   allowCancellation = true,
   maxFileSize = 10, // 10MB default
   disabled = false,
+  navigation,
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -214,6 +216,35 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
       if (errorMessage.includes('quota') || errorMessage.includes('limit') || errorMessage.includes('exceeded')) {
         alertTitle = 'Upload Limit Reached';
         errorMessage = 'You have reached your daily upload limit. Please try again tomorrow or upgrade your plan for unlimited uploads.';
+        
+        // Show enhanced alert with upgrade option if navigation is available
+        if (navigation) {
+          Alert.alert(
+            alertTitle,
+            errorMessage,
+            [
+              { text: 'Cancel' },
+              { 
+                text: 'Upgrade Plan', 
+                style: 'default',
+                onPress: () => navigation.navigate('Subscription', { from: 'pdf-quota' })
+              }
+            ]
+          );
+          
+          const uploadResult: UploadResult = {
+            success: false,
+            error: errorMessage,
+          };
+          
+          onUploadError?.(errorMessage);
+          onUploadComplete?.(uploadResult);
+          setIsUploading(false);
+          setUploadProgress(0);
+          setDetailedProgress(null);
+          setUploadController(null);
+          return; // Exit early to avoid duplicate alerts
+        }
       }
       // Check for authentication errors
       else if (errorMessage.includes('Authentication') || errorMessage.includes('auth') || errorMessage.includes('login')) {

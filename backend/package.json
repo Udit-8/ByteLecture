@@ -14,7 +14,9 @@
     "test:pdf": "node scripts/test-pdf-processing.js",
     "test:api": "node scripts/test-api-endpoints.js",
     "test:upload": "node ../mobile/test-upload-service.js",
-    "test:all": "npm run test:pdf && npm run test:api && npm run test:upload"
+    "test:openai": "node scripts/test-openai-service.js",
+    "test:summary": "node scripts/test-summary-api.js",
+    "test:all": "npm run test:pdf && npm run test:api && npm run test:upload && npm run test:openai && npm run test:summary"
   },
   "keywords": [],
   "author": "",
@@ -39,6 +41,7 @@
     "morgan": "^1.10.0",
     "multer": "^2.0.0",
     "node-fetch": "^2.7.0",
+    "openai": "^5.3.0",
     "pdf-parse": "^1.1.1",
     "pdf2pic": "^3.1.4",
     "pdfjs-dist": "^5.2.133",

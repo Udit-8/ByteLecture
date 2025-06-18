@@ -413,8 +413,13 @@ export const AudioRecordingScreen: React.FC<AudioRecordingScreenProps> = ({ navi
             ? usageService.formatQuotaErrorMessage(quotaCheck.quota)
             : quotaCheck.reason || 'Daily limit reached',
           [
-            { text: 'OK' },
-            { text: 'View Usage', onPress: showUsageStats }
+            { text: 'Cancel' },
+            { text: 'View Usage', onPress: showUsageStats },
+            { 
+              text: 'Upgrade Plan', 
+              style: 'default',
+              onPress: () => navigation.navigate('Subscription', { from: 'audio-quota' })
+            }
           ]
         );
         return;

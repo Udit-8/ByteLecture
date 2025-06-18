@@ -7,34 +7,47 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Header, Card, Button } from '../components';
+import { Header, Card, Button, AISummary } from '../components';
 import { theme } from '../constants/theme';
 import { useNavigation } from '../contexts/NavigationContext';
 
 export const SummaryScreen: React.FC = () => {
   const { selectedNote, setMainMode } = useNavigation();
 
-  // Mock summary data based on selected note
-  const summaryData = {
-    keyPoints: [
-      'Machine learning is a subset of artificial intelligence that enables computers to learn without being explicitly programmed',
-      'There are three main types: supervised learning, unsupervised learning, and reinforcement learning',
-      'Supervised learning uses labeled training data to make predictions on new, unseen data',
-      'Common algorithms include linear regression, decision trees, and neural networks',
-    ],
-    mainTopics: [
-      'Introduction to ML',
-      'Types of Learning',
-      'Supervised Learning',
-      'Unsupervised Learning',
-      'Model Evaluation',
-    ],
-    timeToRead: '5 min read',
-    difficulty: 'Intermediate',
-  };
-
   const handleBackPress = () => {
     setMainMode();
+  };
+
+  // Get content data from selected note
+  const contentItem = selectedNote?.content?.contentItem;
+  const getContentForSummary = (): string => {
+    if (!contentItem) return '';
+    
+    // Use existing summary if available, otherwise use description
+    if (contentItem.summary) {
+      return contentItem.summary;
+    }
+    
+    if (contentItem.description) {
+      return contentItem.description;
+    }
+    
+    return `Content from ${contentItem.title}`;
+  };
+
+  const getContentType = (): 'pdf' | 'youtube' | 'audio' | 'text' => {
+    if (!contentItem) return 'text';
+    
+    switch (contentItem.contentType) {
+      case 'pdf':
+        return 'pdf';
+      case 'youtube':
+        return 'youtube';
+      case 'lecture_recording':
+        return 'audio';
+      default:
+        return 'text';
+    }
   };
 
   return (
@@ -48,85 +61,49 @@ export const SummaryScreen: React.FC = () => {
       />
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerCard}>
-          <Text style={styles.headerTitle}>AI Summary</Text>
-          <Text style={styles.headerDescription}>
-            Key insights and takeaways from your learning material, powered by AI.
-          </Text>
-          <View style={styles.headerMeta}>
-            <View style={styles.metaItem}>
-              <Ionicons name="time-outline" size={16} color={theme.colors.gray[500]} />
-              <Text style={styles.metaText}>{summaryData.timeToRead}</Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Ionicons name="bar-chart-outline" size={16} color={theme.colors.gray[500]} />
-              <Text style={styles.metaText}>{summaryData.difficulty}</Text>
-            </View>
-          </View>
-        </View>
-
-        <Card style={styles.summaryCard}>
-          <Text style={styles.sectionTitle}>Key Points</Text>
-          <View style={styles.keyPointsList}>
-            {summaryData.keyPoints.map((point, index) => (
-              <View key={index} style={styles.keyPointItem}>
-                <View style={styles.keyPointBullet}>
-                  <Text style={styles.keyPointNumber}>{index + 1}</Text>
+        {selectedNote && contentItem ? (
+          <View style={styles.summaryContainer}>
+            <AISummary
+              content={getContentForSummary()}
+              contentType={getContentType()}
+              contentItemId={contentItem.id}
+              style={styles.aiSummaryComponent}
+              onSummaryGenerated={(summary) => {
+                console.log('Summary generated:', summary);
+                // Could store this in local state or update the content item
+              }}
+            />
+            
+            <Card style={styles.sourceCard}>
+              <Text style={styles.sourceTitle}>Source Material</Text>
+              <View style={styles.sourceInfo}>
+                <View style={styles.sourceIcon}>
+                  <Ionicons 
+                    name={selectedNote.type === 'PDF' ? 'document-text' : selectedNote.type === 'YouTube' ? 'logo-youtube' : 'headset'} 
+                    size={20} 
+                    color={theme.colors.primary[600]} 
+                  />
                 </View>
-                <Text style={styles.keyPointText}>{point}</Text>
+                <View style={styles.sourceDetails}>
+                  <Text style={styles.sourceName}>{selectedNote.title}</Text>
+                  <Text style={styles.sourceType}>{selectedNote.type} • {selectedNote.progress}% complete</Text>
+                  {contentItem.description && (
+                    <Text style={styles.sourceDescription} numberOfLines={2}>
+                      {contentItem.description}
+                    </Text>
+                  )}
+                </View>
               </View>
-            ))}
+            </Card>
           </View>
-        </Card>
-
-        <Card style={styles.topicsCard}>
-          <Text style={styles.sectionTitle}>Main Topics Covered</Text>
-          <View style={styles.topicsList}>
-            {summaryData.mainTopics.map((topic, index) => (
-              <View key={index} style={styles.topicItem}>
-                <Ionicons name="checkmark-circle" size={20} color={theme.colors.success[600]} />
-                <Text style={styles.topicText}>{topic}</Text>
-              </View>
-            ))}
-          </View>
-        </Card>
-
-        <Card style={styles.actionCard}>
-          <Text style={styles.actionTitle}>Continue Learning</Text>
-          <Text style={styles.actionDescription}>
-            Reinforce your understanding with these learning tools
-          </Text>
-          <View style={styles.actionButtons}>
-            <Button
-              title="Generate Flashcards"
-              onPress={() => {}}
-              variant="primary"
-              style={styles.actionButton}
-            />
-            <Button
-              title="Take Quiz"
-              onPress={() => {}}
-              variant="outline"
-              style={styles.actionButton}
-            />
-          </View>
-        </Card>
-
-        {selectedNote && (
-          <Card style={styles.sourceCard}>
-            <Text style={styles.sourceTitle}>Source Material</Text>
-            <View style={styles.sourceInfo}>
-              <View style={styles.sourceIcon}>
-                <Ionicons 
-                  name={selectedNote.type === 'PDF' ? 'document-text' : selectedNote.type === 'YouTube' ? 'logo-youtube' : 'headset'} 
-                  size={20} 
-                  color={theme.colors.primary[600]} 
-                />
-              </View>
-              <View style={styles.sourceDetails}>
-                <Text style={styles.sourceName}>{selectedNote.title}</Text>
-                <Text style={styles.sourceType}>{selectedNote.type} • {selectedNote.progress}% complete</Text>
-              </View>
+        ) : (
+          <Card style={styles.placeholderCard}>
+            <View style={styles.placeholderContent}>
+              <Ionicons name="document-text-outline" size={48} color={theme.colors.gray[400]} />
+              <Text style={styles.placeholderTitle}>No Content Selected</Text>
+              <Text style={styles.placeholderText}>
+                Select a note from the Recent Notes section to view its AI-generated summary.
+              </Text>
             </View>
           </Card>
         )}
@@ -286,5 +263,38 @@ const styles = StyleSheet.create({
   sourceType: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[600],
+  },
+  summaryContainer: {
+    flex: 1,
+  },
+  aiSummaryComponent: {
+    marginBottom: theme.spacing.lg,
+  },
+  sourceDescription: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[600],
+    marginTop: theme.spacing.xs,
+    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+  },
+  placeholderCard: {
+    marginTop: theme.spacing.xl,
+  },
+  placeholderContent: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xl * 2,
+  },
+  placeholderTitle: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.gray[700],
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
+  },
+  placeholderText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.gray[500],
+    textAlign: 'center',
+    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
+    paddingHorizontal: theme.spacing.lg,
   },
 }); 

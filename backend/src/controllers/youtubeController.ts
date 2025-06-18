@@ -3,12 +3,31 @@ import { youtubeService } from '../services/youtubeService';
 import { usageTrackingService } from '../services/usageTrackingService';
 import { supabaseAdmin } from '../config/supabase';
 import cacheService from '../services/cacheService';
+import { ContentService } from '../services/contentService';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
     email: string;
   };
+}
+
+/**
+ * Parse YouTube duration string (e.g., "10m 30s", "1h 5m") to seconds
+ */
+function parseDurationToSeconds(duration: string): number {
+  if (!duration) return 0;
+  
+  let seconds = 0;
+  const hourMatch = duration.match(/(\d+)h/);
+  const minuteMatch = duration.match(/(\d+)m/);
+  const secondMatch = duration.match(/(\d+)s/);
+  
+  if (hourMatch) seconds += parseInt(hourMatch[1]) * 3600;
+  if (minuteMatch) seconds += parseInt(minuteMatch[1]) * 60;
+  if (secondMatch) seconds += parseInt(secondMatch[1]);
+  
+  return seconds;
 }
 
 /**
@@ -221,6 +240,26 @@ export const processYouTubeVideo = async (req: AuthenticatedRequest, res: Respon
       } else {
         // Cache the processed video data for faster future access
         cacheService.setProcessedVideo(videoId, userId, videoRecord);
+        
+        // Create content item for Recent Notes integration
+        try {
+          const contentService = new ContentService();
+          await contentService.createContentItem({
+            user_id: userId,
+            title: result.videoInfo.title,
+            description: result.videoInfo.description,
+            content_type: 'youtube',
+            youtube_url: url,
+            youtube_video_id: videoId,
+            duration: parseDurationToSeconds(result.videoInfo.duration),
+            processed: true,
+            summary: result.fullTranscriptText.substring(0, 500) + '...', // First 500 chars as preview
+          });
+          console.log(`Created content item for YouTube video: ${videoId}`);
+        } catch (contentError) {
+          console.error('Error creating content item:', contentError);
+          // Don't fail the whole operation for content item creation errors
+        }
       }
 
       res.json({

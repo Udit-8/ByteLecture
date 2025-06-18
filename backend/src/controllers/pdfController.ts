@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { pdfService } from '../services/pdfService';
 import { usageTrackingService } from '../services/usageTrackingService';
 import { PDFProcessingOptions } from '../types/pdf';
+import { ContentService } from '../services/contentService';
 
 // Define authenticated request interface
 interface AuthenticatedRequest extends Request {
@@ -110,6 +111,28 @@ export class PDFController {
       if (result.success) {
         // Log AI processing usage if applicable
         await usageTrackingService.incrementUsage(userId, 'ai_processing');
+
+        // Create content item for Recent Notes integration
+        try {
+          const contentService = new ContentService();
+          const fileName = filePath.split('/').pop() || 'Document';
+          const title = fileName.replace('.pdf', '').replace(/[-_]/g, ' ');
+          
+          await contentService.createContentItem({
+            user_id: userId,
+            title: title,
+            description: `PDF document with ${result.pageCount || 0} pages`,
+            content_type: 'pdf',
+            file_url: filePath,
+            file_size: result.fileSize,
+            processed: true,
+            summary: result.extractedText?.substring(0, 500) + '...', // First 500 chars as preview
+          });
+          console.log(`Created content item for PDF: ${filePath}`);
+        } catch (contentError) {
+          console.error('Error creating content item:', contentError);
+          // Don't fail the whole operation for content item creation errors
+        }
 
         res.status(200).json({
           success: true,

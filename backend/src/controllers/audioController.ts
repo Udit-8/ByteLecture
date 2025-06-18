@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { speechToTextService } from '../services/speechToTextService';
 import { usageTrackingService } from '../services/usageTrackingService';
 import { supabaseAdmin } from '../config/supabase';
+import { ContentService } from '../services/contentService';
 
 // Define authenticated request interface
 interface AuthenticatedRequest extends Request {
@@ -140,6 +141,28 @@ export class AudioController {
       );
 
       if (result.success) {
+        // Create content item for Recent Notes integration
+        try {
+          const contentService = new ContentService();
+          const fileName = filePath.split('/').pop() || 'Recording';
+          const title = fileName.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '); // Remove extension and format
+          
+          await contentService.createContentItem({
+            user_id: userId,
+            title: title,
+            description: `Audio lecture recording (${Math.round(result.duration || 0)} seconds)`,
+            content_type: 'lecture_recording',
+            file_url: filePath,
+            duration: result.duration,
+            processed: true,
+            summary: result.transcript?.substring(0, 500) + '...', // First 500 chars as preview
+          });
+          console.log(`Created content item for audio recording: ${filePath}`);
+        } catch (contentError) {
+          console.error('Error creating content item:', contentError);
+          // Don't fail the whole operation for content item creation errors
+        }
+
         res.status(200).json({
           success: true,
           data: {

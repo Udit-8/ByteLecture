@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,43 +6,100 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Header, Card, Button } from '../components';
+import { Header, Card, Button, LoadingIndicator } from '../components';
 import { theme } from '../constants/theme';
 import { useNavigation } from '../contexts/NavigationContext';
+import { useFlashcards } from '../hooks/useFlashcards';
+import { Flashcard } from '../services/flashcardAPI';
 
 export const FlashcardsScreen: React.FC = () => {
   const { selectedNote, setMainMode } = useNavigation();
   const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
+  const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  const {
+    sets,
+    currentSet,
+    loading,
+    generating,
+    error,
+    pagination,
+    loadSets,
+    loadSet,
+    deleteSet,
+    refreshSets,
+    clearError,
+  } = useFlashcards();
+
+  // Get current flashcards from the selected set or first available set
+  const currentFlashcards = currentSet?.flashcards || [];
+  const activeSet = currentSet || (sets.length > 0 ? sets[0] : null);
 
   const handleBackPress = () => {
     setMainMode();
   };
 
-  const flashcards = [
-    {
-      id: '1',
-      front: 'What is quantum entanglement?',
-      back: 'A quantum phenomenon where particles become interconnected and the state of one particle instantly affects the state of another, regardless of distance.',
-      subject: 'Quantum Physics',
-      difficulty: 'Medium',
-    },
-    {
-      id: '2',
-      front: 'Define cognitive dissonance',
-      back: 'The mental discomfort experienced when holding contradictory beliefs, values, or attitudes simultaneously.',
-      subject: 'Psychology',
-      difficulty: 'Easy',
-    },
-    {
-      id: '3',
-      front: 'What is the uncertainty principle?',
-      back: 'A fundamental principle in quantum mechanics stating that the position and momentum of a particle cannot both be precisely determined at the same time.',
-      subject: 'Quantum Physics',
-      difficulty: 'Hard',
-    },
-  ];
+  // Load flashcard sets on mount
+  useEffect(() => {
+    loadSets();
+  }, [loadSets]);
+
+  // Load specific set when selectedNote changes or when first set is available
+  useEffect(() => {
+    if (selectedNote && !selectedSetId) {
+      // Try to find flashcards for the selected content
+      const contentSets = sets.filter(set => set.contentItemId === selectedNote.id);
+      if (contentSets.length > 0) {
+        setSelectedSetId(contentSets[0].id);
+        loadSet(contentSets[0].id);
+      }
+    } else if (!selectedNote && sets.length > 0 && !selectedSetId) {
+      // Load the first available set
+      setSelectedSetId(sets[0].id);
+      loadSet(sets[0].id);
+    }
+  }, [selectedNote, sets, selectedSetId, loadSet]);
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refreshSets();
+    setRefreshing(false);
+  };
+
+  // Handle set deletion
+  const handleDeleteSet = (setId: string) => {
+    Alert.alert(
+      'Delete Flashcard Set',
+      'Are you sure you want to delete this flashcard set? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const success = await deleteSet(setId);
+            if (success && selectedSetId === setId) {
+              setSelectedSetId(null);
+              setFlippedCards(new Set());
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Clear error when user dismisses it
+  useEffect(() => {
+    if (error) {
+      Alert.alert('Error', error, [{ text: 'OK', onPress: clearError }]);
+    }
+  }, [error, clearError]);
 
   const toggleCard = (cardId: string) => {
     const newFlippedCards = new Set(flippedCards);
@@ -54,16 +111,23 @@ export const FlashcardsScreen: React.FC = () => {
     setFlippedCards(newFlippedCards);
   };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Easy':
-        return theme.colors.success[600];
-      case 'Medium':
-        return theme.colors.warning[600];
-      case 'Hard':
-        return theme.colors.error[600];
-      default:
-        return theme.colors.gray[600];
+  const getDifficultyColor = (difficultyLevel: number) => {
+    if (difficultyLevel <= 2) {
+      return theme.colors.success[600]; // Easy
+    } else if (difficultyLevel <= 3) {
+      return theme.colors.warning[600]; // Medium
+    } else {
+      return theme.colors.error[600]; // Hard
+    }
+  };
+
+  const getDifficultyText = (difficultyLevel: number) => {
+    if (difficultyLevel <= 2) {
+      return 'Easy';
+    } else if (difficultyLevel <= 3) {
+      return 'Medium';
+    } else {
+      return 'Hard';
     }
   };
 
@@ -77,57 +141,89 @@ export const FlashcardsScreen: React.FC = () => {
         } : undefined}
       />
       
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[theme.colors.primary[600]]}
+            tintColor={theme.colors.primary[600]}
+          />
+        }
+      >
+        {loading && !refreshing && (
+          <View style={styles.loadingContainer}>
+            <LoadingIndicator size="large" color={theme.colors.primary[600]} />
+            <Text style={styles.loadingText}>
+              {generating ? 'Generating flashcards...' : 'Loading flashcards...'}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.welcomeCard}>
           <Text style={styles.welcomeTitle}>AI-Generated Flashcards</Text>
           <Text style={styles.welcomeDescription}>
-            Study with intelligent flashcards created from your learning materials.
+            {activeSet ? `Study "${activeSet.title}" flashcards` : 'Study with intelligent flashcards created from your learning materials.'}
           </Text>
         </View>
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{flashcards.length}</Text>
-            <Text style={styles.statLabel}>Total Cards</Text>
+        {activeSet && (
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{currentFlashcards.length}</Text>
+              <Text style={styles.statLabel}>Total Cards</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{flippedCards.size}</Text>
+              <Text style={styles.statLabel}>Reviewed</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>
+                {currentFlashcards.length > 0 ? Math.round((flippedCards.size / currentFlashcards.length) * 100) : 0}%
+              </Text>
+              <Text style={styles.statLabel}>Progress</Text>
+            </View>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{flippedCards.size}</Text>
-            <Text style={styles.statLabel}>Reviewed</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{Math.round((flippedCards.size / flashcards.length) * 100)}%</Text>
-            <Text style={styles.statLabel}>Progress</Text>
-          </View>
-        </View>
+        )}
 
-        {flashcards.length > 0 ? (
+        {currentFlashcards.length > 0 ? (
           <View style={styles.flashcardsList}>
-            {flashcards.map((card) => {
-              const isFlipped = flippedCards.has(card.id);
+            {currentFlashcards.map((card: Flashcard, index: number) => {
+              const cardId = card.id || `card-${index}`;
+              const isFlipped = flippedCards.has(cardId);
               const cardStyle = isFlipped 
                 ? [styles.flashcard, styles.flashcardFlipped]
                 : [styles.flashcard];
               return (
                 <TouchableOpacity
-                  key={card.id}
+                  key={cardId}
                   style={styles.flashcardContainer}
-                  onPress={() => toggleCard(card.id)}
+                  onPress={() => toggleCard(cardId)}
                   activeOpacity={0.8}
                 >
                   <Card style={StyleSheet.flatten(cardStyle)}>
                     <View style={styles.flashcardHeader}>
                       <View style={styles.subjectTag}>
-                        <Text style={styles.subjectText}>{card.subject}</Text>
+                        <Text style={styles.subjectText}>
+                          {card.tags?.join(', ') || activeSet?.title || 'Study Cards'}
+                        </Text>
                       </View>
-                      <View style={[styles.difficultyTag, { backgroundColor: getDifficultyColor(card.difficulty) }]}>
-                        <Text style={styles.difficultyText}>{card.difficulty}</Text>
+                      <View style={[styles.difficultyTag, { backgroundColor: getDifficultyColor(card.difficulty_level) }]}>
+                        <Text style={styles.difficultyText}>{getDifficultyText(card.difficulty_level)}</Text>
                       </View>
                     </View>
                     
                     <View style={styles.flashcardContent}>
                       <Text style={styles.flashcardText}>
-                        {isFlipped ? card.back : card.front}
+                        {isFlipped ? card.answer : card.question}
                       </Text>
+                      {card.explanation && isFlipped && (
+                        <Text style={styles.explanationText}>
+                          {card.explanation}
+                        </Text>
+                      )}
                     </View>
                     
                     <View style={styles.flashcardFooter}>
@@ -159,11 +255,21 @@ export const FlashcardsScreen: React.FC = () => {
           </Card>
         )}
 
-        {flashcards.length > 0 && (
+        {currentFlashcards.length > 0 && (
           <View style={styles.actionButtons}>
             <Button
               title="Study Mode"
-              onPress={() => {}}
+              onPress={() => {
+                if (activeSet) {
+                  // For now, log the action - will implement navigation later
+                  console.log('Starting study mode for set:', activeSet.id);
+                  Alert.alert(
+                    'Study Mode',
+                    `Ready to study "${activeSet.title}" with ${currentFlashcards.length} flashcards!`,
+                    [{ text: 'OK' }]
+                  );
+                }
+              }}
               variant="primary"
               style={styles.actionButton}
             />
@@ -323,5 +429,24 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.xl,
+  },
+  loadingText: {
+    marginTop: theme.spacing.md,
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.gray[600],
+    textAlign: 'center',
+  },
+  explanationText: {
+    marginTop: theme.spacing.sm,
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[600],
+    fontStyle: 'italic',
+    textAlign: 'center',
+    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
 }); 

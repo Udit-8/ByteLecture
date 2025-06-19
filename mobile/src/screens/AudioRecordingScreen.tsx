@@ -30,6 +30,8 @@ import { usageService, type QuotaInfo } from '../services/usageService';
 import { theme } from '../constants/theme';
 import { supabase } from '../config/supabase';
 import { authDebug } from '../services';
+import { useContentRefresh, useNavigation, Note } from '../contexts/NavigationContext';
+import { ContentItem } from '../services/contentAPI';
 
 interface AudioRecordingScreenProps {
   navigation: any;
@@ -38,6 +40,8 @@ interface AudioRecordingScreenProps {
 type RecordingStatus = 'idle' | 'recording' | 'paused' | 'stopped' | 'processing' | 'transcribing' | 'completed';
 
 export const AudioRecordingScreen: React.FC<AudioRecordingScreenProps> = ({ navigation }) => {
+  const { refreshContent } = useContentRefresh();
+  const { setNoteDetailMode } = useNavigation();
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingStatus, setRecordingStatus] = useState<RecordingStatus>('idle');
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -48,6 +52,44 @@ export const AudioRecordingScreen: React.FC<AudioRecordingScreenProps> = ({ navi
   const [transcriptionProgress, setTranscriptionProgress] = useState<{ message: string; progress: number } | null>(null);
   const [transcriptionResult, setTranscriptionResult] = useState<TranscriptionResult | null>(null);
   const [quotaInfo, setQuotaInfo] = useState<QuotaInfo | null>(null);
+
+  // Helper function to navigate to summary screen with processed audio content
+  const navigateToSummary = (audioData: {
+    title: string;
+    description?: string;
+    summary?: string;
+    duration?: number;
+  }) => {
+    // Create a ContentItem object for the processed audio content
+    const contentItem: ContentItem = {
+      id: `temp-${Date.now()}`, // Temporary ID until we get the real one from the API
+      title: audioData.title,
+      description: audioData.description || '',
+      contentType: 'lecture_recording',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      processed: true,
+      summary: audioData.summary,
+      duration: audioData.duration,
+    };
+
+    // Convert to Note format for navigation
+    const note: Note = {
+      id: contentItem.id,
+      title: contentItem.title,
+      type: 'Audio',
+      date: contentItem.createdAt,
+      progress: 100, // Processing is complete
+      content: {
+        contentItem: contentItem,
+        processed: true,
+        summary: contentItem.summary,
+      },
+    };
+
+    // Navigate to note detail mode with summary tab
+    setNoteDetailMode(note);
+  };
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [uploadController] = useState(new AudioUploadController());
 
@@ -472,12 +514,39 @@ export const AudioRecordingScreen: React.FC<AudioRecordingScreenProps> = ({ navi
             // Don't fail the whole operation for usage tracking errors
           }
 
+          // Step 6: Refresh content list immediately after successful transcription
+          try {
+            await refreshContent();
+            console.log('✅ Content refreshed after audio transcription');
+          } catch (error) {
+            console.error('❌ Failed to refresh content:', error);
+          }
+
           Alert.alert(
             'Transcription Complete!',
             `Successfully transcribed ${Math.round((transcription.duration || 0) / 60)} minutes of audio.`,
             [
               { text: 'View Details', onPress: () => showTranscriptionResult(transcription) },
-              { text: 'OK' }
+              { 
+                text: 'Later', 
+                style: 'cancel',
+                onPress: () => {
+                  console.log('User chose to view transcription later');
+                },
+              },
+              {
+                text: 'View Summary',
+                style: 'default',
+                onPress: () => {
+                  const audioTitle = `Audio Recording ${new Date().toLocaleDateString()}`;
+                  navigateToSummary({
+                    title: audioTitle,
+                    description: `Lecture recording transcribed (${Math.round((transcription.duration || 0) / 60)} minutes)`,
+                    summary: transcription.transcript,
+                    duration: transcription.duration,
+                  });
+                },
+              },
             ]
           );
         } else {

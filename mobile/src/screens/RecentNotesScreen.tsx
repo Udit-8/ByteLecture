@@ -12,12 +12,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Header, Card, LoadingIndicator } from '../components';
 import { theme } from '../constants/theme';
-import { useNavigation, Note } from '../contexts/NavigationContext';
+import { useNavigation, useContentRefresh, Note } from '../contexts/NavigationContext';
 import { useContent } from '../hooks/useContent';
 import { ContentItem } from '../services/contentAPI';
 
 export const RecentNotesScreen: React.FC = () => {
   const { setNoteDetailMode } = useNavigation();
+  const { setRefreshHandler } = useContentRefresh();
   const {
     contentItems,
     loading,
@@ -33,6 +34,11 @@ export const RecentNotesScreen: React.FC = () => {
   useEffect(() => {
     fetchRecentItems();
   }, [fetchRecentItems]);
+
+  // Register the refresh handler for global access
+  useEffect(() => {
+    setRefreshHandler(refresh);
+  }, [setRefreshHandler, refresh]);
 
   // Clear error when component unmounts
   useEffect(() => {

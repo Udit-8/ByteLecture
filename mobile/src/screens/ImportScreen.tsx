@@ -12,16 +12,77 @@ import { Header, Button, Card, FeatureCard, PDFUpload } from '../components';
 import { YouTubeInput, VideoData } from '../components/YouTubeInput';
 import type { PDFFile, UploadResult } from '../components';
 import { theme } from '../constants/theme';
+import { useContentRefresh, useNavigation, Note } from '../contexts/NavigationContext';
+import { ContentItem } from '../services/contentAPI';
 
 interface ImportScreenProps {
   navigation: any;
 }
 
 export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
+  const { refreshContent } = useContentRefresh();
+  const { setNoteDetailMode } = useNavigation();
   const [isUploading, setIsUploading] = useState(false);
   const [showPDFUpload, setShowPDFUpload] = useState(false);
   const [showYouTubeInput, setShowYouTubeInput] = useState(false);
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
+
+  // Helper function to navigate to summary screen with processed content
+  const navigateToSummary = (contentData: {
+    title: string;
+    contentType: 'pdf' | 'youtube' | 'lecture_recording';
+    description?: string;
+    summary?: string;
+    videoId?: string;
+    url?: string;
+    duration?: number;
+  }) => {
+    // Create a ContentItem object for the processed content
+    const contentItem: ContentItem = {
+      id: `temp-${Date.now()}`, // Temporary ID until we get the real one from the API
+      title: contentData.title,
+      description: contentData.description || '',
+      contentType: contentData.contentType,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      processed: true,
+      summary: contentData.summary,
+      fileUrl: contentData.url,
+      youtubeUrl: contentData.contentType === 'youtube' ? contentData.url : undefined,
+      youtubeVideoId: contentData.videoId,
+      duration: contentData.duration,
+    };
+
+    // Convert to Note format for navigation
+    const note: Note = {
+      id: contentItem.id,
+      title: contentItem.title,
+      type: mapContentTypeToNoteType(contentItem.contentType),
+      date: contentItem.createdAt,
+      progress: 100, // Processing is complete
+      content: {
+        contentItem: contentItem,
+        processed: true,
+        summary: contentItem.summary,
+      },
+    };
+
+    // Navigate to note detail mode with summary tab
+    setNoteDetailMode(note);
+  };
+
+  const mapContentTypeToNoteType = (contentType: ContentItem['contentType']): Note['type'] => {
+    switch (contentType) {
+      case 'pdf':
+        return 'PDF';
+      case 'youtube':
+        return 'YouTube';
+      case 'lecture_recording':
+        return 'Audio';
+      default:
+        return 'Text';
+    }
+  };
 
   const handlePDFUpload = () => {
     setShowPDFUpload(true);
@@ -36,11 +97,44 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
     console.log('Upload progress:', progress);
   };
 
-  const handleUploadComplete = (result: UploadResult) => {
+  const handleUploadComplete = async (result: UploadResult) => {
     console.log('Upload complete:', result);
     if (result.success) {
-      Alert.alert('Success', 'PDF uploaded and processing started!');
-      setShowPDFUpload(false);
+      // Refresh the content list immediately
+      try {
+        await refreshContent();
+        console.log('✅ Content refreshed after PDF upload');
+      } catch (error) {
+        console.error('❌ Failed to refresh content:', error);
+      }
+      
+      Alert.alert(
+        'PDF Processed Successfully!',
+        'Your PDF has been processed and is ready for AI analysis.',
+        [
+          {
+            text: 'Later',
+            style: 'cancel',
+            onPress: () => {
+              setShowPDFUpload(false);
+            },
+          },
+          {
+            text: 'View Summary',
+            style: 'default',
+            onPress: () => {
+              setShowPDFUpload(false);
+              // Use a generic PDF title since we don't have the original filename in UploadResult
+              navigateToSummary({
+                title: 'PDF Document',
+                contentType: 'pdf',
+                description: result.message || 'PDF document processed successfully',
+                url: result.publicUrl || result.path,
+              });
+            },
+          },
+        ]
+      );
     }
   };
 
@@ -53,17 +147,42 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
     setShowYouTubeInput(true);
   };
 
-  const handleVideoProcessed = (videoData: VideoData) => {
+  const handleVideoProcessed = async (videoData: VideoData) => {
     console.log('Video processed:', videoData);
+    
+    // Refresh the content list immediately
+    try {
+      await refreshContent();
+      console.log('✅ Content refreshed after video processing');
+    } catch (error) {
+      console.error('❌ Failed to refresh content:', error);
+    }
+    
     Alert.alert(
       'Video Processed Successfully!',
       `Video: ${videoData.title}\nTranscript extracted and ready for AI analysis.`,
       [
         {
-          text: 'OK',
+          text: 'Later',
+          style: 'cancel',
           onPress: () => {
             setShowYouTubeInput(false);
-            // TODO: Navigate to chat screen with video context
+          },
+        },
+        {
+          text: 'View Summary',
+          style: 'default',
+          onPress: () => {
+            setShowYouTubeInput(false);
+            navigateToSummary({
+              title: videoData.title || 'YouTube Video',
+              contentType: 'youtube',
+              description: videoData.description,
+              summary: videoData.transcript || undefined,
+              videoId: videoData.videoId,
+              url: videoData.url,
+              duration: videoData.duration ? parseInt(videoData.duration) : undefined,
+            });
           },
         },
       ]

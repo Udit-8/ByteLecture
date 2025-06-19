@@ -167,6 +167,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           });
         }
         
+        // Store token for backward compatibility with other API services
+        await AsyncStorage.setItem('auth_token', session.access_token);
+        console.log('💾 Stored auth_token from Supabase session for API compatibility');
+        
         setSession({
           access_token: session.access_token,
           refresh_token: session.refresh_token,
@@ -341,39 +345,59 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       const token = await AsyncStorage.getItem('auth_token');
       
-      // Sign out from Supabase
-      const { error: supabaseError } = await supabase.auth.signOut();
-      if (supabaseError) {
-        console.warn('⚠️ Supabase logout warning:', supabaseError);
-      } else {
-        console.log('✅ Supabase logout successful');
+      // Clear local storage and state first (most important part)
+      await AsyncStorage.removeItem('auth_token');
+      setSession(null);
+      setUser(null);
+      console.log('✅ Local auth state cleared');
+      
+      // Try to sign out from Supabase (non-critical, can fail gracefully)
+      try {
+        const { error: supabaseError } = await supabase.auth.signOut();
+        if (supabaseError) {
+          console.warn('⚠️ Supabase logout warning (non-critical):', supabaseError.message);
+        } else {
+          console.log('✅ Supabase logout successful');
+        }
+      } catch (supabaseNetworkError) {
+        console.warn('⚠️ Supabase logout network error (non-critical):', supabaseNetworkError);
       }
       
-      // Call backend logout if we have a token
+      // Try to call backend logout if we have a token (non-critical, can fail gracefully)
       if (token) {
         try {
-          await fetch(`${API_BASE_URL}/auth/logout`, {
+          const response = await fetch(`${API_BASE_URL}/auth/logout`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
           });
-          console.log('✅ Backend logout successful');
+          
+          if (response.ok) {
+            console.log('✅ Backend logout successful');
+          } else {
+            console.warn('⚠️ Backend logout failed (non-critical):', response.status);
+          }
         } catch (backendError) {
-          console.warn('⚠️ Backend logout warning:', backendError);
+          console.warn('⚠️ Backend logout network error (non-critical):', backendError);
         }
       }
 
-      // Clear local storage and state
-      await AsyncStorage.removeItem('auth_token');
-      setSession(null);
-      setUser(null);
-      console.log('✅ Local auth state cleared');
-
       return {};
     } catch (error) {
-      console.error('🚪 Logout error:', error);
+      console.error('🚪 Critical logout error:', error);
+      
+      // Even if everything fails, ensure local state is cleared
+      try {
+        await AsyncStorage.removeItem('auth_token');
+        setSession(null);
+        setUser(null);
+        console.log('✅ Emergency local auth state cleared');
+      } catch (emergencyError) {
+        console.error('💥 Emergency clear failed:', emergencyError);
+      }
+      
       return { 
         error: error instanceof Error ? error.message : 'Logout error occurred' 
       };

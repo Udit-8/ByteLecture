@@ -58,10 +58,19 @@ export interface ContentQueryParams {
   sortOrder?: 'asc' | 'desc';
 }
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-
 class ContentAPI {
-  private baseURL = `${API_BASE_URL}/api/content`;
+  private baseURL: string;
+
+  constructor() {
+    // Get the backend URL from environment or use default
+    // Strip /api from EXPO_PUBLIC_API_URL if present, since we add it in routes
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+    const baseUrl = apiUrl.replace('/api', '');
+    this.baseURL = `${baseUrl}/api/content`;
+    
+    console.log('🔧 ContentAPI initialized with baseUrl:', baseUrl);
+    console.log('🔧 ContentAPI full endpoint base:', this.baseURL);
+  }
 
   /**
    * Make authenticated API request
@@ -73,9 +82,20 @@ class ContentAPI {
     params?: Record<string, string | number | boolean>
   ): Promise<ContentResponse> {
     try {
-      const token = await AsyncStorage.getItem('accessToken');
+      const token = await AsyncStorage.getItem('auth_token');
+      
+      console.log('🔍 ContentAPI: Checking auth token...', {
+        hasToken: !!token,
+        tokenLength: token?.length || 0,
+        tokenPreview: token ? token.substring(0, 20) + '...' : 'null'
+      });
       
       if (!token) {
+        // Let's also check if there's any other auth-related keys in AsyncStorage
+        const allKeys = await AsyncStorage.getAllKeys();
+        const authKeys = allKeys.filter(key => key.includes('auth') || key.includes('token') || key.includes('supabase'));
+        console.log('🔍 ContentAPI: Available storage keys:', authKeys);
+        
         throw new Error('No authentication token found');
       }
 

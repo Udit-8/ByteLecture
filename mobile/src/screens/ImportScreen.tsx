@@ -14,6 +14,7 @@ import type { PDFFile, UploadResult } from '../components';
 import { theme } from '../constants/theme';
 import { useContentRefresh, useNavigation, Note } from '../contexts/NavigationContext';
 import { ContentItem } from '../services/contentAPI';
+import pdfAPI from '../services/pdfAPI';
 
 interface ImportScreenProps {
   navigation: any;
@@ -28,7 +29,7 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
   const [isProcessingVideo, setIsProcessingVideo] = useState(false);
 
   // Helper function to navigate to summary screen with processed content
-  const navigateToSummary = (contentData: {
+  const navigateToSummary = async (contentData: {
     title: string;
     contentType: 'pdf' | 'youtube' | 'lecture_recording';
     description?: string;
@@ -37,38 +38,77 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
     url?: string;
     duration?: number;
   }) => {
-    // Create a ContentItem object for the processed content
-    const contentItem: ContentItem = {
-      id: `temp-${Date.now()}`, // Temporary ID until we get the real one from the API
-      title: contentData.title,
-      description: contentData.description || '',
-      contentType: contentData.contentType,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      processed: true,
-      summary: contentData.summary,
-      fileUrl: contentData.url,
-      youtubeUrl: contentData.contentType === 'youtube' ? contentData.url : undefined,
-      youtubeVideoId: contentData.videoId,
-      duration: contentData.duration,
-    };
+    try {
+      // Wait for content refresh to get the latest content items
+      await refreshContent();
+      console.log('✅ Content refreshed, attempting to find processed content...');
 
-    // Convert to Note format for navigation
-    const note: Note = {
-      id: contentItem.id,
-      title: contentItem.title,
-      type: mapContentTypeToNoteType(contentItem.contentType),
-      date: contentItem.createdAt,
-      progress: 100, // Processing is complete
-      content: {
-        contentItem: contentItem,
+      // For now, create a content item with the available data
+      // In the future, we could fetch the specific content item by matching title/URL
+      const contentItem: ContentItem = {
+        id: `temp-${Date.now()}`, // Temporary ID until we get the real one from the API
+        title: contentData.title,
+        description: contentData.description || '',
+        contentType: contentData.contentType,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         processed: true,
-        summary: contentItem.summary,
-      },
-    };
+        summary: contentData.summary,
+        fileUrl: contentData.url,
+        youtubeUrl: contentData.contentType === 'youtube' ? contentData.url : undefined,
+        youtubeVideoId: contentData.videoId,
+        duration: contentData.duration,
+      };
 
-    // Navigate to note detail mode with summary tab
-    setNoteDetailMode(note);
+      // Convert to Note format for navigation
+      const note: Note = {
+        id: contentItem.id,
+        title: contentItem.title,
+        type: mapContentTypeToNoteType(contentItem.contentType),
+        date: contentItem.createdAt,
+        progress: 100, // Processing is complete
+        content: {
+          contentItem: contentItem,
+          processed: true,
+          summary: contentItem.summary,
+        },
+      };
+
+      // Navigate to note detail mode with summary tab
+      setNoteDetailMode(note);
+    } catch (error) {
+      console.error('❌ Failed to navigate to summary:', error);
+      // Fallback: navigate anyway with available data
+      const contentItem: ContentItem = {
+        id: `temp-${Date.now()}`,
+        title: contentData.title,
+        description: contentData.description || '',
+        contentType: contentData.contentType,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        processed: true,
+        summary: contentData.summary,
+        fileUrl: contentData.url,
+        youtubeUrl: contentData.contentType === 'youtube' ? contentData.url : undefined,
+        youtubeVideoId: contentData.videoId,
+        duration: contentData.duration,
+      };
+
+      const note: Note = {
+        id: contentItem.id,
+        title: contentItem.title,
+        type: mapContentTypeToNoteType(contentItem.contentType),
+        date: contentItem.createdAt,
+        progress: 100,
+        content: {
+          contentItem: contentItem,
+          processed: true,
+          summary: contentItem.summary,
+        },
+      };
+
+      setNoteDetailMode(note);
+    }
   };
 
   const mapContentTypeToNoteType = (contentType: ContentItem['contentType']): Note['type'] => {
@@ -99,42 +139,83 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
 
   const handleUploadComplete = async (result: UploadResult) => {
     console.log('Upload complete:', result);
-    if (result.success) {
-      // Refresh the content list immediately
+    if (result.success && result.path) {
       try {
+        // Step 1: Trigger PDF processing on the backend
+        console.log('🔄 Starting PDF processing for:', result.path);
+        const processingResult = await pdfAPI.processPDF(result.path, {
+          extractText: true,
+          generateSummary: false,
+          enableOCR: true,
+        });
+        
+        console.log('✅ PDF processing completed:', processingResult);
+        
+        // Step 2: Refresh the content list to get the new content item
         await refreshContent();
-        console.log('✅ Content refreshed after PDF upload');
+        console.log('✅ Content refreshed after PDF processing');
+        
+        Alert.alert(
+          'PDF Processed Successfully!',
+          'Your PDF has been processed and is ready for AI analysis.',
+          [
+            {
+              text: 'Later',
+              style: 'cancel',
+              onPress: () => {
+                setShowPDFUpload(false);
+              },
+            },
+            {
+              text: 'View Summary',
+              style: 'default',
+              onPress: async () => {
+                setShowPDFUpload(false);
+                
+                try {
+                  // Step 3: Find the actual content item that was created
+                  console.log('🔍 Looking for newly created content item...');
+                  await refreshContent(); // Refresh again to ensure we have the latest data
+                  
+                  // For now, we'll still use temp content and let the SummaryScreen handle fetching the real content
+                  // The key is to ensure we pass a proper content identifier so it can find the real content
+                  navigateToSummary({
+                    title: result.path?.split('/').pop()?.replace('.pdf', '') || 'PDF Document',
+                    contentType: 'pdf',
+                    description: processingResult.message || 'PDF document processed successfully',
+                    url: result.publicUrl || result.path,
+                  });
+                } catch (error) {
+                  console.error('❌ Failed to find content item:', error);
+                  // Still navigate but with temp content
+                  navigateToSummary({
+                    title: result.path?.split('/').pop()?.replace('.pdf', '') || 'PDF Document',
+                    contentType: 'pdf',
+                    description: processingResult.message || 'PDF document processed successfully',
+                    url: result.publicUrl || result.path,
+                  });
+                }
+              },
+            },
+          ]
+        );
       } catch (error) {
-        console.error('❌ Failed to refresh content:', error);
+        console.error('❌ PDF processing failed:', error);
+        Alert.alert(
+          'Processing Failed',
+          'PDF upload succeeded but processing failed. The file has been saved and you can try processing it again later.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setShowPDFUpload(false);
+              },
+            },
+          ]
+        );
       }
-      
-      Alert.alert(
-        'PDF Processed Successfully!',
-        'Your PDF has been processed and is ready for AI analysis.',
-        [
-          {
-            text: 'Later',
-            style: 'cancel',
-            onPress: () => {
-              setShowPDFUpload(false);
-            },
-          },
-          {
-            text: 'View Summary',
-            style: 'default',
-            onPress: () => {
-              setShowPDFUpload(false);
-              // Use a generic PDF title since we don't have the original filename in UploadResult
-              navigateToSummary({
-                title: 'PDF Document',
-                contentType: 'pdf',
-                description: result.message || 'PDF document processed successfully',
-                url: result.publicUrl || result.path,
-              });
-            },
-          },
-        ]
-      );
+    } else {
+      console.error('❌ Upload succeeded but no file path provided:', result);
     }
   };
 

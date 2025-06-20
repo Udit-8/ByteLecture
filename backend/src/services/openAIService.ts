@@ -356,4 +356,13 @@ Summary:`;
     
     console.log('🔄 OpenAI configuration updated');
   }
+
+  /**
+   * Make a general chat completion API call (public method for external use)
+   */
+  public async createChatCompletion(
+    params: ChatCompletionCreateParams
+  ): Promise<OpenAI.Chat.Completions.ChatCompletion> {
+    return this.makeAPICallWithRetry(params);
+  }
 } 

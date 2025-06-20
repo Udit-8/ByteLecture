@@ -8,7 +8,7 @@ import {
   DatabaseFlashcardSet,
   DatabaseFlashcard
 } from '../types/flashcard';
-import { supabase } from '../config/supabase';
+import { supabaseAdmin } from '../config/supabase';
 
 export class FlashcardService {
   private openaiService: OpenAIService;
@@ -168,7 +168,7 @@ Generate the flashcards now:`;
       console.log(`📊 Estimated prompt tokens: ${estimatedTokens}`);
 
       // Call OpenAI API
-      const response = await this.openaiService['makeAPICallWithRetry']({
+      const response = await this.openaiService.createChatCompletion({
         model: this.openaiService.getConfig().model,
         messages: [
           {
@@ -266,7 +266,7 @@ Generate the flashcards now:`;
 
     try {
       // Insert flashcard set
-      const { data: setData, error: setError } = await supabase
+      const { data: setData, error: setError } = await supabaseAdmin
         .from('flashcard_sets')
         .insert({
           user_id: userId,
@@ -289,13 +289,13 @@ Generate the flashcards now:`;
         difficulty_level: card.difficulty_level,
       }));
 
-      const { error: cardsError } = await supabase
+      const { error: cardsError } = await supabaseAdmin
         .from('flashcards')
         .insert(flashcardsToInsert);
 
       if (cardsError) {
         // Rollback - delete the set if cards failed to insert
-        await supabase
+        await supabaseAdmin
           .from('flashcard_sets')
           .delete()
           .eq('id', setData.id);
@@ -316,7 +316,7 @@ Generate the flashcards now:`;
    */
   public async getUserFlashcardSets(userId: string): Promise<DatabaseFlashcardSet[]> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('flashcard_sets')
         .select('*')
         .eq('user_id', userId)
@@ -338,7 +338,7 @@ Generate the flashcards now:`;
    */
   public async getFlashcards(setId: string): Promise<DatabaseFlashcard[]> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('flashcards')
         .select('*')
         .eq('flashcard_set_id', setId)
@@ -361,7 +361,7 @@ Generate the flashcards now:`;
   public async deleteFlashcardSet(setId: string, userId: string): Promise<void> {
     try {
       // Verify ownership and delete
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('flashcard_sets')
         .delete()
         .eq('id', setId)

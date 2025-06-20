@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Header, Card, Button, LoadingIndicator } from '../components';
@@ -15,12 +16,17 @@ import { theme } from '../constants/theme';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useFlashcards } from '../hooks/useFlashcards';
 import { Flashcard } from '../services/flashcardAPI';
+import { contentAPI } from '../services/contentAPI';
+import { FlashcardStudyScreen } from './FlashcardStudyScreen';
 
 export const FlashcardsScreen: React.FC = () => {
   const { selectedNote, setMainMode } = useNavigation();
   const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [autoGenerating, setAutoGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [isStudyMode, setIsStudyMode] = useState(false);
   
   const {
     sets,
@@ -34,6 +40,7 @@ export const FlashcardsScreen: React.FC = () => {
     deleteSet,
     refreshSets,
     clearError,
+    generateFlashcards,
   } = useFlashcards();
 
   // Get current flashcards from the selected set or first available set
@@ -44,26 +51,88 @@ export const FlashcardsScreen: React.FC = () => {
     setMainMode();
   };
 
+  // Auto-generate flashcards for content
+  const autoGenerateFlashcards = async (contentItemId: string) => {
+    try {
+      setAutoGenerating(true);
+      setGenerationError(null);
+      console.log('🤖 Auto-generating flashcards for content:', contentItemId);
+
+      // Get full content from the backend
+      const contentResponse = await contentAPI.getFullContent(contentItemId);
+      
+      if (!contentResponse.success || !contentResponse.fullContent) {
+        throw new Error('Could not fetch content for flashcard generation');
+      }
+
+      const { contentItem, fullContent } = contentResponse;
+      
+      if (!contentItem) {
+        throw new Error('Content item not found');
+      }
+      
+      console.log('📄 Got full content for flashcards:', {
+        title: contentItem.title,
+        contentType: contentItem.contentType,
+        contentLength: fullContent.length
+      });
+
+      // Generate flashcards with the full content
+      const flashcardSet = await generateFlashcards({
+        content: fullContent,
+        contentType: contentItem.contentType,
+        contentItemId: contentItem.id,
+        options: {
+          numberOfCards: 10, // Default number of cards
+          difficulty: 'mixed',
+          focusArea: 'general',
+          questionTypes: ['definition', 'concept', 'example', 'application'],
+        },
+      });
+
+      if (flashcardSet) {
+        console.log('✅ Flashcards auto-generated successfully:', flashcardSet.id);
+        setSelectedSetId(flashcardSet.id);
+        // The generateFlashcards hook already updates the sets and currentSet
+      } else {
+        throw new Error('Failed to generate flashcards');
+      }
+
+    } catch (error) {
+      console.error('❌ Auto-generation failed:', error);
+      setGenerationError(error instanceof Error ? error.message : 'Failed to generate flashcards');
+    } finally {
+      setAutoGenerating(false);
+    }
+  };
+
   // Load flashcard sets on mount
   useEffect(() => {
     loadSets();
   }, [loadSets]);
 
-  // Load specific set when selectedNote changes or when first set is available
+  // Auto-generate flashcards when needed
   useEffect(() => {
-    if (selectedNote && !selectedSetId) {
-      // Try to find flashcards for the selected content
+    if (selectedNote && !selectedSetId && !loading && !autoGenerating) {
+      // Try to find existing flashcards for the selected content
       const contentSets = sets.filter(set => set.contentItemId === selectedNote.id);
+      
       if (contentSets.length > 0) {
+        // Found existing flashcards, load them
+        console.log('📚 Found existing flashcards for content:', selectedNote.id);
         setSelectedSetId(contentSets[0].id);
         loadSet(contentSets[0].id);
+      } else {
+        // No flashcards exist, auto-generate them
+        console.log('🤖 No flashcards found, auto-generating for:', selectedNote.id);
+        autoGenerateFlashcards(selectedNote.id);
       }
     } else if (!selectedNote && sets.length > 0 && !selectedSetId) {
-      // Load the first available set
+      // Load the first available set when no specific content is selected
       setSelectedSetId(sets[0].id);
       loadSet(sets[0].id);
     }
-  }, [selectedNote, sets, selectedSetId, loadSet]);
+  }, [selectedNote, sets, selectedSetId, loadSet, loading, autoGenerating]);
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -131,6 +200,16 @@ export const FlashcardsScreen: React.FC = () => {
     }
   };
 
+  // If study mode is active, show the FlashcardStudyScreen
+  if (isStudyMode && activeSet) {
+    return (
+      <FlashcardStudyScreen
+        flashcardSet={activeSet}
+        onExit={() => setIsStudyMode(false)}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <Header 
@@ -153,13 +232,41 @@ export const FlashcardsScreen: React.FC = () => {
           />
         }
       >
-        {loading && !refreshing && (
+        {(loading || autoGenerating) && !refreshing && (
           <View style={styles.loadingContainer}>
             <LoadingIndicator size="large" color={theme.colors.primary[600]} />
             <Text style={styles.loadingText}>
-              {generating ? 'Generating flashcards...' : 'Loading flashcards...'}
+              {autoGenerating ? 'Auto-generating flashcards...' : generating ? 'Generating flashcards...' : 'Loading flashcards...'}
             </Text>
+            {autoGenerating && (
+              <Text style={styles.loadingSubtext}>
+                This may take a moment as we analyze your content
+              </Text>
+            )}
           </View>
+        )}
+
+        {generationError && (
+          <Card style={styles.errorCard}>
+            <View style={styles.errorContainer}>
+              <Ionicons name="warning" size={24} color={theme.colors.error[600]} />
+              <View style={styles.errorContent}>
+                <Text style={styles.errorText}>Failed to generate flashcards</Text>
+                <Text style={styles.errorSubtext}>{generationError}</Text>
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={() => {
+                    if (selectedNote) {
+                      setGenerationError(null);
+                      autoGenerateFlashcards(selectedNote.id);
+                    }
+                  }}
+                >
+                  <Text style={styles.retryButtonText}>Try Again</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Card>
         )}
 
         <View style={styles.welcomeCard}>
@@ -260,14 +367,9 @@ export const FlashcardsScreen: React.FC = () => {
             <Button
               title="Study Mode"
               onPress={() => {
-                if (activeSet) {
-                  // For now, log the action - will implement navigation later
+                if (activeSet && currentFlashcards.length > 0) {
                   console.log('Starting study mode for set:', activeSet.id);
-                  Alert.alert(
-                    'Study Mode',
-                    `Ready to study "${activeSet.title}" with ${currentFlashcards.length} flashcards!`,
-                    [{ text: 'OK' }]
-                  );
+                  setIsStudyMode(true);
                 }
               }}
               variant="primary"
@@ -448,5 +550,50 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+  },
+  loadingSubtext: {
+    marginTop: theme.spacing.sm,
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[500],
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  errorCard: {
+    backgroundColor: theme.colors.error[50],
+    borderColor: theme.colors.error[500],
+    borderWidth: 1,
+    marginBottom: theme.spacing.lg,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing.md,
+  },
+  errorContent: {
+    flex: 1,
+  },
+  errorText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.error[700],
+    marginBottom: theme.spacing.xs,
+  },
+  errorSubtext: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.error[600],
+    marginBottom: theme.spacing.md,
+    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.error[600],
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    alignSelf: 'flex-start',
+  },
+  retryButtonText: {
+    color: theme.colors.white,
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.medium,
   },
 }); 

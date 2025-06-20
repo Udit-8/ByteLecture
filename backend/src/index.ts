@@ -12,6 +12,7 @@ import audioRoutes from './routes/audioRoutes';
 import paymentRoutes from './routes/paymentRoutes';
 import summaryRoutes from './routes/summaryRoutes';
 import flashcardRoutes from './routes/flashcardRoutes';
+import quizRoutes from './routes/quizRoutes';
 import contentRoutes from './routes/contentRoutes';
 
 // Load environment variables
@@ -44,6 +45,7 @@ app.use('/api/audio', audioRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/summaries', summaryRoutes);
 app.use('/api/flashcards', flashcardRoutes);
+app.use('/api/quizzes', quizRoutes);
 app.use('/api/content', contentRoutes);
 
 app.get('/api/health', (req, res) => {

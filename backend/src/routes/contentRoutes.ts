@@ -30,6 +30,12 @@ router.get('/items', contentController.getUserContentItems.bind(contentControlle
 router.get('/items/:id', contentController.getContentItem.bind(contentController));
 
 /**
+ * GET /api/content/items/:id/full
+ * Get a content item with full processed content (extracted text, transcript, etc.)
+ */
+router.get('/items/:id/full', contentController.getFullProcessedContent.bind(contentController));
+
+/**
  * POST /api/content/items
  * Create a new content item
  * 

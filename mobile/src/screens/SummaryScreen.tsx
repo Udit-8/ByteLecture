@@ -1,18 +1,23 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Header, Card, Button, AISummary } from '../components';
 import { theme } from '../constants/theme';
 import { useNavigation } from '../contexts/NavigationContext';
+import { contentAPI, ContentItem } from '../services/contentAPI';
 
 export const SummaryScreen: React.FC = () => {
   const { selectedNote, setMainMode } = useNavigation();
+  const [fullContent, setFullContent] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleBackPress = () => {
     setMainMode();
@@ -20,7 +25,86 @@ export const SummaryScreen: React.FC = () => {
 
   // Get content data from selected note
   const contentItem = selectedNote?.content?.contentItem;
-  const getContentForSummary = (): string => {
+
+  // Fetch full content when contentItem changes
+  useEffect(() => {
+    const fetchFullContent = async () => {
+      if (!contentItem) {
+        setFullContent('');
+        return;
+      }
+
+      // If this is a temporary content item, try to find the real content item by URL
+      if (contentItem.id.startsWith('temp-')) {
+        console.log('🔍 Temporary content item detected, trying to find real content by URL:', contentItem.fileUrl);
+        console.log('🔍 Temporary content item detected, trying to find real content by title:', contentItem.title);
+        setIsLoading(true);
+        setError(null);
+        
+        try {
+          // Get all content items and try to find one that matches this temporary one
+          const allContentResponse = await contentAPI.getContentItems();
+          
+          if (allContentResponse.success && allContentResponse.contentItems) {
+            const matchingItem = allContentResponse.contentItems.find((item: ContentItem) => 
+              contentItem.fileUrl?.toLowerCase().includes(item.fileUrl?.toLowerCase()) || 
+              item.title.toLowerCase().includes(contentItem.title.toLowerCase())
+            );
+            
+            if (matchingItem) {
+              console.log('✅ Found matching real content item:', matchingItem.id);
+              const response = await contentAPI.getFullContent(matchingItem.id);
+              
+              if (response.success && response.fullContent) {
+                console.log('✅ Full content fetched successfully, length:', response.fullContent.length);
+                setFullContent(response.fullContent);
+                return;
+              }
+            } else {
+              console.log('⚠️ No matching real content item found');
+            }
+          }
+          
+          // Fall back to default content if we can't find the real item
+          setFullContent(getContentForSummaryFallback());
+        } catch (err) {
+          console.error('❌ Error finding real content item:', err);
+          setError(err instanceof Error ? err.message : 'Failed to load content');
+          setFullContent(getContentForSummaryFallback());
+        } finally {
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      // For real content items, fetch full content normally
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        console.log('🔍 Fetching full content for item:', contentItem.id);
+        const response = await contentAPI.getFullContent(contentItem.id);
+        
+        if (response.success && response.fullContent) {
+          console.log('✅ Full content fetched successfully, length:', response.fullContent.length);
+          setFullContent(response.fullContent);
+        } else {
+          console.log('⚠️ No full content available, using fallback');
+          setFullContent(getContentForSummaryFallback());
+        }
+      } catch (err) {
+        console.error('❌ Error fetching full content:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load content');
+        setFullContent(getContentForSummaryFallback());
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFullContent();
+  }, [contentItem?.id]);
+
+  const getContentForSummaryFallback = (): string => {
     if (!contentItem) return '';
     
     // Use existing summary if available, otherwise use description
@@ -33,6 +117,11 @@ export const SummaryScreen: React.FC = () => {
     }
     
     return `Content from ${contentItem.title}`;
+  };
+
+  const getContentForSummary = (): string => {
+    // Return full content if available, otherwise fallback
+    return fullContent || getContentForSummaryFallback();
   };
 
   const getContentType = (): 'pdf' | 'youtube' | 'audio' | 'text' => {
@@ -63,6 +152,23 @@ export const SummaryScreen: React.FC = () => {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {selectedNote && contentItem ? (
           <View style={styles.summaryContainer}>
+            {isLoading ? (
+              <Card style={styles.loadingCard}>
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={theme.colors.primary[600]} />
+                  <Text style={styles.loadingText}>Loading content...</Text>
+                </View>
+              </Card>
+            ) : error ? (
+              <Card style={styles.errorCard}>
+                <View style={styles.errorContainer}>
+                  <Ionicons name="warning" size={24} color={theme.colors.error[600]} />
+                  <Text style={styles.errorText}>{error}</Text>
+                  <Text style={styles.errorSubtext}>Using available content for summary</Text>
+                </View>
+              </Card>
+            ) : null}
+
             <AISummary
               content={getContentForSummary()}
               contentType={getContentType()}
@@ -90,6 +196,11 @@ export const SummaryScreen: React.FC = () => {
                   {contentItem.description && (
                     <Text style={styles.sourceDescription} numberOfLines={2}>
                       {contentItem.description}
+                    </Text>
+                  )}
+                  {fullContent && (
+                    <Text style={styles.contentLengthInfo}>
+                      Content: {fullContent.length.toLocaleString()} characters
                     </Text>
                   )}
                 </View>
@@ -296,5 +407,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
     paddingHorizontal: theme.spacing.lg,
+  },
+  loadingCard: {
+    marginBottom: theme.spacing.lg,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xl,
+  },
+  loadingText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.gray[600],
+    marginTop: theme.spacing.md,
+  },
+  errorCard: {
+    backgroundColor: theme.colors.error[50],
+    borderColor: theme.colors.error[100],
+    marginBottom: theme.spacing.lg,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.error[700],
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  errorSubtext: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.error[600],
+    marginTop: theme.spacing.xs,
+  },
+  contentLengthInfo: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.gray[500],
+    marginTop: theme.spacing.xs,
   },
 }); 

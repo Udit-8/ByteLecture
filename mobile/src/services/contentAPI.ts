@@ -82,21 +82,20 @@ class ContentAPI {
     params?: Record<string, string | number | boolean>
   ): Promise<ContentResponse> {
     try {
+      // Get auth token
       const token = await AsyncStorage.getItem('auth_token');
-      
-      console.log('🔍 ContentAPI: Checking auth token...', {
+      console.log('🔑 ContentAPI: Auth token check:', {
         hasToken: !!token,
-        tokenLength: token?.length || 0,
-        tokenPreview: token ? token.substring(0, 20) + '...' : 'null'
+        tokenLength: token?.length,
+        tokenStart: token?.substring(0, 10) + '...'
       });
-      
+
       if (!token) {
-        // Let's also check if there's any other auth-related keys in AsyncStorage
-        const allKeys = await AsyncStorage.getAllKeys();
-        const authKeys = allKeys.filter(key => key.includes('auth') || key.includes('token') || key.includes('supabase'));
-        console.log('🔍 ContentAPI: Available storage keys:', authKeys);
-        
-        throw new Error('No authentication token found');
+        console.error('❌ ContentAPI: No authentication token found');
+        return {
+          success: false,
+          error: 'Authentication required',
+        };
       }
 
       // Build URL with query parameters
@@ -126,13 +125,27 @@ class ContentAPI {
         config.body = JSON.stringify(body);
       }
 
-      console.log(`📡 ContentAPI: ${method} ${url}`);
+      console.log(`📡 ContentAPI: ${method} ${url}`, {
+        hasBody: !!body,
+        authHeaderSet: !!(config.headers as Record<string, string>)?.['Authorization']
+      });
       const response = await fetch(url, config);
+      
+      console.log(`📡 ContentAPI: Response status ${response.status} for ${method} ${endpoint}`);
+      
       const data = await response.json();
 
       if (!response.ok) {
+        console.error(`❌ ContentAPI: HTTP ${response.status}:`, data);
         throw new Error(data.message || data.error || `HTTP ${response.status}`);
       }
+
+      console.log(`✅ ContentAPI: Success for ${method} ${endpoint}:`, {
+        hasContentItems: !!data.contentItems,
+        contentItemsCount: data.contentItems?.length,
+        hasContentItem: !!data.contentItem,
+        hasStats: !!data.stats
+      });
 
       return data;
     } catch (error) {
@@ -165,6 +178,19 @@ class ContentAPI {
     
     if (result.success) {
       console.log('📄 Retrieved content item:', result.contentItem?.title);
+    }
+    
+    return result;
+  }
+
+  /**
+   * Get full processed content for a content item (including extracted text)
+   */
+  async getFullContent(id: string): Promise<ContentResponse & { fullContent?: string; additionalData?: any }> {
+    const result = await this.makeRequest(`/items/${id}/full`);
+    
+    if (result.success) {
+      console.log('📑 Retrieved full content for:', result.contentItem?.title, 'Length:', (result as any).fullContent?.length);
     }
     
     return result;

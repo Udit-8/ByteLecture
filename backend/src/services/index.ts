@@ -15,4 +15,5 @@ export { default as cacheService } from './cacheService';
 export { default as summaryCacheService } from './summaryCacheService';
 
 // Export new services
-export { FlashcardService } from './flashcardService'; 
+export { FlashcardService } from './flashcardService';
+export { QuizService } from './quizService'; 

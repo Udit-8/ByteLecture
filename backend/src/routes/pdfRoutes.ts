@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { pdfController } from '../controllers/pdfController';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
@@ -9,7 +10,7 @@ const router = Router();
  * @access Private (requires authentication)
  * @body { filePath: string, options?: PDFProcessingOptions }
  */
-router.post('/process', pdfController.processPDF);
+router.post('/process', authenticateToken, pdfController.processPDF);
 
 /**
  * @route GET /api/pdf/status/:filePath
@@ -17,7 +18,7 @@ router.post('/process', pdfController.processPDF);
  * @access Private (requires authentication)
  * @params { filePath: string } - URL encoded file path
  */
-router.get('/status/:filePath', pdfController.getProcessingStatus);
+router.get('/status/:filePath', authenticateToken, pdfController.getProcessingStatus);
 
 /**
  * @route POST /api/pdf/reprocess
@@ -25,7 +26,7 @@ router.get('/status/:filePath', pdfController.getProcessingStatus);
  * @access Private (requires authentication)
  * @body { filePath: string }
  */
-router.post('/reprocess', pdfController.reprocessDocument);
+router.post('/reprocess', authenticateToken, pdfController.reprocessDocument);
 
 /**
  * @route POST /api/pdf/webhook

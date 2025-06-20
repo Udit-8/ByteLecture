@@ -30,8 +30,19 @@ class UsageService {
    */
   async checkAIProcessingQuota(): Promise<{ allowed: boolean; reason?: string; quota?: QuotaInfo }> {
     try {
-      // We'll call a backend function to check quota
+      // Get current user from Supabase auth
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        return {
+          allowed: false,
+          reason: 'Authentication required to check quota'
+        };
+      }
+
+      // Call the backend function to check quota
       const { data, error } = await supabase.rpc('check_user_quota', {
+        p_user_id: user.id,
         p_resource_type: 'ai_processing'
       });
 
@@ -64,7 +75,15 @@ class UsageService {
    */
   async recordAIProcessingUsage(): Promise<UsageResponse> {
     try {
+      // Get current user from Supabase auth
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        throw new Error('Authentication required to record usage');
+      }
+
       const { data, error } = await supabase.rpc('increment_usage', {
+        p_user_id: user.id,
         p_resource_type: 'ai_processing',
         p_increment: 1
       });
@@ -88,7 +107,11 @@ class UsageService {
    */
   async logError(errorData: ErrorLogData): Promise<void> {
     try {
+      // Get current user from Supabase auth (optional for error logging)
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { error } = await supabase.rpc('log_error', {
+        p_user_id: user?.id || null,
         p_error_type: errorData.error_type,
         p_error_message: errorData.error_message,
         p_error_details: errorData.error_details || null,
@@ -110,9 +133,18 @@ class UsageService {
    */
   async getUserUsageStats(resourceType?: ResourceType, days: number = 7): Promise<any[]> {
     try {
+      // Get current user from Supabase auth
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        console.error('Authentication required to get usage stats');
+        return [];
+      }
+
       let query = supabase
         .from('user_usage_summary')
         .select('*')
+        .eq('user_id', user.id)
         .gte('date', new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
         .order('date', { ascending: false });
 

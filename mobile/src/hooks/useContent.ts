@@ -110,19 +110,27 @@ export const useContent = (): UseContentResult => {
   }, [handleResponse]);
 
   /**
-   * Fetch recent content items
+   * Fetch recent content items (last 10)
    */
   const fetchRecentItems = useCallback(async () => {
+    console.log('🔍 useContent: fetchRecentItems called');
     try {
       setLoading(true);
       setError(null);
       
+      console.log('📡 useContent: Calling contentAPI.getRecentItems()...');
       const response = await contentAPI.getRecentItems();
+      console.log('📡 useContent: API response:', {
+        success: response.success,
+        itemCount: response.contentItems?.length,
+        error: response.error
+      });
+      
       handleResponse(response, 'Fetch Recent Items');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch recent items';
+      console.error('❌ useContent: fetchRecentItems error:', err);
       setError(errorMessage);
-      console.error('❌ Fetch recent items error:', err);
     } finally {
       setLoading(false);
     }

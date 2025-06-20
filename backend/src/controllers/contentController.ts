@@ -405,6 +405,124 @@ export class ContentController {
   }
 
   /**
+   * Get full processed content for a content item (including extracted text)
+   */
+  public async getFullProcessedContent(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+
+      // First get the content item to verify ownership and get content type
+      const { data: contentItem, error: contentError } = await this.supabase
+        .from('content_items')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', userId)
+        .single();
+
+      if (contentError || !contentItem) {
+        res.status(404).json({
+          error: 'Content not found',
+          message: 'The requested content item does not exist or you do not have access to it',
+        });
+        return;
+      }
+
+      let fullContent = '';
+      let additionalData: any = {};
+
+      // Get the actual processed content based on content type
+      switch (contentItem.content_type) {
+        case 'pdf':
+          // Get PDF processed content
+          const { data: pdfData, error: pdfError } = await this.supabase
+            .from('processed_documents')
+            .select('extracted_text, cleaned_text, metadata')
+            .eq('file_path', contentItem.file_url)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (!pdfError && pdfData) {
+            fullContent = pdfData.cleaned_text || pdfData.extracted_text || '';
+            additionalData = {
+              metadata: pdfData.metadata,
+              hasCleanedText: !!pdfData.cleaned_text,
+            };
+          }
+          break;
+
+        case 'youtube':
+          // Get YouTube processed content
+          const { data: youtubeData, error: youtubeError } = await this.supabase
+            .from('processed_videos')
+            .select('transcript, video_metadata')
+            .eq('video_id', contentItem.youtube_video_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (!youtubeError && youtubeData) {
+            fullContent = youtubeData.transcript || '';
+            additionalData = {
+              metadata: youtubeData.video_metadata,
+            };
+          }
+          break;
+
+        case 'lecture_recording':
+          // Get audio transcription content
+          const { data: audioData, error: audioError } = await this.supabase
+            .from('transcriptions')
+            .select('transcript, confidence, processing_metadata')
+            .eq('file_url', contentItem.file_url)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (!audioError && audioData) {
+            fullContent = audioData.transcript || '';
+            additionalData = {
+              confidence: audioData.confidence,
+              metadata: audioData.processing_metadata,
+            };
+          }
+          break;
+
+        default:
+          fullContent = contentItem.summary || contentItem.description || '';
+      }
+
+      res.json({
+        success: true,
+        contentItem: {
+          id: contentItem.id,
+          title: contentItem.title,
+          description: contentItem.description,
+          contentType: contentItem.content_type,
+          fileUrl: contentItem.file_url,
+          youtubeUrl: contentItem.youtube_url,
+          youtubeVideoId: contentItem.youtube_video_id,
+          fileSize: contentItem.file_size,
+          duration: contentItem.duration,
+          processed: contentItem.processed,
+          summary: contentItem.summary,
+          createdAt: contentItem.created_at,
+          updatedAt: contentItem.updated_at,
+        },
+        fullContent,
+        additionalData,
+      });
+    } catch (error) {
+      console.error('❌ Error getting full processed content:', error);
+      res.status(500).json({
+        error: 'Internal server error',
+        message: 'Failed to retrieve processed content',
+      });
+    }
+  }
+
+  /**
    * Get user content statistics
    */
   public async getUserStats(req: AuthenticatedRequest, res: Response): Promise<void> {

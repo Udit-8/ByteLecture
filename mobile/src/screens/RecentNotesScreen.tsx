@@ -32,13 +32,29 @@ export const RecentNotesScreen: React.FC = () => {
 
   // Load content items on component mount
   useEffect(() => {
+    console.log('🔍 RecentNotesScreen mounting, fetching recent items...');
     fetchRecentItems();
   }, [fetchRecentItems]);
 
   // Register the refresh handler for global access
   useEffect(() => {
+    console.log('🔄 Registering refresh handler...');
     setRefreshHandler(refresh);
   }, [setRefreshHandler, refresh]);
+
+  // Debug logging for content items changes
+  useEffect(() => {
+    console.log('📚 Content items changed:', {
+      count: contentItems.length,
+      items: contentItems.map(item => ({
+        id: item.id,
+        title: item.title,
+        contentType: item.contentType,
+        processed: item.processed,
+        createdAt: item.createdAt
+      }))
+    });
+  }, [contentItems]);
 
   // Clear error when component unmounts
   useEffect(() => {

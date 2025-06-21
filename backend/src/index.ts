@@ -15,6 +15,7 @@ import flashcardRoutes from './routes/flashcardRoutes';
 import quizRoutes from './routes/quizRoutes';
 import contentRoutes from './routes/contentRoutes';
 import chatRoutes from './routes/chatRoutes';
+import mindMapRoutes from './routes/mindMapRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -49,6 +50,7 @@ app.use('/api/flashcards', flashcardRoutes);
 app.use('/api/quizzes', quizRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/mindmaps', mindMapRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'healthy', uptime: process.uptime() });

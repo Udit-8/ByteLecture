@@ -12,7 +12,6 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
 import { EmailVerificationScreen } from '../screens/EmailVerificationScreen';
 import { AITutorScreen } from '../screens/AITutorScreen';
-import { AudioLearningScreen } from '../screens/AudioLearningScreen';
 import { AudioRecordingScreen } from '../screens/AudioRecordingScreen';
 import { AuthDebugScreen } from '../screens/AuthDebugScreen';
 import { QuizPerformanceScreen } from '../screens/QuizPerformanceScreen';
@@ -47,7 +46,6 @@ export const AppNavigator: React.FC = () => {
             <>
               <Stack.Screen name="Main" component={BottomTabNavigator} />
               <Stack.Screen name="AITutor" component={AITutorScreen} />
-              <Stack.Screen name="AudioLearning" component={AudioLearningScreen} />
               <Stack.Screen name="AudioRecording" component={AudioRecordingScreen} />
               <Stack.Screen name="QuizPerformance" component={QuizPerformanceScreen} />
               <Stack.Screen name="Subscription" component={SubscriptionScreen} />

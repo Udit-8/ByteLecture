@@ -11,9 +11,8 @@ import { RecentNotesScreen } from '../screens/RecentNotesScreen';
 import { SummaryScreen } from '../screens/SummaryScreen';
 import { FlashcardsScreen } from '../screens/FlashcardsScreen';
 import { QuizScreen } from '../screens/QuizScreen';
-import { AudioLearningScreen } from '../screens/AudioLearningScreen';
-import { AITutorScreen } from '../screens/AITutorScreen';
 import { MindMapScreen } from '../screens/MindMapScreen';
+import { AITutorScreen } from '../screens/AITutorScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -69,11 +68,11 @@ export const BottomTabNavigator: React.FC = () => {
           }}
         />
         <Tab.Screen 
-          name="Audio" 
-          component={AudioLearningScreen}
+          name="Mind Map" 
+          component={MindMapScreen}
           options={{
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="headset-outline" size={size} color={color} />
+              <Ionicons name="git-network-outline" size={size} color={color} />
             ),
           }}
         />
@@ -83,15 +82,6 @@ export const BottomTabNavigator: React.FC = () => {
           options={{
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="chatbubbles-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tab.Screen 
-          name="Mind Map" 
-          component={MindMapScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="git-network-outline" size={size} color={color} />
             ),
           }}
         />

@@ -31,6 +31,7 @@ export const MindMapScreen: React.FC = () => {
     loadMindMap,
     generateMindMap,
     deleteMindMap,
+    exportMindMap,
     clearCurrentMindMap,
   } = useMindMap();
 
@@ -41,6 +42,9 @@ export const MindMapScreen: React.FC = () => {
   const [mindMapTitle, setMindMapTitle] = useState('');
   const [mindMapStyle, setMindMapStyle] = useState<MindMapStyle>('hierarchical');
   const [maxNodes, setMaxNodes] = useState('20');
+  
+  // Export state
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     loadMindMaps();
@@ -88,6 +92,56 @@ export const MindMapScreen: React.FC = () => {
     );
   };
 
+  const handleExportMindMap = (mindMap: MindMap) => {
+    Alert.alert(
+      'Export Mind Map',
+      'Choose export format:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'JSON', 
+          onPress: () => performExport(mindMap, 'json') 
+        },
+        { 
+          text: 'PNG Image', 
+          onPress: () => performExport(mindMap, 'png') 
+        },
+        { 
+          text: 'SVG Vector', 
+          onPress: () => performExport(mindMap, 'svg') 
+        },
+      ]
+    );
+  };
+
+  const performExport = async (mindMap: MindMap, format: 'json' | 'png' | 'svg') => {
+    setExporting(true);
+    try {
+      const result = await exportMindMap(mindMap.id, {
+        format,
+        include_notes: true,
+        theme: 'light',
+      });
+      
+      if (result) {
+        Alert.alert(
+          'Export Successful',
+          `Mind map "${mindMap.title}" has been exported as ${format.toUpperCase()}`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Export failed:', error);
+      Alert.alert(
+        'Export Failed',
+        'Failed to export mind map. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const renderMindMapItem = ({ item }: { item: MindMap }) => (
     <Card style={styles.mindMapCard}>
       <TouchableOpacity
@@ -96,12 +150,25 @@ export const MindMapScreen: React.FC = () => {
       >
         <View style={styles.mindMapHeader}>
           <Text style={styles.mindMapTitle}>{item.title}</Text>
-          <TouchableOpacity
-            onPress={() => handleDeleteMindMap(item)}
-            style={styles.deleteButton}
-          >
-            <Ionicons name="trash-outline" size={20} color={theme.colors.error[500]} />
-          </TouchableOpacity>
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              onPress={() => handleExportMindMap(item)}
+              style={styles.actionButton}
+              disabled={exporting}
+            >
+              <Ionicons 
+                name="download-outline" 
+                size={20} 
+                color={exporting ? theme.colors.textSecondary : theme.colors.primary[500]} 
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleDeleteMindMap(item)}
+              style={styles.actionButton}
+            >
+              <Ionicons name="trash-outline" size={20} color={theme.colors.error[500]} />
+            </TouchableOpacity>
+          </View>
         </View>
         
         {item.description && (
@@ -251,6 +318,17 @@ export const MindMapScreen: React.FC = () => {
             <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
           </TouchableOpacity>
           <Text style={styles.viewerTitle}>{currentMindMap.title}</Text>
+          <TouchableOpacity
+            onPress={() => handleExportMindMap(currentMindMap)}
+            style={styles.actionButton}
+            disabled={exporting}
+          >
+            <Ionicons 
+              name="download-outline" 
+              size={24} 
+              color={exporting ? theme.colors.textSecondary : theme.colors.primary[500]} 
+            />
+          </TouchableOpacity>
         </View>
         
         <MindMapViewer
@@ -403,7 +481,11 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     flex: 1,
   },
-  deleteButton: {
+  actionButtons: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  actionButton: {
     padding: theme.spacing.xs,
   },
   mindMapDescription: {
@@ -445,6 +527,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.xl,
     fontWeight: theme.typography.fontWeight.semibold,
     color: theme.colors.text,
+    flex: 1,
   },
   viewer: {
     flex: 1,

@@ -224,11 +224,20 @@ export class MindMapController {
 
       const exportResult = await mindMapService.exportMindMap(userId, id, exportOptions);
 
-      // Set appropriate headers for download
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="${exportResult.filename}"`);
-      
-      res.status(200).send(exportResult.data);
+      // Set appropriate headers based on format
+      if (exportOptions.format === 'png') {
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Content-Disposition', `attachment; filename="${exportResult.filename}"`);
+        res.status(200).send(Buffer.from(exportResult.data, 'base64'));
+      } else if (exportOptions.format === 'svg') {
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.setHeader('Content-Disposition', `attachment; filename="${exportResult.filename}"`);
+        res.status(200).send(exportResult.data);
+      } else {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="${exportResult.filename}"`);
+        res.status(200).send(exportResult.data);
+      }
 
     } catch (error: any) {
       console.error('❌ Error exporting mind map:', error);

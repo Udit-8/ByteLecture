@@ -2,6 +2,8 @@ import { supabaseAdmin } from '../config/supabase';
 import { OpenAIService } from './openAIService';
 import { ContentService } from './contentService';
 import { usageTrackingService } from './usageTrackingService';
+import puppeteer from 'puppeteer';
+import { createCanvas, CanvasRenderingContext2D as NodeCanvasRenderingContext2D } from 'canvas';
 import {
   MindMap,
   MindMapNode,
@@ -417,7 +419,7 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
   }
 
   /**
-   * Export mind map (placeholder for future implementation)
+   * Export mind map in various formats
    */
   async exportMindMap(
     userId: string,
@@ -429,16 +431,349 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
       throw new Error('Mind map not found');
     }
 
-    // For now, return JSON export
-    // TODO: Implement PNG/SVG export using a library like puppeteer or canvas
-    if (options.format === 'json') {
-      return {
-        data: JSON.stringify(mindMap.mind_map_data, null, 2),
-        filename: `mindmap-${mindMap.title.replace(/\s+/g, '-')}.json`
+    const baseFilename = mindMap.title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+
+    switch (options.format) {
+      case 'json':
+        return {
+          data: JSON.stringify(mindMap.mind_map_data, null, 2),
+          filename: `${baseFilename}.json`
+        };
+
+      case 'svg':
+        const svgData = await this.generateSVGExport(mindMap, options);
+        return {
+          data: svgData,
+          filename: `${baseFilename}.svg`
+        };
+
+      case 'png':
+        const pngData = await this.generatePNGExport(mindMap, options);
+        return {
+          data: pngData,
+          filename: `${baseFilename}.png`
+        };
+
+      default:
+        throw new Error(`Export format ${options.format} not supported`);
+    }
+  }
+
+  /**
+   * Generate SVG export of mind map
+   */
+  private async generateSVGExport(mindMap: MindMap, options: MindMapExportOptions): Promise<string> {
+    const { mind_map_data } = mindMap;
+    const theme = options.style_options?.theme || 'light';
+    const fontSize = options.style_options?.font_size || 14;
+    
+    // Calculate layout positions
+    const layout = this.calculateLayout(mind_map_data.root, mind_map_data.style);
+    
+    // SVG dimensions
+    const width = layout.width + 100;
+    const height = layout.height + 100;
+    
+    // Color scheme based on theme
+    const colors = theme === 'dark' ? {
+      background: '#1a1a1a',
+      text: '#ffffff',
+      node: '#333333',
+      border: '#555555',
+      line: '#666666'
+    } : {
+      background: '#ffffff',
+      text: '#000000',
+      node: '#f0f0f0',
+      border: '#cccccc',
+      line: '#999999'
+    };
+
+    let svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="${colors.background}"/>
+  <g transform="translate(50, 50)">`;
+
+    // Generate connections first (so they appear behind nodes)
+    svg += this.generateSVGConnections(layout.nodes, colors.line);
+    
+    // Generate nodes
+    svg += this.generateSVGNodes(layout.nodes, colors, fontSize, options.include_notes);
+
+    svg += `
+  </g>
+</svg>`;
+
+    return svg;
+  }
+
+  /**
+   * Generate PNG export of mind map using Canvas
+   */
+  private async generatePNGExport(mindMap: MindMap, options: MindMapExportOptions): Promise<string> {
+    const { mind_map_data } = mindMap;
+    const theme = options.style_options?.theme || 'light';
+    const fontSize = options.style_options?.font_size || 14;
+    
+    // Calculate layout positions
+    const layout = this.calculateLayout(mind_map_data.root, mind_map_data.style);
+    
+    // Canvas dimensions
+    const width = layout.width + 100;
+    const height = layout.height + 100;
+    
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+    
+    // Color scheme based on theme
+    const colors = theme === 'dark' ? {
+      background: '#1a1a1a',
+      text: '#ffffff',
+      node: '#333333',
+      border: '#555555',
+      line: '#666666'
+    } : {
+      background: '#ffffff',
+      text: '#000000',
+      node: '#f0f0f0',
+      border: '#cccccc',
+      line: '#999999'
+    };
+
+    // Fill background
+    ctx.fillStyle = colors.background;
+    ctx.fillRect(0, 0, width, height);
+
+    // Apply offset
+    ctx.translate(50, 50);
+
+    // Draw connections first
+    this.drawCanvasConnections(ctx, layout.nodes, colors.line);
+    
+    // Draw nodes
+    this.drawCanvasNodes(ctx, layout.nodes, colors, fontSize, options.include_notes);
+
+    // Convert to base64 PNG
+    return canvas.toBuffer('image/png').toString('base64');
+  }
+
+  /**
+   * Calculate layout positions for nodes
+   */
+  private calculateLayout(root: MindMapNode, style: MindMapStyle): {
+    nodes: Array<{ node: MindMapNode; x: number; y: number }>;
+    width: number;
+    height: number;
+  } {
+    const nodes: Array<{ node: MindMapNode; x: number; y: number }> = [];
+    let maxX = 0;
+    let maxY = 0;
+
+    if (style === 'hierarchical') {
+      // Hierarchical layout (tree-like)
+      const levelWidth = 200;
+      const nodeHeight = 80;
+      
+      const positionNode = (node: MindMapNode, x: number, y: number, level: number) => {
+        nodes.push({ node, x, y });
+        maxX = Math.max(maxX, x + 150);
+        maxY = Math.max(maxY, y + 50);
+
+        if (node.children) {
+          const childSpacing = Math.max(nodeHeight, 400 / Math.max(node.children.length, 1));
+          const startY = y - ((node.children.length - 1) * childSpacing) / 2;
+          
+          node.children.forEach((child, index) => {
+            const childX = x + levelWidth;
+            const childY = startY + (index * childSpacing);
+            positionNode(child, childX, childY, level + 1);
+          });
+        }
       };
+
+      positionNode(root, 0, 200, 0);
+    } else if (style === 'radial') {
+      // Radial layout (circular)
+      const centerX = 300;
+      const centerY = 300;
+      
+      const positionNode = (node: MindMapNode, x: number, y: number, level: number, parentAngle?: number) => {
+        nodes.push({ node, x, y });
+        maxX = Math.max(maxX, x + 150);
+        maxY = Math.max(maxY, y + 50);
+
+        if (node.children) {
+          const radius = (level + 1) * 120;
+          const angleStep = (2 * Math.PI) / node.children.length;
+          const startAngle = parentAngle !== undefined ? parentAngle - Math.PI/4 : 0;
+          
+          node.children.forEach((child, index) => {
+            const angle = startAngle + (index * angleStep);
+            const childX = centerX + Math.cos(angle) * radius;
+            const childY = centerY + Math.sin(angle) * radius;
+            positionNode(child, childX, childY, level + 1, angle);
+          });
+        }
+      };
+
+      positionNode(root, centerX, centerY, 0);
+      maxX = Math.max(maxX, 700);
+      maxY = Math.max(maxY, 700);
+    } else {
+      // Flowchart layout (similar to hierarchical but more compact)
+      const levelWidth = 180;
+      const nodeHeight = 60;
+      
+      const positionNode = (node: MindMapNode, x: number, y: number, level: number) => {
+        nodes.push({ node, x, y });
+        maxX = Math.max(maxX, x + 150);
+        maxY = Math.max(maxY, y + 50);
+
+        if (node.children) {
+          const childSpacing = nodeHeight;
+          const startY = y - ((node.children.length - 1) * childSpacing) / 2;
+          
+          node.children.forEach((child, index) => {
+            const childX = x + levelWidth;
+            const childY = startY + (index * childSpacing);
+            positionNode(child, childX, childY, level + 1);
+          });
+        }
+      };
+
+      positionNode(root, 0, 200, 0);
     }
 
-    throw new Error(`Export format ${options.format} not yet implemented`);
+    return { nodes, width: maxX, height: maxY };
+  }
+
+  /**
+   * Generate SVG connections between nodes
+   */
+  private generateSVGConnections(nodes: Array<{ node: MindMapNode; x: number; y: number }>, lineColor: string): string {
+    let svg = '';
+    const nodeMap = new Map(nodes.map(n => [n.node.id, n]));
+
+    nodes.forEach(({ node, x, y }) => {
+      if (node.children) {
+        node.children.forEach(child => {
+          const childPos = nodeMap.get(child.id);
+          if (childPos) {
+            svg += `<line x1="${x + 75}" y1="${y + 25}" x2="${childPos.x + 75}" y2="${childPos.y + 25}" stroke="${lineColor}" stroke-width="2"/>`;
+          }
+        });
+      }
+    });
+
+    return svg;
+  }
+
+  /**
+   * Generate SVG nodes
+   */
+  private generateSVGNodes(
+    nodes: Array<{ node: MindMapNode; x: number; y: number }>,
+    colors: any,
+    fontSize: number,
+    includeNotes?: boolean
+  ): string {
+    let svg = '';
+
+    nodes.forEach(({ node, x, y }) => {
+      const nodeWidth = 150;
+      const nodeHeight = 50;
+      
+      // Node background
+      svg += `<rect x="${x}" y="${y}" width="${nodeWidth}" height="${nodeHeight}" fill="${colors.node}" stroke="${colors.border}" stroke-width="1" rx="5"/>`;
+      
+      // Node title
+      svg += `<text x="${x + nodeWidth/2}" y="${y + nodeHeight/2}" text-anchor="middle" dominant-baseline="central" fill="${colors.text}" font-size="${fontSize}" font-family="Arial, sans-serif">${this.truncateText(node.title, 20)}</text>`;
+      
+      // Node notes (if enabled and available)
+      if (includeNotes && node.user_notes) {
+        svg += `<text x="${x + nodeWidth/2}" y="${y + nodeHeight + 15}" text-anchor="middle" fill="${colors.text}" font-size="${fontSize - 2}" font-family="Arial, sans-serif" opacity="0.7">${this.truncateText(node.user_notes, 25)}</text>`;
+      }
+    });
+
+    return svg;
+  }
+
+  /**
+   * Draw connections on canvas
+   */
+  private drawCanvasConnections(
+    ctx: NodeCanvasRenderingContext2D,
+    nodes: Array<{ node: MindMapNode; x: number; y: number }>,
+    lineColor: string
+  ): void {
+    const nodeMap = new Map(nodes.map(n => [n.node.id, n]));
+
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 2;
+
+    nodes.forEach(({ node, x, y }) => {
+      if (node.children) {
+        node.children.forEach(child => {
+          const childPos = nodeMap.get(child.id);
+          if (childPos) {
+            ctx.beginPath();
+            ctx.moveTo(x + 75, y + 25);
+            ctx.lineTo(childPos.x + 75, childPos.y + 25);
+            ctx.stroke();
+          }
+        });
+      }
+    });
+  }
+
+  /**
+   * Draw nodes on canvas
+   */
+  private drawCanvasNodes(
+    ctx: NodeCanvasRenderingContext2D,
+    nodes: Array<{ node: MindMapNode; x: number; y: number }>,
+    colors: any,
+    fontSize: number,
+    includeNotes?: boolean
+  ): void {
+    const nodeWidth = 150;
+    const nodeHeight = 50;
+
+    nodes.forEach(({ node, x, y }) => {
+      // Node background
+      ctx.fillStyle = colors.node;
+      ctx.strokeStyle = colors.border;
+      ctx.lineWidth = 1;
+      
+      // Rounded rectangle
+      ctx.beginPath();
+      ctx.roundRect(x, y, nodeWidth, nodeHeight, 5);
+      ctx.fill();
+      ctx.stroke();
+      
+      // Node title
+      ctx.fillStyle = colors.text;
+      ctx.font = `${fontSize}px Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(this.truncateText(node.title, 20), x + nodeWidth/2, y + nodeHeight/2);
+      
+      // Node notes (if enabled and available)
+      if (includeNotes && node.user_notes) {
+        ctx.font = `${fontSize - 2}px Arial, sans-serif`;
+        ctx.globalAlpha = 0.7;
+        ctx.fillText(this.truncateText(node.user_notes, 25), x + nodeWidth/2, y + nodeHeight + 15);
+        ctx.globalAlpha = 1;
+      }
+    });
+  }
+
+  /**
+   * Truncate text to fit in node
+   */
+  private truncateText(text: string, maxLength: number): string {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength - 3) + '...';
   }
 }
 

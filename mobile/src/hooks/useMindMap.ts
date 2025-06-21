@@ -1,215 +1,208 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { 
   mindMapAPI, 
   MindMap, 
   CreateMindMapRequest, 
-  UpdateMindMapRequest,
   MindMapExportOptions 
 } from '../services/mindMapAPI';
+import { paymentService } from '../services/paymentService';
 
-interface UseMindMapResult {
-  // State
-  mindMaps: MindMap[];
-  currentMindMap: MindMap | null;
-  loading: boolean;
-  error: string | null;
-  generating: boolean;
-  
-  // Actions
-  loadMindMaps: () => Promise<void>;
-  loadMindMap: (id: string) => Promise<void>;
-  generateMindMap: (request: CreateMindMapRequest) => Promise<MindMap | null>;
-  updateMindMap: (id: string, updates: UpdateMindMapRequest) => Promise<void>;
-  deleteMindMap: (id: string) => Promise<void>;
-  exportMindMap: (id: string, options: MindMapExportOptions) => Promise<string | null>;
-  clearError: () => void;
-  clearCurrentMindMap: () => void;
-}
-
-export const useMindMap = (): UseMindMapResult => {
+export const useMindMap = () => {
   const [mindMaps, setMindMaps] = useState<MindMap[]>([]);
   const [currentMindMap, setCurrentMindMap] = useState<MindMap | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
+  // Premium status state
+  const [isPremium, setIsPremium] = useState(false);
+  const [nodeLimit, setNodeLimit] = useState(20); // Default free limit
 
-  const clearCurrentMindMap = useCallback(() => {
-    setCurrentMindMap(null);
-  }, []);
-
-  /**
-   * Load all mind maps for the user
-   */
-  const loadMindMaps = useCallback(async () => {
+  // Check premium status
+  const checkPremiumStatus = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
+      const status = await paymentService.getSubscriptionStatus();
+      const premium = status.isActive;
+      setIsPremium(premium);
+      setNodeLimit(premium ? 100 : 20);
+      return premium;
+    } catch (error) {
+      console.error('Failed to check premium status:', error);
+      setIsPremium(false);
+      setNodeLimit(20);
+      return false;
+    }
+  }, []);
+
+  // Load mind maps with premium status check
+  const loadMindMaps = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Check premium status first
+      await checkPremiumStatus();
       
-      const maps = await mindMapAPI.getMindMaps();
-      setMindMaps(maps);
+      const data = await mindMapAPI.getMindMaps();
+      setMindMaps(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load mind maps';
       setError(errorMessage);
-      console.error('Error loading mind maps:', err);
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [checkPremiumStatus]);
 
-  /**
-   * Load a specific mind map
-   */
+  // Load specific mind map
   const loadMindMap = useCallback(async (id: string) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      
-      const mindMap = await mindMapAPI.getMindMap(id);
-      setCurrentMindMap(mindMap);
+      const data = await mindMapAPI.getMindMap(id);
+      setCurrentMindMap(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load mind map';
       setError(errorMessage);
-      console.error('Error loading mind map:', err);
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  /**
-   * Generate a new mind map
-   */
-  const generateMindMap = useCallback(async (request: CreateMindMapRequest): Promise<MindMap | null> => {
+  // Generate mind map with premium gating
+  const generateMindMap = useCallback(async (request: CreateMindMapRequest) => {
+    setGenerating(true);
+    setError(null);
     try {
-      setGenerating(true);
-      setError(null);
+      // Check premium status before generation
+      const premium = await checkPremiumStatus();
       
-      const mindMap = await mindMapAPI.generateMindMap(request);
+      // Show premium gating message if user requests more nodes than allowed
+      const requestedNodes = parseInt(request.max_nodes?.toString() || '20');
+      const limit = premium ? 100 : 20;
       
-      // Add to the list of mind maps
-      setMindMaps(prev => [mindMap, ...prev]);
-      setCurrentMindMap(mindMap);
+      if (requestedNodes > limit) {
+        Alert.alert(
+          'Node Limit Exceeded',
+          `${premium ? 'Premium' : 'Free'} plan allows up to ${limit} nodes. Your request for ${requestedNodes} nodes exceeds this limit.${
+            !premium ? '\n\nUpgrade to Premium for up to 100 nodes!' : ''
+          }`,
+          [
+            { text: 'OK', style: 'cancel' },
+            ...(!premium ? [{
+              text: 'Upgrade',
+              onPress: () => {
+                // Navigate to subscription screen
+                // This will be handled by the calling component
+              }
+            }] : [])
+          ]
+        );
+        return null;
+      }
+
+      const data = await mindMapAPI.generateMindMap(request);
       
-      return mindMap;
+      // Add to mind maps list
+      setMindMaps(prev => [data, ...prev]);
+      
+      Alert.alert(
+        'Mind Map Generated!', 
+        `Successfully created "${data.title}" with ${data.mind_map_data.total_nodes || 'multiple'} nodes.${
+          data.mind_map_data.total_nodes > limit * 0.8 ? 
+          `\n\nYou're approaching your ${premium ? 'Premium' : 'Free'} plan limit of ${limit} nodes.` : ''
+        }`
+      );
+      
+      return data;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to generate mind map';
       setError(errorMessage);
-      console.error('Error generating mind map:', err);
       
-      // Show user-friendly error
-      Alert.alert(
-        'Generation Failed',
-        errorMessage,
-        [{ text: 'OK' }]
-      );
+      // Check if error is related to node limits
+      if (errorMessage.includes('node limit') || errorMessage.includes('premium')) {
+        Alert.alert(
+          'Premium Feature Required',
+          'This mind map requires more nodes than your current plan allows. Upgrade to Premium for up to 100 nodes per mind map!',
+          [
+            { text: 'Maybe Later', style: 'cancel' },
+            {
+              text: 'Upgrade Now',
+              onPress: () => {
+                // Navigate to subscription screen
+                // This will be handled by the calling component
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', errorMessage);
+      }
       
       return null;
     } finally {
       setGenerating(false);
     }
-  }, []);
+  }, [checkPremiumStatus]);
 
-  /**
-   * Update a mind map
-   */
-  const updateMindMap = useCallback(async (id: string, updates: UpdateMindMapRequest) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const updatedMindMap = await mindMapAPI.updateMindMap(id, updates);
-      
-      // Update in the list
-      setMindMaps(prev => 
-        prev.map(map => map.id === id ? updatedMindMap : map)
-      );
-      
-      // Update current if it's the same one
-      if (currentMindMap?.id === id) {
-        setCurrentMindMap(updatedMindMap);
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update mind map';
-      setError(errorMessage);
-      console.error('Error updating mind map:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentMindMap?.id]);
-
-  /**
-   * Delete a mind map
-   */
+  // Delete mind map
   const deleteMindMap = useCallback(async (id: string) => {
     try {
-      setLoading(true);
-      setError(null);
-      
       await mindMapAPI.deleteMindMap(id);
-      
-      // Remove from the list
       setMindMaps(prev => prev.filter(map => map.id !== id));
       
-      // Clear current if it's the same one
+      // Clear current mind map if it was deleted
       if (currentMindMap?.id === id) {
         setCurrentMindMap(null);
       }
+      
+      Alert.alert('Success', 'Mind map deleted successfully');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete mind map';
       setError(errorMessage);
-      console.error('Error deleting mind map:', err);
-    } finally {
-      setLoading(false);
+      Alert.alert('Error', errorMessage);
     }
-  }, [currentMindMap?.id]);
+  }, [currentMindMap]);
 
-  /**
-   * Export a mind map
-   */
-  const exportMindMap = useCallback(async (id: string, options: MindMapExportOptions): Promise<string | null> => {
+  // Export mind map
+  const exportMindMap = useCallback(async (id: string, options: MindMapExportOptions) => {
     try {
-      setLoading(true);
-      setError(null);
-      
-      const exportData = await mindMapAPI.exportMindMap(id, options);
-      return exportData;
+      await mindMapAPI.exportMindMap(id, options);
+      Alert.alert('Success', `Mind map exported as ${options.format.toUpperCase()}`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to export mind map';
       setError(errorMessage);
-      console.error('Error exporting mind map:', err);
-      
-      Alert.alert(
-        'Export Failed',
-        errorMessage,
-        [{ text: 'OK' }]
-      );
-      
-      return null;
-    } finally {
-      setLoading(false);
+      Alert.alert('Error', errorMessage);
     }
   }, []);
 
+  // Clear current mind map
+  const clearCurrentMindMap = useCallback(() => {
+    setCurrentMindMap(null);
+  }, []);
+
   return {
-    // State
+    // Data
     mindMaps,
     currentMindMap,
+    
+    // Status
     loading,
-    error,
     generating,
+    error,
+    
+    // Premium status
+    isPremium,
+    nodeLimit,
     
     // Actions
     loadMindMaps,
     loadMindMap,
     generateMindMap,
-    updateMindMap,
     deleteMindMap,
     exportMindMap,
-    clearError,
     clearCurrentMindMap,
+    checkPremiumStatus,
   };
 }; 

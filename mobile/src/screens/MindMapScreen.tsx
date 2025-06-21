@@ -27,12 +27,15 @@ export const MindMapScreen: React.FC = () => {
     loading,
     generating,
     error,
+    isPremium,
+    nodeLimit,
     loadMindMaps,
     loadMindMap,
     generateMindMap,
     deleteMindMap,
     exportMindMap,
     clearCurrentMindMap,
+    checkPremiumStatus,
   } = useMindMap();
 
   const { contentItems, fetchContentItems } = useContent();
@@ -117,19 +120,13 @@ export const MindMapScreen: React.FC = () => {
   const performExport = async (mindMap: MindMap, format: 'json' | 'png' | 'svg') => {
     setExporting(true);
     try {
-      const result = await exportMindMap(mindMap.id, {
+      await exportMindMap(mindMap.id, {
         format,
         include_notes: true,
         theme: 'light',
       });
       
-      if (result) {
-        Alert.alert(
-          'Export Successful',
-          `Mind map "${mindMap.title}" has been exported as ${format.toUpperCase()}`,
-          [{ text: 'OK' }]
-        );
-      }
+      // exportMindMap already shows success alert, so no need to show another one
     } catch (error) {
       console.error('Export failed:', error);
       Alert.alert(
@@ -279,14 +276,21 @@ export const MindMapScreen: React.FC = () => {
             ))}
           </View>
 
-          <Text style={styles.fieldLabel}>Max Nodes</Text>
+          <Text style={styles.fieldLabel}>
+            Max Nodes {isPremium ? '(Premium: up to 100)' : '(Free: up to 20)'}
+          </Text>
           <TextInput
             style={styles.textInput}
-            placeholder="20"
+            placeholder={nodeLimit.toString()}
             value={maxNodes}
             onChangeText={setMaxNodes}
             keyboardType="numeric"
           />
+          {!isPremium && parseInt(maxNodes) > 20 && (
+            <Text style={styles.warningText}>
+              ⚠️ Free plan limited to 20 nodes. Upgrade to Premium for up to 100 nodes!
+            </Text>
+          )}
         </View>
 
         <View style={styles.modalFooter}>
@@ -642,5 +646,11 @@ const styles = StyleSheet.create({
   },
   generateButton: {
     flex: 1,
+  },
+  warningText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.warning[600],
+    marginTop: theme.spacing.xs,
+    fontStyle: 'italic',
   },
 }); 

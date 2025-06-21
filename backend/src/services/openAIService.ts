@@ -358,6 +358,59 @@ Summary:`;
   }
 
   /**
+   * Generate embeddings for text using OpenAI's text-embedding-ada-002 model
+   */
+  public async generateEmbedding(text: string): Promise<number[]> {
+    try {
+      console.log('🔄 Generating embedding for text...');
+      
+      const response = await this.client.embeddings.create({
+        model: 'text-embedding-ada-002',
+        input: text,
+      });
+
+      const embedding = response.data[0]?.embedding;
+      
+      if (!embedding) {
+        throw new Error('No embedding returned from OpenAI');
+      }
+
+      console.log(`✅ Embedding generated with ${embedding.length} dimensions`);
+      return embedding;
+    } catch (error: any) {
+      console.error('❌ Embedding generation failed:', error.message);
+      throw new Error(`Failed to generate embedding: ${error.message}`);
+    }
+  }
+
+  /**
+   * Generate chat completion with conversation history
+   */
+  public async generateChatCompletion(
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>
+  ): Promise<{ content: string; usage: any }> {
+    try {
+      console.log('🔄 Generating chat completion...');
+      
+      const response = await this.makeAPICallWithRetry({
+        model: this.config.model,
+        messages,
+        max_tokens: this.config.maxTokens,
+        temperature: this.config.temperature,
+      });
+
+      const content = response.choices[0]?.message?.content || '';
+      const usage = response.usage;
+
+      console.log('✅ Chat completion generated successfully');
+      return { content, usage };
+    } catch (error: any) {
+      console.error('❌ Chat completion failed:', error.message);
+      throw new Error(`Failed to generate chat completion: ${error.message}`);
+    }
+  }
+
+  /**
    * Make a general chat completion API call (public method for external use)
    */
   public async createChatCompletion(

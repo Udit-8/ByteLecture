@@ -15,13 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Header, Button, Card, LoadingIndicator } from '../components';
 import { theme } from '../constants/theme';
 import { useNavigation } from '../contexts/NavigationContext';
-
-interface Message {
-  id: string;
-  text: string;
-  isUser: boolean;
-  timestamp: Date;
-}
+import { useChat } from '../hooks/useChat';
+import { ChatMessage, ContextSource } from '../services/chatAPI';
 
 interface AITutorScreenProps {
   navigation: any;
@@ -30,34 +25,69 @@ interface AITutorScreenProps {
       noteTitle?: string;
       noteContext?: string;
       fromNote?: boolean;
+      contentItemId?: string;
     };
   };
 }
 
 export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route }) => {
-  const { selectedNote,mode } = useNavigation();
+  const { selectedNote, mode } = useNavigation();
   const isFromNote = route?.params?.fromNote || mode === 'note-detail';
-  const noteTitle = selectedNote?.title || 'Quantum Physics Basics';
+  const noteTitle = selectedNote?.title || route?.params?.noteTitle || 'AI Tutor';
+  const contentItemId = route?.params?.contentItemId || selectedNote?.id;
   
-  const getInitialMessage = () => {
-    if (isFromNote) {
-      return `Hi! I'm your AI tutor for "${noteTitle}". I can help you understand the concepts, answer questions, and provide additional explanations about this specific content. What would you like to know?`;
-    }
-    return "Hi! I'm your AI tutor. I'm here to help you understand your course materials better. What would you like to learn about today?";
-  };
+  const {
+    currentSession,
+    messages,
+    loading,
+    isTyping,
+    error,
+    createSession,
+    sendMessage,
+    usage,
+    getUsage,
+    generateEmbeddings
+  } = useChat();
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: getInitialMessage(),
-      isUser: false,
-      timestamp: new Date(),
-    },
-  ]);
   const [inputText, setInputText] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    // Initialize chat session when component mounts
+    const initializeChat = async () => {
+      try {
+        const contextContentIds = contentItemId ? [contentItemId] : [];
+        const sessionTitle = isFromNote ? `${noteTitle} - Chat` : 'AI Tutor Chat';
+        
+        // Generate embeddings for content first (if we have content)
+        if (contextContentIds.length > 0) {
+          console.log('🔍 Generating embeddings for content:', contextContentIds);
+          try {
+            const embeddingsSuccess = await generateEmbeddings(contextContentIds);
+            if (embeddingsSuccess) {
+              console.log('✅ Embeddings generated successfully');
+            } else {
+              console.warn('⚠️ Embeddings generation failed, but continuing with chat');
+            }
+          } catch (embeddingError) {
+            console.error('❌ Embedding generation error:', embeddingError);
+            // Continue with chat even if embeddings fail
+          }
+        }
+        
+        await createSession(sessionTitle, contextContentIds);
+        
+        // Refresh usage information
+        await getUsage();
+      } catch (error) {
+        console.error('Failed to initialize chat session:', error);
+        Alert.alert('Error', 'Failed to start chat session. Please try again.');
+      }
+    };
+
+    initializeChat();
+  }, [contentItemId, isFromNote, noteTitle]);
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages are added
@@ -67,34 +97,27 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !currentSession) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: inputText.trim(),
-      isUser: true,
-      timestamp: new Date(),
-    };
+    // Check usage limit
+    if (usage && usage.remaining <= 0) {
+      Alert.alert(
+        'Daily Limit Reached',
+        `You've used all ${usage.dailyLimit} daily questions. Please upgrade your plan or try again tomorrow.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputText('');
-    setIsTyping(true);
-
-    // Simulate AI response (in real app, this would call an AI API)
-    setTimeout(() => {
-      const contextualResponse = isFromNote 
-        ? `Based on "${noteTitle}", let me help explain that concept. This is a simulated AI response that would analyze your specific note content and provide detailed explanations.`
-        : "Thanks for your question! This is a simulated AI response. In the full version, I would provide detailed explanations based on your course materials and help you understand complex concepts step by step.";
-        
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        text: contextualResponse,
-        isUser: false,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, aiResponse]);
-      setIsTyping(false);
-    }, 2000);
+    try {
+      setInputText('');
+      await sendMessage(currentSession.id, inputText.trim());
+      await getUsage(); // Update usage after sending message
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+      setInputText(inputText); // Restore input text on error
+    }
   };
 
   const handleQuickQuestion = (question: string) => {
@@ -113,7 +136,7 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
     }
     return [
       "Can you explain this concept?",
-      "Help me understand this formula",
+      "Help me understand this formula", 
       "Give me a practice problem",
       "Summarize the key points",
     ];
@@ -129,15 +152,34 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
     navigation.goBack();
   };
 
-  const renderMessage = (message: Message) => (
+  const renderContextSources = (sources?: ContextSource[]) => {
+    if (!sources || sources.length === 0) return null;
+
+    return (
+      <View style={styles.sourcesContainer}>
+        <Text style={styles.sourcesTitle}>Sources:</Text>
+        {sources.map((source, index) => (
+          <View key={index} style={styles.sourceItem}>
+            <Text style={styles.sourceTitle}>{source.content_title}</Text>
+            {source.section_title && (
+              <Text style={styles.sourceSectionTitle}>{source.section_title}</Text>
+            )}
+            <Text style={styles.sourceChunk}>"{source.section_text?.substring(0, 100) || 'No content available'}..."</Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  const renderMessage = (message: ChatMessage) => (
     <View
       key={message.id}
       style={[
         styles.messageContainer,
-        message.isUser ? styles.userMessageContainer : styles.aiMessageContainer,
+        message.role === 'user' ? styles.userMessageContainer : styles.aiMessageContainer,
       ]}
     >
-      {!message.isUser && (
+      {message.role === 'assistant' && (
         <View style={styles.aiAvatar}>
           <Ionicons name="chatbubbles" size={16} color={theme.colors.primary[600]} />
         </View>
@@ -146,34 +188,56 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
       <View
         style={[
           styles.messageBubble,
-          message.isUser ? styles.userMessageBubble : styles.aiMessageBubble,
+          message.role === 'user' ? styles.userMessageBubble : styles.aiMessageBubble,
         ]}
       >
         <Text
           style={[
             styles.messageText,
-            message.isUser ? styles.userMessageText : styles.aiMessageText,
+            message.role === 'user' ? styles.userMessageText : styles.aiMessageText,
           ]}
         >
-          {message.text}
+          {message.content}
         </Text>
+        
+        {message.role === 'assistant' && renderContextSources(message.context_sources)}
+        
         <Text
           style={[
             styles.messageTime,
-            message.isUser ? styles.userMessageTime : styles.aiMessageTime,
+            message.role === 'user' ? styles.userMessageTime : styles.aiMessageTime,
           ]}
         >
-          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </Text>
       </View>
       
-      {message.isUser && (
+      {message.role === 'user' && (
         <View style={styles.userAvatar}>
           <Ionicons name="person" size={16} color={theme.colors.white} />
         </View>
       )}
     </View>
   );
+
+  // Show loading indicator while initializing
+  if (loading && !currentSession) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Header 
+          title="AI Tutor"
+          leftAction={{
+            icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[600]} />,
+            onPress: handleBackPress,
+          }}
+        />
+        <View style={styles.loadingContainer}>
+          <LoadingIndicator size="large" />
+          <Text style={styles.loadingText}>Starting chat session...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -185,14 +249,34 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
         }}
         rightAction={{
           icon: <Ionicons name="information-circle-outline" size={24} color={theme.colors.gray[600]} />,
-          onPress: () => Alert.alert(
-            isFromNote ? 'Note Chat' : 'AI Tutor',
-            isFromNote 
-              ? `Chat about "${noteTitle}". Ask questions about this specific content and get detailed explanations.`
-              : 'Your personal AI tutor is here to help explain concepts, answer questions, and provide additional practice problems based on your learning materials.'
-          ),
+          onPress: () => {
+            const usageText = usage 
+              ? `\n\nUsage: ${usage.questionsUsed}/${usage.dailyLimit} questions today`
+              : '';
+            
+            Alert.alert(
+              isFromNote ? 'Note Chat' : 'AI Tutor',
+              isFromNote 
+                ? `Chat about "${noteTitle}". Ask questions about this specific content and get detailed explanations.${usageText}`
+                : `Your personal AI tutor is here to help explain concepts, answer questions, and provide additional practice problems based on your learning materials.${usageText}`
+            );
+          },
         }}
       />
+      
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
+      {usage && (
+        <View style={styles.usageContainer}>
+          <Text style={styles.usageText}>
+            {usage.remaining} questions remaining today
+          </Text>
+        </View>
+      )}
       
       <KeyboardAvoidingView 
         style={styles.keyboardContainer}
@@ -219,7 +303,7 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
           )}
         </ScrollView>
 
-        {messages.length === 1 && (
+        {messages.length === 0 && !loading && (
           <View style={styles.quickQuestionsContainer}>
             <Text style={styles.quickQuestionsTitle}>Quick Questions</Text>
             <View style={styles.quickQuestionsGrid}>
@@ -246,20 +330,25 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
               placeholder={isFromNote ? "Ask about this note..." : "Ask me anything..."}
               multiline
               maxLength={500}
+              editable={!loading}
             />
             <TouchableOpacity
               style={[
                 styles.sendButton,
-                inputText.trim() ? styles.sendButtonActive : styles.sendButtonDisabled
+                inputText.trim() && !loading ? styles.sendButtonActive : styles.sendButtonDisabled
               ]}
               onPress={handleSendMessage}
-              disabled={!inputText.trim()}
+              disabled={!inputText.trim() || loading}
             >
-              <Ionicons 
-                name="send" 
-                size={20} 
-                color={inputText.trim() ? theme.colors.white : theme.colors.gray[400]} 
-              />
+              {loading ? (
+                <LoadingIndicator size="small" color={theme.colors.white} />
+              ) : (
+                <Ionicons 
+                  name="send" 
+                  size={20} 
+                  color={inputText.trim() && !loading ? theme.colors.white : theme.colors.gray[400]} 
+                />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -275,6 +364,39 @@ const styles = StyleSheet.create({
   },
   keyboardContainer: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: theme.spacing.base,
+  },
+  loadingText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.gray[600],
+  },
+  errorContainer: {
+    backgroundColor: theme.colors.error[100],
+    borderColor: theme.colors.error[600],
+    borderWidth: 1,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.base,
+    margin: theme.spacing.base,
+  },
+  errorText: {
+    color: theme.colors.error[700],
+    fontSize: theme.typography.fontSize.sm,
+    textAlign: 'center',
+  },
+  usageContainer: {
+    backgroundColor: theme.colors.primary[50],
+    padding: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  usageText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.primary[700],
+    fontWeight: theme.typography.fontWeight.medium,
   },
   messagesContainer: {
     flex: 1,
@@ -339,6 +461,38 @@ const styles = StyleSheet.create({
   },
   aiMessageText: {
     color: theme.colors.gray[900],
+  },
+  sourcesContainer: {
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.gray[200],
+  },
+  sourcesTitle: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.gray[600],
+    marginBottom: theme.spacing.xs,
+  },
+  sourceItem: {
+    marginBottom: theme.spacing.xs,
+  },
+  sourceTitle: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.primary[600],
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  sourceSectionTitle: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.gray[600],
+    fontWeight: theme.typography.fontWeight.medium,
+    marginTop: 2,
+  },
+  sourceChunk: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.gray[500],
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   messageTime: {
     fontSize: theme.typography.fontSize.xs,

@@ -16,6 +16,7 @@ import {
   YouTubeProcessingResult,
   YouTubeVideoInfo,
 } from '../services/youtubeAPI';
+import { permissionService } from '../services';
 import { validateYouTubeUrl, extractVideoId } from '../utils/youtubeValidation';
 
 export interface YouTubeInputProps {
@@ -56,6 +57,30 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
   const [videoPreview, setVideoPreview] = useState<VideoData | null>(null);
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('');
+  const [quotaInfo, setQuotaInfo] = useState<{
+    remaining?: number;
+    limit?: number;
+    isPremium?: boolean;
+  }>({});
+
+  // Check quota on component mount
+  React.useEffect(() => {
+    const checkQuota = async () => {
+      try {
+        const permissionResult = await permissionService.checkFeatureUsage('youtube_processing');
+        if (permissionResult.limit !== undefined) {
+          setQuotaInfo({
+            remaining: permissionResult.remaining,
+            limit: permissionResult.limit,
+            isPremium: permissionResult.limit === -1,
+          });
+        }
+      } catch (error) {
+        console.error('Error checking YouTube quota:', error);
+      }
+    };
+    checkQuota();
+  }, []);
 
   const handleInputChange = useCallback((text: string) => {
     setInputValue(text);
@@ -113,6 +138,34 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
     const videoId = handleValidation();
     if (!videoId || !inputValue.trim()) return;
 
+    // Check permissions before processing
+    try {
+      const permissionResult = await permissionService.checkFeatureUsage('youtube_processing');
+      
+      if (!permissionResult.allowed) {
+        const alertTitle = 'Processing Limit Reached';
+        const alertMessage = permissionResult.upgrade_message || 
+          'You have reached your daily YouTube processing limit. Please try again tomorrow or upgrade your plan for unlimited processing.';
+        
+        if (navigation) {
+          Alert.alert(alertTitle, alertMessage, [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Upgrade Plan',
+              style: 'default',
+              onPress: () => navigation.navigate('Subscription', { from: 'youtube-quota' }),
+            },
+          ]);
+        } else {
+          Alert.alert(alertTitle, alertMessage);
+        }
+        
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking permissions:', error);
+    }
+
     setIsProcessing(true);
     setProgress(0);
     setProgressMessage('Starting processing...');
@@ -131,7 +184,7 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
       if (!validation.hasTranscript) {
         Alert.alert(
           'No Transcript Available',
-          "This video doesn't have captions/transcript available. Processing may be limited.",
+          "This video doesn't have captions/transcripts available. Processing may be limited.",
           [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Continue Anyway', onPress: () => continueProcessing() },
@@ -226,6 +279,20 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
           ? ' (retrieved from cache)'
           : ' (newly processed and stored)';
         Alert.alert('Success', `Video processed successfully${cacheMessage}!`);
+        
+        // Refresh quota info after successful processing
+        try {
+          const updatedPermission = await permissionService.checkFeatureUsage('youtube_processing');
+          if (updatedPermission.limit !== undefined) {
+            setQuotaInfo({
+              remaining: updatedPermission.remaining,
+              limit: updatedPermission.limit,
+              isPremium: updatedPermission.limit === -1,
+            });
+          }
+        } catch (error) {
+          console.error('Error refreshing quota:', error);
+        }
       } catch (processingError) {
         throw processingError;
       }
@@ -237,6 +304,7 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
     onProcessingProgress,
     onVideoProcessed,
     onProcessingError,
+    navigation,
   ]);
 
   const handleClearPreview = useCallback(() => {
@@ -280,8 +348,11 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
       ) : null}
 
       <Text style={styles.hint}>
-        Supports YouTube videos with captions/transcripts. Daily limit:{' '}
-        {maxVideosPerDay} videos.
+        Supports YouTube videos with captions/transcripts. 
+        {quotaInfo.limit !== undefined && !quotaInfo.isPremium && (
+          ` Daily limit: ${quotaInfo.remaining} of ${quotaInfo.limit} videos remaining.`
+        )}
+        {quotaInfo.isPremium && ' ✨ Unlimited processing.'}
       </Text>
 
       {videoPreview && (

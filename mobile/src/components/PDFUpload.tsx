@@ -26,6 +26,7 @@ import {
   getProgressText,
   checkBucketAccess,
 } from '../services/uploadService';
+import { permissionService } from '../services';
 import { supabase } from '../config/supabase';
 
 interface PDFUploadProps {
@@ -74,6 +75,11 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
   const [detailedProgress, setDetailedProgress] =
     useState<ServiceUploadProgress | null>(null);
   const [bucketReady, setBucketReady] = useState<boolean | null>(null);
+  const [quotaInfo, setQuotaInfo] = useState<{
+    remaining?: number;
+    limit?: number;
+    isPremium?: boolean;
+  }>({});
 
   // Check bucket access on component mount
   React.useEffect(() => {
@@ -100,6 +106,25 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
       }
     };
     checkBucket();
+  }, []);
+
+  // Check quota on component mount
+  React.useEffect(() => {
+    const checkQuota = async () => {
+      try {
+        const permissionResult = await permissionService.checkFeatureUsage('pdf_processing', 'pdf_upload');
+        if (permissionResult.limit !== undefined) {
+          setQuotaInfo({
+            remaining: permissionResult.remaining,
+            limit: permissionResult.limit,
+            isPremium: permissionResult.limit === -1,
+          });
+        }
+      } catch (error) {
+        console.error('Error checking quota:', error);
+      }
+    };
+    checkQuota();
   }, []);
 
   const performPDFValidation = useCallback(
@@ -139,6 +164,35 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
     if (disabled || isUploading || isValidating) return;
 
     try {
+      // Check permissions before allowing file selection
+      const permissionResult = await permissionService.checkFeatureUsage('pdf_processing', 'pdf_upload');
+      
+      if (!permissionResult.allowed) {
+        const alertTitle = 'Upload Limit Reached';
+        const alertMessage = permissionResult.upgrade_message || 
+          'You have reached your daily PDF upload limit. Please try again tomorrow or upgrade your plan for unlimited uploads.';
+        
+        if (navigation) {
+          Alert.alert(alertTitle, alertMessage, [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Upgrade Plan',
+              style: 'default',
+              onPress: () => navigation.navigate('Subscription', { from: 'pdf-quota' }),
+            },
+          ]);
+        } else {
+          Alert.alert(alertTitle, alertMessage);
+        }
+        
+        return;
+      }
+
+      // Show remaining quota if not unlimited
+      if (permissionResult.remaining !== undefined && permissionResult.limit !== -1) {
+        console.log(`PDF uploads remaining today: ${permissionResult.remaining}`);
+      }
+
       const result = await DocumentPicker.getDocumentAsync({
         type: 'application/pdf',
         copyToCacheDirectory: true,
@@ -173,6 +227,7 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
     performPDFValidation,
     onFileSelected,
     onUploadError,
+    navigation,
   ]);
 
   const performSupabaseUpload = useCallback(
@@ -237,6 +292,20 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
 
           onUploadComplete?.(uploadResult);
           Alert.alert('Success', '✅ PDF uploaded successfully!');
+          
+          // Refresh quota info after successful upload
+          try {
+            const updatedPermission = await permissionService.checkFeatureUsage('pdf_processing', 'pdf_upload');
+            if (updatedPermission.limit !== undefined) {
+              setQuotaInfo({
+                remaining: updatedPermission.remaining,
+                limit: updatedPermission.limit,
+                isPremium: updatedPermission.limit === -1,
+              });
+            }
+          } catch (error) {
+            console.error('Error refreshing quota:', error);
+          }
         } else {
           throw new Error(result.error || 'Upload failed');
         }
@@ -411,6 +480,16 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
               >
                 Maximum file size: {maxFileSize}MB
               </Text>
+              {quotaInfo.limit !== undefined && !quotaInfo.isPremium && (
+                <Text style={styles.quotaText}>
+                  {quotaInfo.remaining} of {quotaInfo.limit} uploads remaining today
+                </Text>
+              )}
+              {quotaInfo.isPremium && (
+                <Text style={styles.quotaPremiumText}>
+                  ✨ Unlimited uploads
+                </Text>
+              )}
             </View>
           </TouchableOpacity>
         ) : (
@@ -684,5 +763,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: theme.borderRadius.lg,
+  },
+  quotaText: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.gray[600],
+    textAlign: 'center',
+    marginTop: theme.spacing.xs,
+  },
+  quotaPremiumText: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.primary[600],
+    textAlign: 'center',
+    marginTop: theme.spacing.xs,
   },
 });

@@ -27,6 +27,7 @@ import {
   type TranscriptionResult,
 } from '../services/audioAPI';
 import { usageService, type QuotaInfo } from '../services/usageService';
+import { permissionService } from '../services';
 import { theme } from '../constants/theme';
 import { supabase } from '../config/supabase';
 import { authDebug } from '../services';
@@ -487,19 +488,27 @@ export const AudioRecordingScreen: React.FC<AudioRecordingScreenProps> = ({
       setUploadProgress(null);
 
       // Step 3: Check quota before transcription
-      const quotaCheck = await usageService.checkAIProcessingQuota();
-      if (!quotaCheck.allowed) {
+      const permissionResult = await permissionService.checkFeatureUsage('audio_transcription');
+      if (!permissionResult.allowed) {
         await usageService.logError({
           error_type: 'quota_exceeded',
-          error_message: quotaCheck.reason || 'AI processing quota exceeded',
-          error_details: { quota: quotaCheck.quota },
+          error_message: permissionResult.reason || 'AI processing quota exceeded',
+          error_details: { 
+            quota: {
+              current_usage: permissionResult.current_usage || 0,
+              daily_limit: permissionResult.limit || 0,
+              remaining: permissionResult.remaining || 0,
+              plan_type: permissionResult.plan_type || 'free'
+            }
+          },
         });
+
+        const alertMessage = permissionResult.upgrade_message || 
+          `Daily limit reached: ${permissionResult.current_usage}/${permissionResult.limit} AI processing requests used.`;
 
         Alert.alert(
           'Quota Exceeded',
-          quotaCheck.quota
-            ? usageService.formatQuotaErrorMessage(quotaCheck.quota)
-            : quotaCheck.reason || 'Daily limit reached',
+          alertMessage,
           [
             { text: 'Cancel' },
             { text: 'View Usage', onPress: showUsageStats },

@@ -28,9 +28,9 @@ export const AppNavigator: React.FC = () => {
   useEffect(() => {
     const deepLinkHandler = DeepLinkHandler.getInstance();
     deepLinkHandler.setNavigationRef(navigationRef);
-
+    
     const cleanup = deepLinkHandler.initialize();
-
+    
     return cleanup;
   }, []);
 
@@ -63,10 +63,10 @@ export const AppNavigator: React.FC = () => {
                 name="Subscription"
                 component={SubscriptionScreen}
               />
-              <Stack.Screen
-                name="AuthDebug"
-                component={AuthDebugScreen}
-                options={{ headerShown: true, title: 'Auth Debug' }}
+              <Stack.Screen 
+                name="AuthDebug" 
+                component={AuthDebugScreen} 
+                options={{ headerShown: true, title: 'Auth Debug' }} 
               />
             </>
           ) : (
@@ -79,10 +79,10 @@ export const AppNavigator: React.FC = () => {
                 name="EmailVerification"
                 component={EmailVerificationScreen}
               />
-              <Stack.Screen
-                name="AuthDebug"
-                component={AuthDebugScreen}
-                options={{ headerShown: true, title: 'Auth Debug' }}
+              <Stack.Screen 
+                name="AuthDebug" 
+                component={AuthDebugScreen} 
+                options={{ headerShown: true, title: 'Auth Debug' }} 
               />
             </>
           )}
@@ -90,4 +90,4 @@ export const AppNavigator: React.FC = () => {
       </NavigationProvider>
     </NavigationContainer>
   );
-};
+}; 

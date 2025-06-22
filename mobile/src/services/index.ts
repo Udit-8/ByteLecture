@@ -10,8 +10,10 @@ export * from './youtubeAPI';
 export * from './summaryAPI';
 export * from './contentAPI';
 export * from './chatAPI';
+export * from './permissionService';
 
 export { default as paymentService } from './paymentService';
+export { default as permissionService } from './permissionService';
 export { default as authDebug } from './authDebug';
 export { default as flashcardAPI } from './flashcardAPI';
 export { default as quizAPI } from './quizAPI';

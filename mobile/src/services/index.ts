@@ -20,3 +20,4 @@ export { default as quizAPI } from './quizAPI';
 export { default as summaryAPI } from './summaryAPI';
 export { default as contentAPI } from './contentAPI';
 export { default as chatAPI } from './chatAPI';
+export { abTestingService } from './abTestingService';

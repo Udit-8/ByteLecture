@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Header, Button, Card, FeatureCard } from '../components';
+import { Header, Button, Card, FeatureCard, PremiumBenefitsModal, PremiumCornerBadge } from '../components';
 import SyncStatusIndicator from '../components/SyncStatusIndicator';
 import { theme } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContextFallback';
@@ -19,6 +19,7 @@ interface HomeScreenProps {
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, signOut } = useAuth();
+  const [showPremiumBenefits, setShowPremiumBenefits] = useState(false);
 
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -187,14 +188,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           contentContainerStyle={styles.featuresContainer}
         >
           {features.map((feature) => (
-            <FeatureCard
-              key={feature.id}
-              title={feature.title}
-              description={feature.description}
-              icon={feature.icon}
-              color={feature.color}
-              onPress={feature.onPress}
-            />
+            <View key={feature.id} style={styles.featureCardContainer}>
+              <FeatureCard
+                title={feature.title}
+                description={feature.description}
+                icon={feature.icon}
+                color={feature.color}
+                onPress={feature.onPress}
+              />
+              {/* Add premium indicator to premium features */}
+              {(feature.id === 'flashcards' || feature.id === 'tutor') && (
+                <PremiumCornerBadge 
+                  size="sm" 
+                  text="Pro"
+                  style={styles.featureCornerBadge}
+                />
+              )}
+            </View>
           ))}
         </ScrollView>
 
@@ -264,7 +274,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             variant="secondary"
             style={styles.usageButton}
           />
+          <Button
+            title="See Premium Benefits"
+            onPress={() => setShowPremiumBenefits(true)}
+            variant="outline"
+            style={styles.premiumButton}
+          />
         </Card>
+
+        {/* Premium Benefits Showcase */}
+        <PremiumBenefitsModal
+          visible={showPremiumBenefits}
+          onClose={() => setShowPremiumBenefits(false)}
+          onUpgrade={() => {
+            setShowPremiumBenefits(false);
+            navigation.navigate('Subscription', { from: 'home-benefits' });
+          }}
+          showUpgradeButton={true}
+          variant="showcase"
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -317,6 +345,15 @@ const styles = StyleSheet.create({
   featuresContainer: {
     paddingHorizontal: theme.spacing.xs,
     paddingBottom: theme.spacing.sm,
+  },
+  featureCardContainer: {
+    position: 'relative',
+  },
+  featureCornerBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    zIndex: 1,
   },
   recentContent: {
     gap: theme.spacing.md,
@@ -405,5 +442,9 @@ const styles = StyleSheet.create({
   usageButton: {
     backgroundColor: theme.colors.primary[600],
     marginTop: theme.spacing.base,
+  },
+  premiumButton: {
+    borderColor: theme.colors.warning[500],
+    marginTop: theme.spacing.sm,
   },
 });

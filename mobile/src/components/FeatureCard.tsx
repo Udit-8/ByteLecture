@@ -59,6 +59,7 @@ const styles = StyleSheet.create({
   description: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[700],
-    lineHeight: theme.typography.lineHeight.normal * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.normal * theme.typography.fontSize.sm,
   },
-}); 
+});

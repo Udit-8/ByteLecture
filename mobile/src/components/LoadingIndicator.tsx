@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  View,
-  ActivityIndicator,
-  Text,
-  StyleSheet,
-  Modal,
-} from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet, Modal } from 'react-native';
 import { theme } from '../constants/theme';
 
 interface LoadingIndicatorProps {
@@ -72,4 +66,4 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     textAlign: 'center',
   },
-}); 
+});

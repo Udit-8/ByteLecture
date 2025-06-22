@@ -8,9 +8,9 @@ config.resolver = {
   ...config.resolver,
   alias: {
     // Resolve WebSocket to our polyfill
-    'ws': require.resolve('./src/config/websocket-polyfill.js'),
+    ws: require.resolve('./src/config/websocket-polyfill.js'),
     // Handle other Node.js modules that might cause issues
-    'crypto': 'react-native-get-random-values',
+    crypto: 'react-native-get-random-values',
   },
   resolverMainFields: ['react-native', 'browser', 'main'],
   platforms: ['ios', 'android', 'native', 'web'],
@@ -37,4 +37,4 @@ config.transformer = {
   },
 };
 
-module.exports = config; 
+module.exports = config;

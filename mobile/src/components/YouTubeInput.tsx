@@ -11,7 +11,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
-import { youtubeAPI, YouTubeProcessingResult, YouTubeVideoInfo } from '../services/youtubeAPI';
+import {
+  youtubeAPI,
+  YouTubeProcessingResult,
+  YouTubeVideoInfo,
+} from '../services/youtubeAPI';
 import { validateYouTubeUrl, extractVideoId } from '../utils/youtubeValidation';
 
 export interface YouTubeInputProps {
@@ -61,7 +65,7 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
 
   const handleValidation = useCallback(() => {
     const validation = validateYouTubeUrl(inputValue);
-    
+
     if (!validation.isValid) {
       setValidationError(validation.error || 'Invalid URL');
       return null;
@@ -112,14 +116,14 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
     setIsProcessing(true);
     setProgress(0);
     setProgressMessage('Starting processing...');
-    
+
     try {
       onProcessingStart?.(videoId);
 
       // Step 1: Validate video
       updateProgress(0.1, 'Validating YouTube video...');
       const validation = await youtubeAPI.validateVideo(inputValue.trim());
-      
+
       if (!validation.isValid) {
         throw new Error(validation.error || 'Video validation failed');
       }
@@ -127,39 +131,49 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
       if (!validation.hasTranscript) {
         Alert.alert(
           'No Transcript Available',
-          'This video doesn\'t have captions/transcript available. Processing may be limited.',
+          "This video doesn't have captions/transcript available. Processing may be limited.",
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Continue Anyway', onPress: () => continueProcessing() }
+            { text: 'Continue Anyway', onPress: () => continueProcessing() },
           ]
         );
         return;
       }
 
       await continueProcessing();
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to process video';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to process video';
       console.error('YouTube processing error:', error);
       onProcessingError?.(errorMessage);
-      
+
       // Check for quota exceeded errors
-      if (errorMessage.includes('quota') || errorMessage.includes('limit') || errorMessage.includes('exceeded')) {
+      if (
+        errorMessage.includes('quota') ||
+        errorMessage.includes('limit') ||
+        errorMessage.includes('exceeded')
+      ) {
         if (navigation) {
           Alert.alert(
             'Daily Limit Reached',
             'You have reached your daily YouTube processing limit. Upgrade to premium for unlimited processing.',
             [
               { text: 'Cancel' },
-              { 
-                text: 'Upgrade Plan', 
+              {
+                text: 'Upgrade Plan',
                 style: 'default',
-                onPress: () => navigation.navigate('Subscription', { from: 'youtube-quota' })
-              }
+                onPress: () =>
+                  navigation.navigate('Subscription', {
+                    from: 'youtube-quota',
+                  }),
+              },
             ]
           );
         } else {
-          Alert.alert('Daily Limit Reached', 'You have reached your daily YouTube processing limit. Please try again tomorrow or upgrade your plan.');
+          Alert.alert(
+            'Daily Limit Reached',
+            'You have reached your daily YouTube processing limit. Please try again tomorrow or upgrade your plan.'
+          );
         }
       } else {
         Alert.alert('Processing Error', errorMessage);
@@ -174,16 +188,18 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
       try {
         // Step 2: Process video (this calls the backend and stores in DB)
         updateProgress(0.3, 'Processing video and extracting transcript...');
-        
-        const result: YouTubeProcessingResult = await youtubeAPI.processVideo(inputValue.trim());
-        
+
+        const result: YouTubeProcessingResult = await youtubeAPI.processVideo(
+          inputValue.trim()
+        );
+
         updateProgress(0.7, 'Analyzing content...');
-        
+
         // Step 3: Simulate final processing steps
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         updateProgress(0.9, 'Finalizing...');
-        
-        await new Promise(resolve => setTimeout(resolve, 500));
+
+        await new Promise((resolve) => setTimeout(resolve, 500));
         updateProgress(1.0, 'Complete!');
 
         // Create final video data for the component callback
@@ -193,7 +209,9 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
           title: result.videoInfo.title,
           description: result.videoInfo.description,
           duration: result.videoInfo.duration,
-          thumbnailUrl: result.videoInfo.thumbnails.medium || result.videoInfo.thumbnails.default,
+          thumbnailUrl:
+            result.videoInfo.thumbnails.medium ||
+            result.videoInfo.thumbnails.default,
           channelName: result.videoInfo.channelTitle,
           transcript: result.fullTranscriptText,
           recordId: result.recordId,
@@ -203,15 +221,23 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
         onVideoProcessed?.(finalVideoData);
         setInputValue('');
         setVideoPreview(null);
-        
-        const cacheMessage = result.fromCache ? ' (retrieved from cache)' : ' (newly processed and stored)';
-        Alert.alert('Success', `Video processed successfully${cacheMessage}!`);
 
+        const cacheMessage = result.fromCache
+          ? ' (retrieved from cache)'
+          : ' (newly processed and stored)';
+        Alert.alert('Success', `Video processed successfully${cacheMessage}!`);
       } catch (processingError) {
         throw processingError;
       }
     }
-  }, [handleValidation, inputValue, onProcessingStart, onProcessingProgress, onVideoProcessed, onProcessingError]);
+  }, [
+    handleValidation,
+    inputValue,
+    onProcessingStart,
+    onProcessingProgress,
+    onVideoProcessed,
+    onProcessingError,
+  ]);
 
   const handleClearPreview = useCallback(() => {
     setVideoPreview(null);
@@ -221,7 +247,7 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
   return (
     <View style={styles.container}>
       <Text style={styles.label}>YouTube Video URL</Text>
-      
+
       <View style={styles.inputContainer}>
         <TextInput
           style={[styles.input, validationError && styles.inputError]}
@@ -235,9 +261,13 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
           returnKeyType="done"
           onSubmitEditing={handlePreview}
         />
-        
+
         <TouchableOpacity
-          style={[styles.previewButton, (disabled || isProcessing || !inputValue.trim()) && styles.previewButtonDisabled]}
+          style={[
+            styles.previewButton,
+            (disabled || isProcessing || !inputValue.trim()) &&
+              styles.previewButtonDisabled,
+          ]}
           onPress={handlePreview}
           disabled={disabled || isProcessing || !inputValue.trim()}
         >
@@ -250,18 +280,22 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
       ) : null}
 
       <Text style={styles.hint}>
-        Supports YouTube videos with captions/transcripts. Daily limit: {maxVideosPerDay} videos.
+        Supports YouTube videos with captions/transcripts. Daily limit:{' '}
+        {maxVideosPerDay} videos.
       </Text>
 
       {videoPreview && (
         <View style={styles.previewContainer}>
           <View style={styles.previewHeader}>
             <Text style={styles.previewTitle}>Video Preview</Text>
-            <TouchableOpacity onPress={handleClearPreview} style={styles.closeButton}>
+            <TouchableOpacity
+              onPress={handleClearPreview}
+              style={styles.closeButton}
+            >
               <Ionicons name="close" size={20} color={theme.colors.gray[600]} />
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.videoInfo}>
             <Image
               source={{ uri: videoPreview.thumbnailUrl }}
@@ -278,7 +312,9 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
                 </Text>
               )}
               {videoPreview.duration && (
-                <Text style={styles.videoDuration}>Duration: {videoPreview.duration}</Text>
+                <Text style={styles.videoDuration}>
+                  Duration: {videoPreview.duration}
+                </Text>
               )}
               <Text style={styles.videoId}>ID: {videoPreview.videoId}</Text>
             </View>
@@ -286,21 +322,36 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
 
           {!isProcessing ? (
             <TouchableOpacity
-              style={[styles.processButton, disabled && styles.processButtonDisabled]}
+              style={[
+                styles.processButton,
+                disabled && styles.processButtonDisabled,
+              ]}
               onPress={handleProcess}
               disabled={disabled}
             >
-              <Ionicons name="play-circle" size={20} color={theme.colors.white} />
-              <Text style={styles.processButtonText}>Process & Store Video</Text>
+              <Ionicons
+                name="play-circle"
+                size={20}
+                color={theme.colors.white}
+              />
+              <Text style={styles.processButtonText}>
+                Process & Store Video
+              </Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.processingContainer}>
-              <ActivityIndicator size="small" color={theme.colors.primary[600]} />
+              <ActivityIndicator
+                size="small"
+                color={theme.colors.primary[600]}
+              />
               <Text style={styles.processingText}>
-                {progressMessage || `Processing... ${Math.round(progress * 100)}%`}
+                {progressMessage ||
+                  `Processing... ${Math.round(progress * 100)}%`}
               </Text>
               <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+                <View
+                  style={[styles.progressFill, { width: `${progress * 100}%` }]}
+                />
               </View>
             </View>
           )}
@@ -364,7 +415,8 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[600],
     marginBottom: theme.spacing.lg,
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
   previewContainer: {
     borderWidth: 1,
@@ -464,4 +516,4 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary[600],
     borderRadius: 2,
   },
-}); 
+});

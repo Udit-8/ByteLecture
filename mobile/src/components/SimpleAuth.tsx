@@ -20,7 +20,9 @@ interface SimpleAuthProps {
   onAuthStateChange?: (user: User | null) => void;
 }
 
-export const SimpleAuth: React.FC<SimpleAuthProps> = ({ onAuthStateChange }) => {
+export const SimpleAuth: React.FC<SimpleAuthProps> = ({
+  onAuthStateChange,
+}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,37 +30,39 @@ export const SimpleAuth: React.FC<SimpleAuthProps> = ({ onAuthStateChange }) => 
 
   useEffect(() => {
     console.log('[SimpleAuth] Component mounted, checking auth state...');
-    
+
     // Check initial auth state
     supabase.auth.getSession().then(({ data: { session }, error }) => {
-      console.log('[SimpleAuth] Initial session check:', { 
-        hasSession: !!session, 
-        hasUser: !!session?.user, 
+      console.log('[SimpleAuth] Initial session check:', {
+        hasSession: !!session,
+        hasUser: !!session?.user,
         email: session?.user?.email,
-        error: error?.message 
+        error: error?.message,
       });
-      
+
       setUser(session?.user || null);
       onAuthStateChange?.(session?.user || null);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('[SimpleAuth] Auth state change:', { 
-          event, 
-          hasSession: !!session, 
-          hasUser: !!session?.user, 
-          email: session?.user?.email 
-        });
-        
-        setUser(session?.user || null);
-        onAuthStateChange?.(session?.user || null);
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[SimpleAuth] Auth state change:', {
+        event,
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        email: session?.user?.email,
+      });
+
+      setUser(session?.user || null);
+      onAuthStateChange?.(session?.user || null);
+    });
 
     return () => {
-      console.log('[SimpleAuth] Component unmounting, cleaning up subscription');
+      console.log(
+        '[SimpleAuth] Component unmounting, cleaning up subscription'
+      );
       subscription.unsubscribe();
     };
   }, [onAuthStateChange]);
@@ -71,18 +75,18 @@ export const SimpleAuth: React.FC<SimpleAuthProps> = ({ onAuthStateChange }) => 
 
     console.log('[SimpleAuth] Attempting sign in for:', email);
     setLoading(true);
-    
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    console.log('[SimpleAuth] Sign in result:', { 
-      success: !error, 
-      hasUser: !!data?.user, 
+    console.log('[SimpleAuth] Sign in result:', {
+      success: !error,
+      hasUser: !!data?.user,
       hasSession: !!data?.session,
       email: data?.user?.email,
-      error: error?.message 
+      error: error?.message,
     });
 
     if (error) {
@@ -111,7 +115,7 @@ export const SimpleAuth: React.FC<SimpleAuthProps> = ({ onAuthStateChange }) => 
       Alert.alert('Sign Up Error', error.message);
     } else {
       Alert.alert(
-        'Success', 
+        'Success',
         'Account created! Check your email for verification. You can also sign in immediately to test uploads.'
       );
     }
@@ -121,7 +125,7 @@ export const SimpleAuth: React.FC<SimpleAuthProps> = ({ onAuthStateChange }) => 
   const signOut = async () => {
     setLoading(true);
     const { error } = await supabase.auth.signOut();
-    
+
     if (error) {
       Alert.alert('Sign Out Error', error.message);
     } else {
@@ -131,21 +135,24 @@ export const SimpleAuth: React.FC<SimpleAuthProps> = ({ onAuthStateChange }) => 
   };
 
   const testAuthState = async () => {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
+
     if (error) {
       Alert.alert('Auth Error', error.message);
       return;
     }
-    
+
     if (session?.user) {
       Alert.alert(
-        'Authentication Status', 
+        'Authentication Status',
         `✅ Logged in as: ${session.user.email}\n👤 User ID: ${session.user.id}\n\n🎯 You can now upload files!`
       );
     } else {
       Alert.alert(
-        'Authentication Status', 
+        'Authentication Status',
         '❌ Not logged in\n\nPlease sign in to upload files'
       );
     }
@@ -159,12 +166,15 @@ export const SimpleAuth: React.FC<SimpleAuthProps> = ({ onAuthStateChange }) => 
           <Text style={styles.userText}>📧 {user.email}</Text>
           <Text style={styles.userText}>👤 {user.id}</Text>
         </View>
-        
+
         <TouchableOpacity style={styles.button} onPress={testAuthState}>
           <Text style={styles.buttonText}>Test Auth Status</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.button, styles.signOutButton]} onPress={signOut}>
+        <TouchableOpacity
+          style={[styles.button, styles.signOutButton]}
+          onPress={signOut}
+        >
           <Text style={styles.buttonText}>Sign Out</Text>
         </TouchableOpacity>
       </View>
@@ -195,8 +205,8 @@ export const SimpleAuth: React.FC<SimpleAuthProps> = ({ onAuthStateChange }) => 
       />
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity 
-          style={[styles.button, loading && styles.buttonDisabled]} 
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
           onPress={signIn}
           disabled={loading}
         >
@@ -207,8 +217,12 @@ export const SimpleAuth: React.FC<SimpleAuthProps> = ({ onAuthStateChange }) => 
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.button, styles.signUpButton, loading && styles.buttonDisabled]} 
+        <TouchableOpacity
+          style={[
+            styles.button,
+            styles.signUpButton,
+            loading && styles.buttonDisabled,
+          ]}
           onPress={signUp}
           disabled={loading}
         >
@@ -316,4 +330,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SimpleAuth; 
+export default SimpleAuth;

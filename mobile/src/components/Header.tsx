@@ -34,7 +34,12 @@ export const Header: React.FC<HeaderProps> = ({
     <>
       <StatusBar barStyle="dark-content" backgroundColor={theme.colors.white} />
       <SafeAreaView style={styles.safeArea}>
-        <View style={[styles.container, variant === 'large' && styles.containerLarge]}>
+        <View
+          style={[
+            styles.container,
+            variant === 'large' && styles.containerLarge,
+          ]}
+        >
           <View style={styles.content}>
             {leftAction ? (
               <TouchableOpacity
@@ -49,8 +54,8 @@ export const Header: React.FC<HeaderProps> = ({
             )}
 
             <View style={styles.titleContainer}>
-              <Text 
-                style={[styles.title, variant === 'large' && styles.titleLarge]} 
+              <Text
+                style={[styles.title, variant === 'large' && styles.titleLarge]}
                 numberOfLines={1}
               >
                 {title}
@@ -126,4 +131,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-}); 
+});

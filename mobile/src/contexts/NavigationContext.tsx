@@ -24,10 +24,16 @@ interface ContentRefreshContextType {
   setRefreshHandler: (handler: () => Promise<void>) => void;
 }
 
-const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
-const ContentRefreshContext = createContext<ContentRefreshContextType | undefined>(undefined);
+const NavigationContext = createContext<NavigationContextType | undefined>(
+  undefined
+);
+const ContentRefreshContext = createContext<
+  ContentRefreshContextType | undefined
+>(undefined);
 
-export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [mode, setMode] = useState<NavigationMode>('main');
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const refreshHandlerRef = useRef<(() => Promise<void>) | null>(null);
@@ -93,7 +99,9 @@ export const useNavigation = () => {
 export const useContentRefresh = () => {
   const context = useContext(ContentRefreshContext);
   if (context === undefined) {
-    throw new Error('useContentRefresh must be used within a NavigationProvider');
+    throw new Error(
+      'useContentRefresh must be used within a NavigationProvider'
+    );
   }
   return context;
-}; 
+};

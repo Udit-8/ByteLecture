@@ -95,4 +95,4 @@ export interface ReceiptValidationResponse {
   valid: boolean;
   subscriptionStatus: SubscriptionStatus;
   error?: string;
-} 
+}

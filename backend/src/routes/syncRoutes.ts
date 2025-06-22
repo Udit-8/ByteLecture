@@ -1,18 +1,18 @@
-import express from 'express';
+import { Router } from 'express';
 import { syncController } from '../controllers/syncController';
 import { authenticateToken } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
 
-// Apply authentication middleware to all sync routes
+// All sync routes require authentication
 router.use(authenticateToken);
 
 /**
  * Device Management Routes
  */
 
-// POST /api/sync/devices - Register a new device
-router.post('/devices', syncController.registerDevice);
+// POST /api/sync/devices/register - Register a new device
+router.post('/devices/register', syncController.registerDevice);
 
 // GET /api/sync/devices - Get user's devices
 router.get('/devices', syncController.getUserDevices);
@@ -28,8 +28,8 @@ router.delete('/devices/:deviceId', syncController.deactivateDevice);
 // Query params: since_timestamp, device_id, table_names (optional)
 router.get('/changes', syncController.getSyncChanges);
 
-// POST /api/sync/changes - Apply sync changes from client
-router.post('/changes', syncController.applySyncChanges);
+// POST /api/sync/changes/apply - Apply sync changes from client
+router.post('/changes/apply', syncController.applySyncChanges);
 
 /**
  * Conflict Resolution Routes
@@ -38,8 +38,26 @@ router.post('/changes', syncController.applySyncChanges);
 // GET /api/sync/conflicts - Get unresolved conflicts
 router.get('/conflicts', syncController.getConflicts);
 
-// POST /api/sync/conflicts/:conflictId/resolve - Resolve a conflict
-router.post('/conflicts/:conflictId/resolve', syncController.resolveConflict);
+// POST /api/sync/conflicts/batch-resolve - Batch resolve conflicts
+router.post('/conflicts/batch-resolve', syncController.batchResolveConflicts);
+
+// POST /api/sync/conflicts/:conflict_id/preview - Preview conflict resolution
+router.post(
+  '/conflicts/:conflict_id/preview',
+  syncController.previewConflictResolution
+);
+
+// POST /api/sync/conflicts/auto-resolve - Auto resolve conflicts
+router.post('/conflicts/auto-resolve', syncController.autoResolveConflicts);
+
+// POST /api/sync/conflicts/:conflict_id/resolve - Resolve a conflict
+router.post('/conflicts/:conflict_id/resolve', syncController.resolveConflict);
+
+// GET /api/sync/preferences/conflicts - Get conflict preferences
+router.get('/preferences/conflicts', syncController.getConflictPreferences);
+
+// PUT /api/sync/preferences/conflicts - Update conflict preferences
+router.put('/preferences/conflicts', syncController.updateConflictPreferences);
 
 /**
  * Monitoring Routes

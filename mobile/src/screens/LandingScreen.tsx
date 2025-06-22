@@ -21,28 +21,48 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
       id: 'ai-summaries',
       title: 'AI Summaries',
       description: 'Get instant, concise summaries of any learning material',
-      icon: <Ionicons name="document-text" size={32} color={theme.colors.primary[600]} />,
+      icon: (
+        <Ionicons
+          name="document-text"
+          size={32}
+          color={theme.colors.primary[600]}
+        />
+      ),
       color: theme.colors.primary[100],
     },
     {
       id: 'smart-flashcards',
       title: 'Smart Flashcards',
       description: 'Auto-generated flashcards that adapt to your learning pace',
-      icon: <Ionicons name="library" size={32} color={theme.colors.success[600]} />,
+      icon: (
+        <Ionicons name="library" size={32} color={theme.colors.success[600]} />
+      ),
       color: theme.colors.success[100],
     },
     {
       id: 'practice-quizzes',
       title: 'Practice Quizzes',
       description: 'Test your knowledge with intelligent, adaptive quizzes',
-      icon: <Ionicons name="help-circle" size={32} color={theme.colors.warning[600]} />,
+      icon: (
+        <Ionicons
+          name="help-circle"
+          size={32}
+          color={theme.colors.warning[600]}
+        />
+      ),
       color: theme.colors.warning[100],
     },
     {
       id: 'ai-tutor',
       title: 'AI Tutor',
       description: 'Get personalized help and explanations 24/7',
-      icon: <Ionicons name="chatbubbles" size={32} color={theme.colors.error[600]} />,
+      icon: (
+        <Ionicons
+          name="chatbubbles"
+          size={32}
+          color={theme.colors.error[600]}
+        />
+      ),
       color: theme.colors.error[100],
     },
   ];
@@ -65,22 +85,27 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
         <View style={styles.heroSection}>
           <View style={styles.logoContainer}>
             <View style={styles.logo}>
-              <Ionicons name="school" size={48} color={theme.colors.primary[600]} />
+              <Ionicons
+                name="school"
+                size={48}
+                color={theme.colors.primary[600]}
+              />
             </View>
             <Text style={styles.appName}>ByteLecture</Text>
           </View>
-          
-          <Text style={styles.heroTitle}>
-            Transform Your Learning with AI
-          </Text>
+
+          <Text style={styles.heroTitle}>Transform Your Learning with AI</Text>
           <Text style={styles.heroSubtitle}>
-            Upload PDFs, YouTube videos, or record lectures to create personalized study materials powered by artificial intelligence.
+            Upload PDFs, YouTube videos, or record lectures to create
+            personalized study materials powered by artificial intelligence.
           </Text>
         </View>
 
         <View style={styles.featuresSection}>
-          <Text style={styles.sectionTitle}>Everything You Need to Learn Better</Text>
-          
+          <Text style={styles.sectionTitle}>
+            Everything You Need to Learn Better
+          </Text>
+
           <View style={styles.featuresGrid}>
             {features.map((feature) => (
               <View key={feature.id} style={styles.featureWrapper}>
@@ -98,38 +123,54 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
 
         <View style={styles.benefitsSection}>
           <Text style={styles.sectionTitle}>Why Choose ByteLecture?</Text>
-          
+
           <View style={styles.benefitsList}>
             <View style={styles.benefitItem}>
               <View style={styles.benefitIcon}>
-                <Ionicons name="flash" size={20} color={theme.colors.primary[600]} />
+                <Ionicons
+                  name="flash"
+                  size={20}
+                  color={theme.colors.primary[600]}
+                />
               </View>
               <Text style={styles.benefitText}>
                 Learn 3x faster with AI-powered study materials
               </Text>
             </View>
-            
+
             <View style={styles.benefitItem}>
               <View style={styles.benefitIcon}>
-                <Ionicons name="bulb" size={20} color={theme.colors.primary[600]} />
+                <Ionicons
+                  name="bulb"
+                  size={20}
+                  color={theme.colors.primary[600]}
+                />
               </View>
               <Text style={styles.benefitText}>
                 Personalized learning that adapts to your style
               </Text>
             </View>
-            
+
             <View style={styles.benefitItem}>
               <View style={styles.benefitIcon}>
-                <Ionicons name="time" size={20} color={theme.colors.primary[600]} />
+                <Ionicons
+                  name="time"
+                  size={20}
+                  color={theme.colors.primary[600]}
+                />
               </View>
               <Text style={styles.benefitText}>
                 Save hours of manual note-taking and summarizing
               </Text>
             </View>
-            
+
             <View style={styles.benefitItem}>
               <View style={styles.benefitIcon}>
-                <Ionicons name="trophy" size={20} color={theme.colors.primary[600]} />
+                <Ionicons
+                  name="trophy"
+                  size={20}
+                  color={theme.colors.primary[600]}
+                />
               </View>
               <Text style={styles.benefitText}>
                 Track your progress and improve retention
@@ -141,9 +182,10 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
         <View style={styles.ctaSection}>
           <Text style={styles.ctaTitle}>Ready to Transform Your Learning?</Text>
           <Text style={styles.ctaSubtitle}>
-            Join thousands of students already learning smarter with ByteLecture.
+            Join thousands of students already learning smarter with
+            ByteLecture.
           </Text>
-          
+
           <View style={styles.ctaButtons}>
             <Button
               title="Get Started Free"
@@ -152,7 +194,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
               size="lg"
               style={styles.primaryCta}
             />
-            
+
             <Button
               title="I Have an Account"
               onPress={handleSignIn}
@@ -160,7 +202,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
               size="lg"
               style={styles.secondaryCta}
             />
-            
+
             <Button
               title="🔍 Debug Authentication"
               onPress={handleAuthDebug}
@@ -212,13 +254,15 @@ const styles = StyleSheet.create({
     color: theme.colors.gray[900],
     textAlign: 'center',
     marginBottom: theme.spacing.base,
-    lineHeight: theme.typography.lineHeight.tight * theme.typography.fontSize['3xl'],
+    lineHeight:
+      theme.typography.lineHeight.tight * theme.typography.fontSize['3xl'],
   },
   heroSubtitle: {
     fontSize: theme.typography.fontSize.lg,
     color: theme.colors.gray[600],
     textAlign: 'center',
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.lg,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.lg,
     paddingHorizontal: theme.spacing.base,
   },
   featuresSection: {
@@ -266,7 +310,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.gray[700],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
   },
   ctaSection: {
     padding: theme.spacing.xl,
@@ -301,4 +346,4 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.white,
     marginTop: 10,
   },
-}); 
+});

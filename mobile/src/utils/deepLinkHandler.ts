@@ -27,10 +27,10 @@ export class DeepLinkHandler {
   initialize() {
     // Handle initial URL if app was opened via deep link
     this.handleInitialURL();
-    
+
     // Listen for incoming deep links while app is running
     const subscription = Linking.addEventListener('url', this.handleDeepLink);
-    
+
     return () => {
       subscription?.remove();
     };
@@ -50,12 +50,15 @@ export class DeepLinkHandler {
   private handleDeepLink = ({ url }: { url: string }) => {
     try {
       console.log('Deep link received:', url);
-      
+
       const parsed = Linking.parse(url);
       console.log('Parsed deep link:', parsed);
 
       if (parsed.hostname === 'auth') {
-        this.handleAuthDeepLink(parsed.path, parsed.queryParams as DeepLinkParams);
+        this.handleAuthDeepLink(
+          parsed.path,
+          parsed.queryParams as DeepLinkParams
+        );
       } else {
         console.log('Unhandled deep link:', parsed);
       }
@@ -100,8 +103,8 @@ export class DeepLinkHandler {
               if (this.navigationRef?.current) {
                 this.navigationRef.current.navigate('Login');
               }
-            }
-          }
+            },
+          },
         ]
       );
     }
@@ -121,8 +124,8 @@ export class DeepLinkHandler {
 
     // Navigate to password reset screen with token
     if (this.navigationRef?.current && params.token) {
-      this.navigationRef.current.navigate('ResetPassword', { 
-        token: params.token 
+      this.navigationRef.current.navigate('ResetPassword', {
+        token: params.token,
       });
     }
   }
@@ -130,22 +133,31 @@ export class DeepLinkHandler {
   // Method to create deep link URLs
   static createDeepLink(path: string, params?: Record<string, string>): string {
     const baseURL = 'bytelecture://';
-    const queryString = params ? 
-      '?' + Object.entries(params).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&') : 
-      '';
-    
+    const queryString = params
+      ? '?' +
+        Object.entries(params)
+          .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+          .join('&')
+      : '';
+
     return `${baseURL}${path}${queryString}`;
   }
 
   // Method to create universal link URLs (for production)
-  static createUniversalLink(path: string, params?: Record<string, string>): string {
+  static createUniversalLink(
+    path: string,
+    params?: Record<string, string>
+  ): string {
     const baseURL = 'https://bytelecture.app/';
-    const queryString = params ? 
-      '?' + Object.entries(params).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&') : 
-      '';
-    
+    const queryString = params
+      ? '?' +
+        Object.entries(params)
+          .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+          .join('&')
+      : '';
+
     return `${baseURL}${path}${queryString}`;
   }
 }
 
-export default DeepLinkHandler; 
+export default DeepLinkHandler;

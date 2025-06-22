@@ -53,24 +53,30 @@ export const AISummary: React.FC<AISummaryProps> = ({
 
   const getContentTypeDisplay = () => {
     switch (contentType) {
-      case 'pdf': return 'PDF Document';
-      case 'youtube': return 'YouTube Video';
-      case 'audio': return 'Audio Recording';
-      case 'text': return 'Text Content';
-      default: return 'Content';
+      case 'pdf':
+        return 'PDF Document';
+      case 'youtube':
+        return 'YouTube Video';
+      case 'audio':
+        return 'Audio Recording';
+      case 'text':
+        return 'Text Content';
+      default:
+        return 'Content';
     }
   };
 
   const getContentLength = () => {
     if (content.length < 1000) return `${content.length} characters`;
-    if (content.length < 1000000) return `${(content.length / 1000).toFixed(1)}K characters`;
+    if (content.length < 1000000)
+      return `${(content.length / 1000).toFixed(1)}K characters`;
     return `${(content.length / 1000000).toFixed(1)}M characters`;
   };
 
   const handleGenerateSummary = async () => {
     try {
       clearError();
-      
+
       const result = await generateSummary({
         content,
         contentType,
@@ -89,7 +95,7 @@ export const AISummary: React.FC<AISummaryProps> = ({
   const handleQuickSummary = async (length: 'short' | 'medium' | 'long') => {
     try {
       clearError();
-      
+
       const result = await quickSummary(content, contentType, length);
 
       if (result && onSummaryGenerated) {
@@ -138,7 +144,7 @@ export const AISummary: React.FC<AISummaryProps> = ({
             <Text style={styles.description}>
               Generate an AI-powered summary of your {contentType} content
             </Text>
-            
+
             <View style={styles.quickActions}>
               <Button
                 title="Quick Summary"
@@ -146,7 +152,7 @@ export const AISummary: React.FC<AISummaryProps> = ({
                 style={styles.primaryButton}
                 disabled={loading}
               />
-              
+
               <TouchableOpacity
                 style={styles.optionsButton}
                 onPress={() => setShowOptions(true)}
@@ -165,7 +171,7 @@ export const AISummary: React.FC<AISummaryProps> = ({
               >
                 <Text style={styles.lengthButtonText}>Short</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={styles.lengthButton}
                 onPress={() => handleQuickSummary('medium')}
@@ -173,7 +179,7 @@ export const AISummary: React.FC<AISummaryProps> = ({
               >
                 <Text style={styles.lengthButtonText}>Medium</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={styles.lengthButton}
                 onPress={() => handleQuickSummary('long')}
@@ -200,7 +206,7 @@ export const AISummary: React.FC<AISummaryProps> = ({
                 <Ionicons name="document-text" size={16} color="#059669" />
                 <Text style={styles.summaryTitle}>Summary</Text>
               </View>
-              
+
               {summary.metadata.cacheHit && (
                 <View style={styles.cacheIndicator}>
                   <Ionicons name="flash" size={12} color="#f59e0b" />
@@ -220,14 +226,17 @@ export const AISummary: React.FC<AISummaryProps> = ({
                   {formatProcessingTime(summary.metadata.processingTime)}
                 </Text>
               </View>
-              
+
               <View style={styles.metadataRow}>
                 <Text style={styles.metadataLabel}>Token Usage:</Text>
                 <Text style={styles.metadataValue}>
-                  {formatTokenCost(summary.metadata.tokensUsed, summary.metadata.estimatedCost)}
+                  {formatTokenCost(
+                    summary.metadata.tokensUsed,
+                    summary.metadata.estimatedCost
+                  )}
                 </Text>
               </View>
-              
+
               <View style={styles.metadataRow}>
                 <Text style={styles.metadataLabel}>Compression:</Text>
                 <Text style={styles.metadataValue}>
@@ -270,14 +279,22 @@ export const AISummary: React.FC<AISummaryProps> = ({
                       key={length}
                       style={[
                         styles.optionItem,
-                        options.length === length && styles.optionItemSelected
+                        options.length === length && styles.optionItemSelected,
                       ]}
-                      onPress={() => setOptions(prev => ({ ...prev, length: length as 'short' | 'medium' | 'long' }))}
+                      onPress={() =>
+                        setOptions((prev) => ({
+                          ...prev,
+                          length: length as 'short' | 'medium' | 'long',
+                        }))
+                      }
                     >
-                      <Text style={[
-                        styles.optionItemText,
-                        options.length === length && styles.optionItemTextSelected
-                      ]}>
+                      <Text
+                        style={[
+                          styles.optionItemText,
+                          options.length === length &&
+                            styles.optionItemTextSelected,
+                        ]}
+                      >
                         {length === 'short' && 'Short (2-3 sentences)'}
                         {length === 'medium' && 'Medium (1-2 paragraphs)'}
                         {length === 'long' && 'Long (3-4 paragraphs)'}
@@ -290,26 +307,41 @@ export const AISummary: React.FC<AISummaryProps> = ({
               <View style={styles.optionGroup}>
                 <Text style={styles.optionLabel}>Focus Area</Text>
                 <View style={styles.optionSelector}>
-                  {['general', 'concepts', 'examples', 'applications'].map((focus) => (
-                    <TouchableOpacity
-                      key={focus}
-                      style={[
-                        styles.optionItem,
-                        options.focusArea === focus && styles.optionItemSelected
-                      ]}
-                      onPress={() => setOptions(prev => ({ ...prev, focusArea: focus as 'general' | 'concepts' | 'examples' | 'applications' }))}
-                    >
-                      <Text style={[
-                        styles.optionItemText,
-                        options.focusArea === focus && styles.optionItemTextSelected
-                      ]}>
-                        {focus === 'general' && 'General Overview'}
-                        {focus === 'concepts' && 'Key Concepts'}
-                        {focus === 'examples' && 'Examples & Applications'}
-                        {focus === 'applications' && 'Practical Applications'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  {['general', 'concepts', 'examples', 'applications'].map(
+                    (focus) => (
+                      <TouchableOpacity
+                        key={focus}
+                        style={[
+                          styles.optionItem,
+                          options.focusArea === focus &&
+                            styles.optionItemSelected,
+                        ]}
+                        onPress={() =>
+                          setOptions((prev) => ({
+                            ...prev,
+                            focusArea: focus as
+                              | 'general'
+                              | 'concepts'
+                              | 'examples'
+                              | 'applications',
+                          }))
+                        }
+                      >
+                        <Text
+                          style={[
+                            styles.optionItemText,
+                            options.focusArea === focus &&
+                              styles.optionItemTextSelected,
+                          ]}
+                        >
+                          {focus === 'general' && 'General Overview'}
+                          {focus === 'concepts' && 'Key Concepts'}
+                          {focus === 'examples' && 'Examples & Applications'}
+                          {focus === 'applications' && 'Practical Applications'}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  )}
                 </View>
               </View>
             </ScrollView>
@@ -575,4 +607,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AISummary; 
+export default AISummary;

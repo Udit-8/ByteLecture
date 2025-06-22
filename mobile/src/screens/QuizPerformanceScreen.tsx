@@ -17,12 +17,7 @@ import { useQuiz } from '../hooks/useQuiz';
 export const QuizPerformanceScreen: React.FC = () => {
   const { setMainMode } = useNavigation();
   const navigation = useReactNavigation();
-  const {
-    analytics,
-    loadingAnalytics,
-    error,
-    loadAnalytics,
-  } = useQuiz();
+  const { analytics, loadingAnalytics, error, loadAnalytics } = useQuiz();
 
   const [selectedTimeframe, setSelectedTimeframe] = useState<number>(30);
 
@@ -48,7 +43,13 @@ export const QuizPerformanceScreen: React.FC = () => {
         <Header
           title="Quiz Performance"
           leftAction={{
-            icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[700]} />,
+            icon: (
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color={theme.colors.gray[700]}
+              />
+            ),
             onPress: handleBackPress,
           }}
         />
@@ -63,12 +64,22 @@ export const QuizPerformanceScreen: React.FC = () => {
         <Header
           title="Quiz Performance"
           leftAction={{
-            icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[700]} />,
+            icon: (
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color={theme.colors.gray[700]}
+              />
+            ),
             onPress: handleBackPress,
           }}
         />
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={48} color={theme.colors.error[500]} />
+          <Ionicons
+            name="alert-circle"
+            size={48}
+            color={theme.colors.error[500]}
+          />
           <Text style={styles.errorText}>{error}</Text>
           <Button
             title="Try Again"
@@ -88,15 +99,25 @@ export const QuizPerformanceScreen: React.FC = () => {
       <Header
         title="Quiz Performance"
         leftAction={{
-          icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[700]} />,
+          icon: (
+            <Ionicons
+              name="arrow-back"
+              size={24}
+              color={theme.colors.gray[700]}
+            />
+          ),
           onPress: handleBackPress,
         }}
         rightAction={{
           icon: (
-            <Ionicons 
-              name="refresh" 
-              size={24} 
-              color={loadingAnalytics ? theme.colors.gray[400] : theme.colors.primary[600]} 
+            <Ionicons
+              name="refresh"
+              size={24}
+              color={
+                loadingAnalytics
+                  ? theme.colors.gray[400]
+                  : theme.colors.primary[600]
+              }
             />
           ),
           onPress: handleRefresh,
@@ -108,19 +129,22 @@ export const QuizPerformanceScreen: React.FC = () => {
         <Card style={styles.timeframeCard}>
           <Text style={styles.timeframeTitle}>Analytics Period</Text>
           <View style={styles.timeframeButtons}>
-            {[7, 30, 90, 365].map(days => (
+            {[7, 30, 90, 365].map((days) => (
               <TouchableOpacity
                 key={days}
                 style={[
                   styles.timeframeButton,
-                  selectedTimeframe === days && styles.timeframeButtonSelected
+                  selectedTimeframe === days && styles.timeframeButtonSelected,
                 ]}
                 onPress={() => setSelectedTimeframe(days)}
               >
-                <Text style={[
-                  styles.timeframeButtonText,
-                  selectedTimeframe === days && styles.timeframeButtonTextSelected
-                ]}>
+                <Text
+                  style={[
+                    styles.timeframeButtonText,
+                    selectedTimeframe === days &&
+                      styles.timeframeButtonTextSelected,
+                  ]}
+                >
                   {days === 365 ? '1Y' : `${days}D`}
                 </Text>
               </TouchableOpacity>
@@ -138,10 +162,19 @@ export const QuizPerformanceScreen: React.FC = () => {
               </Card>
               <Card style={styles.statsCard}>
                 <Text style={styles.statsTitle}>Overall Accuracy</Text>
-                <Text style={[styles.statsValue, {
-                  color: overview.overallAccuracy >= 80 ? theme.colors.success[600] : 
-                         overview.overallAccuracy >= 60 ? theme.colors.warning[600] : theme.colors.error[600]
-                }]}>
+                <Text
+                  style={[
+                    styles.statsValue,
+                    {
+                      color:
+                        overview.overallAccuracy >= 80
+                          ? theme.colors.success[600]
+                          : overview.overallAccuracy >= 60
+                            ? theme.colors.warning[600]
+                            : theme.colors.error[600],
+                    },
+                  ]}
+                >
                   {overview.overallAccuracy}%
                 </Text>
                 <Text style={styles.statsSubtitle}>
@@ -153,17 +186,25 @@ export const QuizPerformanceScreen: React.FC = () => {
             <View style={styles.statsGrid}>
               <Card style={styles.statsCard}>
                 <Text style={styles.statsTitle}>Avg Time/Question</Text>
-                <Text style={styles.statsValue}>{overview.averageTimePerQuestion}s</Text>
+                <Text style={styles.statsValue}>
+                  {overview.averageTimePerQuestion}s
+                </Text>
               </Card>
               <Card style={styles.statsCard}>
                 <Text style={styles.statsTitle}>Total Study Time</Text>
-                <Text style={styles.statsValue}>{Math.round(overview.totalTimeSpent / 60)}m</Text>
+                <Text style={styles.statsValue}>
+                  {Math.round(overview.totalTimeSpent / 60)}m
+                </Text>
               </Card>
             </View>
           </>
         ) : (
           <Card style={styles.emptyCard}>
-            <Ionicons name="bar-chart" size={48} color={theme.colors.gray[400]} />
+            <Ionicons
+              name="bar-chart"
+              size={48}
+              color={theme.colors.gray[400]}
+            />
             <Text style={styles.emptyTitle}>No Quiz Data Yet</Text>
             <Text style={styles.emptySubtitle}>
               Complete some quizzes to see your performance analytics here.
@@ -176,9 +217,13 @@ export const QuizPerformanceScreen: React.FC = () => {
           <Card style={styles.recentCard}>
             <Text style={styles.sectionTitle}>Recent Quiz Attempts</Text>
             {recentAttempts.map((attempt) => {
-              const scoreColor = attempt.percentage >= 80 ? theme.colors.success[600] : 
-                                attempt.percentage >= 60 ? theme.colors.warning[600] : theme.colors.error[600];
-              
+              const scoreColor =
+                attempt.percentage >= 80
+                  ? theme.colors.success[600]
+                  : attempt.percentage >= 60
+                    ? theme.colors.warning[600]
+                    : theme.colors.error[600];
+
               return (
                 <View key={attempt.id} style={styles.attemptRow}>
                   <View style={styles.attemptInfo}>

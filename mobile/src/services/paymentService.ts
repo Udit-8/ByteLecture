@@ -1,10 +1,8 @@
 // Payment Service for Google Play & Apple Pay Integration
 import { Platform } from 'react-native';
-import RNIap, {
+import {
   Product,
   Subscription,
-  ProductPurchase,
-  SubscriptionPurchase,
   initConnection,
   endConnection,
   getProducts,
@@ -24,7 +22,6 @@ import {
   RestorePurchasesResult,
   PaymentConfiguration,
   PRODUCT_IDS,
-  SUBSCRIPTION_PRICING,
   PlatformType,
   SubscriptionType,
   ReceiptValidationRequest,
@@ -55,12 +52,14 @@ class PaymentService {
       if (typeof __DEV__ !== 'undefined' && __DEV__) {
         return true;
       }
-    } catch (e) {
+    } catch (_e) {
       // Ignore if __DEV__ is not available
     }
-    
+
     // Check if running in simulator/emulator
-    return Platform.OS === 'ios' ? Platform.constants.systemName === 'iOS Simulator' : false;
+    return Platform.OS === 'ios'
+      ? Platform.constants.systemName === 'iOS Simulator'
+      : false;
   }
 
   /**
@@ -73,37 +72,46 @@ class PaymentService {
       }
 
       console.log('[PaymentService] Initializing payment service...');
-      
+
       // Check if we're in development mode
       if (this.isDevelopmentMode()) {
-        console.log('[PaymentService] Running in development mode - using mock payment service');
+        console.log(
+          '[PaymentService] Running in development mode - using mock payment service'
+        );
         this.isInitialized = true;
         return true;
       }
 
       const result = await initConnection();
       this.isInitialized = result;
-      
+
       if (this.isInitialized) {
-        console.log('[PaymentService] Payment service initialized successfully');
-        
+        console.log(
+          '[PaymentService] Payment service initialized successfully'
+        );
+
         // Clear any pending transactions on iOS
         if (this.platform === 'ios') {
           await this.clearPendingTransactions();
         }
       }
-      
+
       return this.isInitialized;
     } catch (error: any) {
       console.error('[PaymentService] Failed to initialize:', error);
-      
+
       // If IAP is not available (development mode), use mock service
-      if (error.code === 'E_IAP_NOT_AVAILABLE' || error.message?.includes('E_IAP_NOT_AVAILABLE')) {
-        console.log('[PaymentService] IAP not available - using mock payment service for development');
+      if (
+        error.code === 'E_IAP_NOT_AVAILABLE' ||
+        error.message?.includes('E_IAP_NOT_AVAILABLE')
+      ) {
+        console.log(
+          '[PaymentService] IAP not available - using mock payment service for development'
+        );
         this.isInitialized = true;
         return true;
       }
-      
+
       return false;
     }
   }
@@ -128,7 +136,7 @@ class PaymentService {
       ];
 
       console.log('[PaymentService] Fetching products:', productIds);
-      
+
       let products: (Product | Subscription)[];
       if (this.platform === 'ios') {
         products = await getProducts({ skus: productIds });
@@ -136,16 +144,19 @@ class PaymentService {
         products = await getSubscriptions({ skus: productIds });
       }
 
-      return products.map(product => this.mapToSubscriptionProduct(product));
+      return products.map((product) => this.mapToSubscriptionProduct(product));
     } catch (error) {
       console.error('[PaymentService] Failed to get products:', error);
-      
+
       // Fallback to mock products if store fetch fails
       if (this.isDevelopmentMode()) {
         return this.getMockProducts();
       }
-      
-      throw this.createPaymentError('PRODUCTS_FETCH_FAILED', 'Failed to fetch subscription products');
+
+      throw this.createPaymentError(
+        'PRODUCTS_FETCH_FAILED',
+        'Failed to fetch subscription products'
+      );
     }
   }
 
@@ -161,15 +172,18 @@ class PaymentService {
         await this.initialize();
       }
 
-      const productId = subscriptionType === 'monthly' 
-        ? this.configuration.monthlyProductId 
-        : this.configuration.yearlyProductId;
+      const productId =
+        subscriptionType === 'monthly'
+          ? this.configuration.monthlyProductId
+          : this.configuration.yearlyProductId;
 
       console.log('[PaymentService] Purchasing subscription:', productId);
 
       // Return mock success in development mode
       if (this.isDevelopmentMode()) {
-        console.log('[PaymentService] Mock purchase successful in development mode');
+        console.log(
+          '[PaymentService] Mock purchase successful in development mode'
+        );
         return {
           success: true,
           transactionId: `mock_${Date.now()}`,
@@ -181,16 +195,22 @@ class PaymentService {
 
       const purchaseResult = await requestSubscription({
         sku: productId,
-        ...(this.platform === 'android' && offerToken && { 
-          subscriptionOffers: [{ sku: productId, offerToken }] 
-        }),
+        ...(this.platform === 'android' &&
+          offerToken && {
+            subscriptionOffers: [{ sku: productId, offerToken }],
+          }),
       });
 
       // Handle both single purchase and array results
-      const purchase = Array.isArray(purchaseResult) ? purchaseResult[0] : purchaseResult;
-      
+      const purchase = Array.isArray(purchaseResult)
+        ? purchaseResult[0]
+        : purchaseResult;
+
       if (!purchase) {
-        throw this.createPaymentError('PURCHASE_FAILED', 'No purchase data received');
+        throw this.createPaymentError(
+          'PURCHASE_FAILED',
+          'No purchase data received'
+        );
       }
 
       // Validate the receipt with our backend
@@ -202,7 +222,10 @@ class PaymentService {
       });
 
       if (!validationResult.valid) {
-        throw this.createPaymentError('RECEIPT_VALIDATION_FAILED', 'Receipt validation failed');
+        throw this.createPaymentError(
+          'RECEIPT_VALIDATION_FAILED',
+          'Receipt validation failed'
+        );
       }
 
       // Acknowledge/finish the transaction
@@ -212,24 +235,33 @@ class PaymentService {
         success: true,
         transactionId: purchase.transactionId,
         productId: purchase.productId,
-        transactionDate: purchase.transactionDate ? new Date(purchase.transactionDate).toISOString() : new Date().toISOString(),
+        transactionDate: purchase.transactionDate
+          ? new Date(purchase.transactionDate).toISOString()
+          : new Date().toISOString(),
         transactionReceipt: purchase.transactionReceipt,
         purchaseToken: purchase.purchaseToken,
         originalTransactionId: purchase.originalTransactionIdentifierIOS,
       };
     } catch (error: any) {
       console.error('[PaymentService] Purchase failed:', error);
-      
+
       if (error.code === 'E_USER_CANCELLED') {
         return {
           success: false,
-          error: this.createPaymentError('USER_CANCELLED', 'Purchase was cancelled by user', true),
+          error: this.createPaymentError(
+            'USER_CANCELLED',
+            'Purchase was cancelled by user',
+            true
+          ),
         };
       }
 
       return {
         success: false,
-        error: this.createPaymentError('PURCHASE_FAILED', error.message || 'Purchase failed'),
+        error: this.createPaymentError(
+          'PURCHASE_FAILED',
+          error.message || 'Purchase failed'
+        ),
       };
     }
   }
@@ -247,7 +279,9 @@ class PaymentService {
 
       // Return empty results in development mode
       if (this.isDevelopmentMode()) {
-        console.log('[PaymentService] No purchases to restore in development mode');
+        console.log(
+          '[PaymentService] No purchases to restore in development mode'
+        );
         return {
           success: true,
           restoredPurchases: [],
@@ -272,7 +306,9 @@ class PaymentService {
             success: true,
             transactionId: purchase.transactionId,
             productId: purchase.productId,
-            transactionDate: purchase.transactionDate ? new Date(purchase.transactionDate).toISOString() : new Date().toISOString(),
+            transactionDate: purchase.transactionDate
+              ? new Date(purchase.transactionDate).toISOString()
+              : new Date().toISOString(),
             transactionReceipt: purchase.transactionReceipt,
             purchaseToken: purchase.purchaseToken,
             originalTransactionId: purchase.originalTransactionIdentifierIOS,
@@ -289,7 +325,10 @@ class PaymentService {
       return {
         success: false,
         restoredPurchases: [],
-        error: this.createPaymentError('RESTORE_FAILED', error.message || 'Failed to restore purchases'),
+        error: this.createPaymentError(
+          'RESTORE_FAILED',
+          error.message || 'Failed to restore purchases'
+        ),
       };
     }
   }
@@ -305,7 +344,7 @@ class PaymentService {
       }
 
       const purchases = await getAvailablePurchases();
-      
+
       // Find the most recent active subscription
       const validSubscriptions = [];
       for (const purchase of purchases) {
@@ -316,21 +355,29 @@ class PaymentService {
           transactionId: purchase.transactionId || '',
         });
 
-        if (validationResult.valid && validationResult.subscriptionStatus.isActive) {
+        if (
+          validationResult.valid &&
+          validationResult.subscriptionStatus.isActive
+        ) {
           validSubscriptions.push(validationResult.subscriptionStatus);
         }
       }
 
       // Return the most recent active subscription
       if (validSubscriptions.length > 0) {
-        return validSubscriptions.sort((a, b) => 
-          new Date(b.originalPurchaseDate || 0).getTime() - new Date(a.originalPurchaseDate || 0).getTime()
+        return validSubscriptions.sort(
+          (a, b) =>
+            new Date(b.originalPurchaseDate || 0).getTime() -
+            new Date(a.originalPurchaseDate || 0).getTime()
         )[0];
       }
 
       return { isActive: false };
     } catch (error) {
-      console.error('[PaymentService] Failed to get subscription status:', error);
+      console.error(
+        '[PaymentService] Failed to get subscription status:',
+        error
+      );
       return { isActive: false };
     }
   }
@@ -338,7 +385,9 @@ class PaymentService {
   /**
    * Validate receipt with backend server
    */
-  private async validateReceipt(request: ReceiptValidationRequest): Promise<ReceiptValidationResponse> {
+  private async validateReceipt(
+    request: ReceiptValidationRequest
+  ): Promise<ReceiptValidationResponse> {
     try {
       // TODO: Replace with actual backend endpoint
       const response = await fetch('/api/payments/validate-receipt', {
@@ -357,7 +406,7 @@ class PaymentService {
       return await response.json();
     } catch (error) {
       console.error('[PaymentService] Receipt validation failed:', error);
-      
+
       // For now, return a mock successful validation
       // TODO: Remove this and implement proper backend validation
       return {
@@ -366,7 +415,9 @@ class PaymentService {
           isActive: true,
           productId: request.productId,
           platform: request.platform,
-          expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+          expiryDate: new Date(
+            Date.now() + 30 * 24 * 60 * 60 * 1000
+          ).toISOString(), // 30 days from now
         },
       };
     }
@@ -382,25 +433,37 @@ class PaymentService {
         await clearTransactionIOS();
       }
     } catch (error) {
-      console.warn('[PaymentService] Failed to clear pending transactions:', error);
+      console.warn(
+        '[PaymentService] Failed to clear pending transactions:',
+        error
+      );
     }
   }
 
   /**
    * Map store product to our SubscriptionProduct interface
    */
-  private mapToSubscriptionProduct(product: Product | Subscription): SubscriptionProduct {
-    const type: SubscriptionType = product.productId.includes('monthly') ? 'monthly' : 'yearly';
-    
+  private mapToSubscriptionProduct(
+    product: Product | Subscription
+  ): SubscriptionProduct {
+    const type: SubscriptionType = product.productId.includes('monthly')
+      ? 'monthly'
+      : 'yearly';
+
     // Handle different property names between Product and Subscription types
     const isProduct = 'price' in product;
-    
+
     return {
       productId: product.productId,
       type,
-      price: isProduct ? product.price : (product as any).oneTimePurchaseOfferDetails?.priceAmountMicros || '0',
+      price: isProduct
+        ? product.price
+        : (product as any).oneTimePurchaseOfferDetails?.priceAmountMicros ||
+          '0',
       currency: isProduct ? product.currency : 'INR',
-      localizedPrice: isProduct ? product.localizedPrice : (product as any).oneTimePurchaseOfferDetails?.formattedPrice || '₹0',
+      localizedPrice: isProduct
+        ? product.localizedPrice
+        : (product as any).oneTimePurchaseOfferDetails?.formattedPrice || '₹0',
       title: product.title || 'Subscription',
       description: product.description || '',
       platform: this.platform,
@@ -411,8 +474,8 @@ class PaymentService {
    * Create a standardized payment error
    */
   private createPaymentError(
-    code: string, 
-    message: string, 
+    code: string,
+    message: string,
     userCancelled: boolean = false,
     networkError: boolean = false,
     storeError: boolean = false
@@ -448,7 +511,8 @@ class PaymentService {
         currency: 'INR',
         localizedPrice: '₹999',
         title: 'ByteLecture Premium Yearly',
-        description: 'Yearly subscription to ByteLecture Premium features (Save ₹189)',
+        description:
+          'Yearly subscription to ByteLecture Premium features (Save ₹189)',
         platform: this.platform,
       },
     ];
@@ -470,18 +534,68 @@ class PaymentService {
   async cleanup(): Promise<void> {
     try {
       if (this.isInitialized) {
-        if (!this.isDevelopmentMode()) {
-          await endConnection();
-        }
+        await endConnection();
         this.isInitialized = false;
-        console.log('[PaymentService] Payment service cleaned up');
+        console.log('[PaymentService] Service cleaned up successfully');
       }
     } catch (error) {
-      console.error('[PaymentService] Cleanup failed:', error);
+      console.error('[PaymentService] Failed to cleanup:', error);
+    }
+  }
+
+  /**
+   * Check if user has active premium subscription
+   */
+  async checkPremiumStatus(): Promise<boolean> {
+    try {
+      const status = await this.getSubscriptionStatus();
+      return status.isActive || false;
+    } catch (error) {
+      console.error('[PaymentService] Failed to check premium status:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get premium limits based on subscription status
+   */
+  async getPremiumLimits(): Promise<{
+    maxDevices: number;
+    syncFrequency: number;
+    offlineStorage: number;
+    conflictRetention: number;
+  }> {
+    try {
+      const isPremium = await this.checkPremiumStatus();
+
+      if (isPremium) {
+        return {
+          maxDevices: -1, // unlimited
+          syncFrequency: 5000, // 5 seconds
+          offlineStorage: 500, // 500MB
+          conflictRetention: 30, // 30 days
+        };
+      } else {
+        return {
+          maxDevices: 1,
+          syncFrequency: 30000, // 30 seconds
+          offlineStorage: 50, // 50MB
+          conflictRetention: 7, // 7 days
+        };
+      }
+    } catch (error) {
+      console.error('[PaymentService] Failed to get premium limits:', error);
+      // Return free tier limits as fallback
+      return {
+        maxDevices: 1,
+        syncFrequency: 30000,
+        offlineStorage: 50,
+        conflictRetention: 7,
+      };
     }
   }
 }
 
 // Export singleton instance
 export const paymentService = new PaymentService();
-export default paymentService; 
+export default paymentService;

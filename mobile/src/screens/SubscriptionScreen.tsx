@@ -33,9 +33,13 @@ interface SubscriptionScreenProps {
   };
 }
 
-const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, route }) => {
+const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
+  navigation,
+  route,
+}) => {
   const [products, setProducts] = useState<SubscriptionProduct[]>([]);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>({ isActive: false });
+  const [subscriptionStatus, setSubscriptionStatus] =
+    useState<SubscriptionStatus>({ isActive: false });
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
@@ -49,7 +53,7 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
   const initializePayments = async () => {
     try {
       setLoading(true);
-      
+
       // Initialize payment service
       const initialized = await paymentService.initialize();
       if (!initialized) {
@@ -82,9 +86,10 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
   const handlePurchase = async (subscriptionType: SubscriptionType) => {
     try {
       setPurchasing(subscriptionType);
-      
-      const result = await paymentService.purchaseSubscription(subscriptionType);
-      
+
+      const result =
+        await paymentService.purchaseSubscription(subscriptionType);
+
       if (result.success) {
         Alert.alert(
           'Success! 🎉',
@@ -94,7 +99,9 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
               text: 'Start Learning',
               onPress: () => {
                 // Refresh subscription status
-                paymentService.getSubscriptionStatus().then(setSubscriptionStatus);
+                paymentService
+                  .getSubscriptionStatus()
+                  .then(setSubscriptionStatus);
                 navigation.goBack();
               },
             },
@@ -105,7 +112,8 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
       } else {
         Alert.alert(
           'Purchase Failed',
-          result.error?.message || 'An error occurred during purchase. Please try again.',
+          result.error?.message ||
+            'An error occurred during purchase. Please try again.',
           [{ text: 'OK' }]
         );
       }
@@ -124,9 +132,9 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
   const handleRestorePurchases = async () => {
     try {
       setRestoring(true);
-      
+
       const result = await paymentService.restorePurchases();
-      
+
       if (result.success && result.restoredPurchases.length > 0) {
         Alert.alert(
           'Purchases Restored',
@@ -136,7 +144,9 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
               text: 'OK',
               onPress: () => {
                 // Refresh subscription status
-                paymentService.getSubscriptionStatus().then(setSubscriptionStatus);
+                paymentService
+                  .getSubscriptionStatus()
+                  .then(setSubscriptionStatus);
               },
             },
           ]
@@ -150,7 +160,8 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
       } else {
         Alert.alert(
           'Restore Failed',
-          result.error?.message || 'Failed to restore purchases. Please try again.',
+          result.error?.message ||
+            'Failed to restore purchases. Please try again.',
           [{ text: 'OK' }]
         );
       }
@@ -168,16 +179,16 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
 
   const renderSubscriptionCard = (type: SubscriptionType) => {
     const pricing = SUBSCRIPTION_PRICING[type];
-    const product = products.find(p => p.type === type);
+    const product = products.find((p) => p.type === type);
     const isPurchasing = purchasing === type;
     const isRecommended = type === 'yearly';
 
     return (
-      <Card 
-        key={type} 
+      <Card
+        key={type}
         style={{
           ...styles.planCard,
-          ...(isRecommended && styles.recommendedCard)
+          ...(isRecommended && styles.recommendedCard),
         }}
       >
         {isRecommended && (
@@ -185,7 +196,7 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
             <Text style={styles.recommendedText}>BEST VALUE</Text>
           </View>
         )}
-        
+
         <View style={styles.planHeader}>
           <Text style={styles.planTitle}>
             {type === 'monthly' ? 'Monthly' : 'Yearly'}
@@ -193,20 +204,32 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
           <View style={styles.priceContainer}>
             <Text style={styles.priceSymbol}>{pricing.symbol}</Text>
             <Text style={styles.priceAmount}>{pricing.price}</Text>
-            <Text style={styles.pricePeriod}>/{type === 'monthly' ? 'month' : 'year'}</Text>
+            <Text style={styles.pricePeriod}>
+              /{type === 'monthly' ? 'month' : 'year'}
+            </Text>
           </View>
           {type === 'yearly' && 'savings' in pricing && (
-            <Text style={styles.savingsText}>Save {pricing.savings} per year!</Text>
+            <Text style={styles.savingsText}>
+              Save {pricing.savings} per year!
+            </Text>
           )}
         </View>
 
         <View style={styles.featuresContainer}>
           <Text style={styles.featuresTitle}>Premium Features:</Text>
           <View style={styles.featuresList}>
-            <Text style={styles.featureItem}>✅ Unlimited PDF & YouTube processing</Text>
-            <Text style={styles.featureItem}>✅ Unlimited lecture recordings</Text>
-            <Text style={styles.featureItem}>✅ Unlimited flashcards & quizzes</Text>
-            <Text style={styles.featureItem}>✅ Unlimited AI tutor questions</Text>
+            <Text style={styles.featureItem}>
+              ✅ Unlimited PDF & YouTube processing
+            </Text>
+            <Text style={styles.featureItem}>
+              ✅ Unlimited lecture recordings
+            </Text>
+            <Text style={styles.featureItem}>
+              ✅ Unlimited flashcards & quizzes
+            </Text>
+            <Text style={styles.featureItem}>
+              ✅ Unlimited AI tutor questions
+            </Text>
             <Text style={styles.featureItem}>✅ Full audio summaries</Text>
             <Text style={styles.featureItem}>✅ Multi-device sync</Text>
             <Text style={styles.featureItem}>✅ Priority support</Text>
@@ -214,13 +237,17 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
         </View>
 
         <Button
-          title={isPurchasing ? 'Processing...' : `Subscribe ${type === 'monthly' ? 'Monthly' : 'Yearly'}`}
+          title={
+            isPurchasing
+              ? 'Processing...'
+              : `Subscribe ${type === 'monthly' ? 'Monthly' : 'Yearly'}`
+          }
           onPress={() => handlePurchase(type)}
           disabled={isPurchasing || loading}
           loading={isPurchasing}
           style={{
             ...styles.subscribeButton,
-            ...(isRecommended && styles.recommendedButton)
+            ...(isRecommended && styles.recommendedButton),
           }}
         />
 
@@ -236,10 +263,16 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <Header 
-          title="Premium Subscription" 
+        <Header
+          title="Premium Subscription"
           leftAction={{
-            icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[600]} />,
+            icon: (
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color={theme.colors.gray[600]}
+              />
+            ),
             onPress: () => navigation.goBack(),
           }}
         />
@@ -253,20 +286,29 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header 
-        title="Upgrade to Premium" 
+      <Header
+        title="Upgrade to Premium"
         leftAction={{
-          icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[600]} />,
+          icon: (
+            <Ionicons
+              name="arrow-back"
+              size={24}
+              color={theme.colors.gray[600]}
+            />
+          ),
           onPress: () => navigation.goBack(),
         }}
       />
-      
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {subscriptionStatus.isActive ? (
           <Card style={styles.activeSubscriptionCard}>
-            <Text style={styles.activeSubscriptionTitle}>🎉 You're a Premium Member!</Text>
+            <Text style={styles.activeSubscriptionTitle}>
+              🎉 You're a Premium Member!
+            </Text>
             <Text style={styles.activeSubscriptionText}>
-              Thank you for supporting ByteLecture. You have access to all premium features.
+              Thank you for supporting ByteLecture. You have access to all
+              premium features.
             </Text>
             {subscriptionStatus.expiryDate && (
               <Text style={styles.expiryText}>
@@ -280,7 +322,8 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
             <View style={styles.header}>
               <Text style={styles.title}>Unlock Your Learning Potential</Text>
               <Text style={styles.subtitle}>
-                Get unlimited access to all ByteLecture features and supercharge your studies.
+                Get unlimited access to all ByteLecture features and supercharge
+                your studies.
               </Text>
             </View>
 
@@ -291,7 +334,8 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
 
             <View style={styles.trialInfo}>
               <Text style={styles.trialText}>
-                📱 {Platform.OS === 'ios' ? 'App Store' : 'Google Play'} 7-day free trial included
+                📱 {Platform.OS === 'ios' ? 'App Store' : 'Google Play'} 7-day
+                free trial included
               </Text>
               <Text style={styles.trialSubtext}>
                 Cancel anytime during the trial period at no charge
@@ -300,7 +344,7 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
           </>
         )}
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.restoreButton}
           onPress={handleRestorePurchases}
           disabled={restoring}
@@ -314,8 +358,9 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation, rou
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            By subscribing, you agree to our Terms of Service and Privacy Policy. 
-            Subscription automatically renews unless cancelled 24 hours before the current period ends.
+            By subscribing, you agree to our Terms of Service and Privacy
+            Policy. Subscription automatically renews unless cancelled 24 hours
+            before the current period ends.
           </Text>
         </View>
       </ScrollView>
@@ -518,4 +563,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SubscriptionScreen; 
+export default SubscriptionScreen;

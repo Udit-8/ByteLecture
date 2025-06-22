@@ -3,7 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Completely disable realtime for React Native compatibility
 const isBrowser = typeof window !== 'undefined';
-const isReactNative = !isBrowser && typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
+const isReactNative =
+  !isBrowser &&
+  typeof navigator !== 'undefined' &&
+  navigator.product === 'ReactNative';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -34,6 +37,10 @@ if (isReactNative || typeof window === 'undefined') {
   clientConfig.realtime = false;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, clientConfig);
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseAnonKey,
+  clientConfig
+);
 
-export default supabase; 
+export default supabase;

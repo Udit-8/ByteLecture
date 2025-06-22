@@ -40,9 +40,10 @@ class AudioAPI {
   constructor() {
     // Get the backend URL from environment or use default
     // Strip /api from EXPO_PUBLIC_API_URL if present, since we add it in routes
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+    const apiUrl =
+      process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
     this.baseUrl = apiUrl.replace('/api', '');
-    
+
     console.log('🔧 AudioAPI initialized with baseUrl:', this.baseUrl);
   }
 
@@ -51,7 +52,9 @@ class AudioAPI {
    */
   async isAuthenticated(): Promise<boolean> {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       return !!session?.access_token;
     } catch (error) {
       console.error('Error checking authentication:', error);
@@ -64,20 +67,23 @@ class AudioAPI {
    */
   private async getAuthHeaders(): Promise<{ [key: string]: string }> {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
       if (error) {
         console.error('Error getting session:', error);
         throw new Error('Authentication error');
       }
-      
+
       if (!session?.access_token) {
         console.log('No active session found');
         throw new Error('User not authenticated');
       }
 
       const headers: { [key: string]: string } = {
-        'Authorization': `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
       };
 
@@ -103,7 +109,7 @@ class AudioAPI {
   ): Promise<TranscriptionResult> {
     try {
       const headers = await this.getAuthHeaders();
-      
+
       const response = await fetch(`${this.baseUrl}/api/audio/transcribe`, {
         method: 'POST',
         headers,
@@ -113,7 +119,8 @@ class AudioAPI {
         }),
       });
 
-      const result: AudioAPIResponse<TranscriptionResult> = await response.json();
+      const result: AudioAPIResponse<TranscriptionResult> =
+        await response.json();
 
       if (response.ok && result.success && result.data) {
         return {
@@ -138,15 +145,19 @@ class AudioAPI {
   /**
    * Get user's quota information
    */
-  async getQuotaInfo(): Promise<{ success: boolean; quota?: QuotaInfo; error?: string }> {
+  async getQuotaInfo(): Promise<{
+    success: boolean;
+    quota?: QuotaInfo;
+    error?: string;
+  }> {
     try {
       console.log('🔍 Starting quota info request...');
       const headers = await this.getAuthHeaders();
-      
+
       const url = `${this.baseUrl}/api/audio/quota`;
       console.log('📡 Making request to:', url);
       console.log('📋 Request headers:', Object.keys(headers));
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers,
@@ -155,7 +166,10 @@ class AudioAPI {
       console.log('📊 Response status:', response.status);
       console.log('📊 Response ok:', response.ok);
 
-      const result: AudioAPIResponse<{ quota: QuotaInfo; availableProviders: string[] }> = await response.json();
+      const result: AudioAPIResponse<{
+        quota: QuotaInfo;
+        availableProviders: string[];
+      }> = await response.json();
       console.log('📊 Response data:', result);
 
       if (response.ok && result.success && result.data) {
@@ -189,16 +203,23 @@ class AudioAPI {
   /**
    * Get transcription history
    */
-  async getTranscriptionHistory(limit = 50, offset = 0): Promise<{ success: boolean; history?: any[]; error?: string }> {
+  async getTranscriptionHistory(
+    limit = 50,
+    offset = 0
+  ): Promise<{ success: boolean; history?: any[]; error?: string }> {
     try {
       const headers = await this.getAuthHeaders();
-      
-      const response = await fetch(`${this.baseUrl}/api/audio/history?limit=${limit}&offset=${offset}`, {
-        method: 'GET',
-        headers,
-      });
 
-      const result: AudioAPIResponse<{ history: any[]; total: number }> = await response.json();
+      const response = await fetch(
+        `${this.baseUrl}/api/audio/history?limit=${limit}&offset=${offset}`,
+        {
+          method: 'GET',
+          headers,
+        }
+      );
+
+      const result: AudioAPIResponse<{ history: any[]; total: number }> =
+        await response.json();
 
       if (response.ok && result.success && result.data) {
         return {
@@ -223,7 +244,12 @@ class AudioAPI {
   /**
    * Check audio service health
    */
-  async healthCheck(): Promise<{ success: boolean; status?: string; providers?: string[]; error?: string }> {
+  async healthCheck(): Promise<{
+    success: boolean;
+    status?: string;
+    providers?: string[];
+    error?: string;
+  }> {
     try {
       const response = await fetch(`${this.baseUrl}/api/audio/health`, {
         method: 'GET',
@@ -261,4 +287,4 @@ class AudioAPI {
   }
 }
 
-export const audioAPI = new AudioAPI(); 
+export const audioAPI = new AudioAPI();

@@ -8,13 +8,7 @@ import {
   Dimensions,
   Alert,
 } from 'react-native';
-import Svg, {
-  G,
-  Circle,
-  Text as SvgText,
-  Line,
-  Rect,
-} from 'react-native-svg';
+import Svg, { G, Circle, Text as SvgText, Line, Rect } from 'react-native-svg';
 import { MindMapNode, MindMapData, MindMapStyle } from '../services/mindMapAPI';
 import { theme } from '../constants/theme';
 
@@ -42,7 +36,9 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
   editable = false,
   style,
 }) => {
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['root']));
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(
+    new Set(['root'])
+  );
 
   // Calculate layout based on mind map style
   const layoutNodes = useMemo(() => {
@@ -76,7 +72,10 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
           // Radial layout
           const radius = 100 + level * 80;
           const angleStep = (2 * Math.PI) / Math.max(childCount, 1);
-          const startAngle = angle !== undefined ? angle - angleStep * (childCount - 1) / 2 : 0;
+          const startAngle =
+            angle !== undefined
+              ? angle - (angleStep * (childCount - 1)) / 2
+              : 0;
 
           node.children.forEach((child, index) => {
             const childAngle = startAngle + angleStep * index;
@@ -114,10 +113,10 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
 
     const findConnections = (node: MindMapNode) => {
       if (node.children && expandedNodes.has(node.id)) {
-        const parentNode = layoutNodes.find(n => n.id === node.id);
+        const parentNode = layoutNodes.find((n) => n.id === node.id);
         if (parentNode) {
-          node.children.forEach(child => {
-            const childNode = layoutNodes.find(n => n.id === child.id);
+          node.children.forEach((child) => {
+            const childNode = layoutNodes.find((n) => n.id === child.id);
             if (childNode) {
               lines.push({ from: parentNode, to: childNode });
               findConnections(child);
@@ -132,7 +131,7 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
   }, [layoutNodes, expandedNodes, mindMapData.root]);
 
   const toggleNodeExpansion = (nodeId: string) => {
-    setExpandedNodes(prev => {
+    setExpandedNodes((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(nodeId)) {
         newSet.delete(nodeId);
@@ -152,14 +151,10 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
 
   const handleNodeLongPress = (node: LayoutNode) => {
     if (editable) {
-      Alert.alert(
-        'Edit Node',
-        `Edit "${node.title}"?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Edit', onPress: () => onNodeLongPress?.(node) },
-        ]
-      );
+      Alert.alert('Edit Node', `Edit "${node.title}"?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Edit', onPress: () => onNodeLongPress?.(node) },
+      ]);
     }
   };
 
@@ -169,10 +164,10 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
       return { width: screenWidth, height: screenHeight, minX: 0, minY: 0 };
     }
 
-    const minX = Math.min(...layoutNodes.map(n => n.x - n.width / 2)) - 50;
-    const maxX = Math.max(...layoutNodes.map(n => n.x + n.width / 2)) + 50;
-    const minY = Math.min(...layoutNodes.map(n => n.y - n.height / 2)) - 50;
-    const maxY = Math.max(...layoutNodes.map(n => n.y + n.height / 2)) + 50;
+    const minX = Math.min(...layoutNodes.map((n) => n.x - n.width / 2)) - 50;
+    const maxX = Math.max(...layoutNodes.map((n) => n.x + n.width / 2)) + 50;
+    const minY = Math.min(...layoutNodes.map((n) => n.y - n.height / 2)) - 50;
+    const maxY = Math.max(...layoutNodes.map((n) => n.y + n.height / 2)) + 50;
 
     return {
       width: Math.max(maxX - minX, screenWidth),
@@ -184,7 +179,7 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
 
   const getNodeColor = (node: LayoutNode) => {
     if (node.color) return node.color;
-    
+
     // Default colors based on level
     const colors = [
       theme.colors.primary[500],
@@ -201,7 +196,7 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
     const hasChildren = node.children && node.children.length > 0;
     const isExpanded = expandedNodes.has(node.id);
     const nodeColor = getNodeColor(node);
-    
+
     // Adjust position relative to SVG bounds
     const x = node.x - svgBounds.minX;
     const y = node.y - svgBounds.minY;
@@ -222,7 +217,7 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
           onPress={() => handleNodePress(node)}
           onLongPress={() => handleNodeLongPress(node)}
         />
-        
+
         {/* Node title */}
         <SvgText
           x={x}
@@ -233,9 +228,11 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
           textAnchor="middle"
           onPress={() => handleNodePress(node)}
         >
-          {node.title.length > 15 ? `${node.title.substring(0, 12)}...` : node.title}
+          {node.title.length > 15
+            ? `${node.title.substring(0, 12)}...`
+            : node.title}
         </SvgText>
-        
+
         {/* Expansion indicator */}
         {hasChildren && (
           <Circle
@@ -248,7 +245,7 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
             onPress={() => toggleNodeExpansion(node.id)}
           />
         )}
-        
+
         {/* Child count indicator */}
         {hasChildren && (
           <SvgText
@@ -266,7 +263,10 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
     );
   };
 
-  const renderConnection = (connection: { from: LayoutNode; to: LayoutNode }, index: number) => {
+  const renderConnection = (
+    connection: { from: LayoutNode; to: LayoutNode },
+    index: number
+  ) => {
     // Adjust positions relative to SVG bounds
     const fromX = connection.from.x - svgBounds.minX;
     const fromY = connection.from.y - svgBounds.minY;
@@ -309,13 +309,13 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
           >
             {/* Render connections first (behind nodes) */}
             {connections.map(renderConnection)}
-            
+
             {/* Render nodes */}
             {layoutNodes.map(renderNode)}
           </Svg>
         </ScrollView>
       </ScrollView>
-      
+
       {/* Controls */}
       <View style={styles.controls}>
         <TouchableOpacity
@@ -324,7 +324,7 @@ export const MindMapViewer: React.FC<MindMapViewerProps> = ({
         >
           <Text style={styles.controlButtonText}>Collapse All</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={styles.controlButton}
           onPress={() => {
@@ -370,4 +370,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-}); 
+});

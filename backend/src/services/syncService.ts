@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../config/supabase';
 import { paymentService } from './paymentService';
+import { ConflictResolutionService } from './conflictResolutionService';
 import {
   SyncDevice,
   SyncConflict,
@@ -16,9 +17,16 @@ import {
   SYNCABLE_TABLES,
   SyncChange,
   SyncError,
+  ConflictDeviceInfo,
 } from '../types/sync';
 
 class SyncService {
+  private conflictResolutionService: ConflictResolutionService;
+
+  constructor() {
+    this.conflictResolutionService = new ConflictResolutionService();
+  }
+
   /**
    * Register a new device for sync
    */
@@ -214,7 +222,11 @@ class SyncService {
 
       for (const change of request.changes) {
         try {
-          const result = await this.applyIndividualChange(userId, change);
+          const result = await this.applyIndividualChange(
+            userId,
+            change,
+            request.device_id
+          );
 
           if (result.conflict) {
             conflicts.push(result.conflict);
@@ -266,118 +278,78 @@ class SyncService {
     userId: string,
     request: ResolveConflictRequest
   ): Promise<void> {
-    try {
-      console.log('🔄 Resolving conflict:', request.conflict_id);
+    // Validate user access to conflict
+    const { data: conflict, error } = await supabaseAdmin
+      .from('sync_conflicts')
+      .select('user_id')
+      .eq('id', request.conflict_id)
+      .single();
 
-      // Get conflict details
-      const { data: conflict, error: conflictError } = await supabaseAdmin
-        .from('sync_conflicts')
-        .select('*')
-        .eq('id', request.conflict_id)
-        .eq('user_id', userId)
-        .single();
+    if (error || !conflict || conflict.user_id !== userId) {
+      throw new Error('Conflict not found or access denied');
+    }
 
-      if (conflictError || !conflict) {
-        throw new Error('Conflict not found');
-      }
+    const response =
+      await this.conflictResolutionService.resolveConflict(request);
 
-      // Apply resolution based on strategy
-      let resolvedData = request.resolved_data;
-
-      if (!resolvedData) {
-        resolvedData = this.applyResolutionStrategy(
-          conflict.local_data,
-          conflict.remote_data,
-          request.resolution_strategy
-        );
-      }
-
-      // Update the actual record with resolved data
-      await this.updateRecordWithResolvedData(
-        conflict.table_name,
-        conflict.record_id,
-        resolvedData
+    if (!response.success) {
+      throw new Error(
+        `Conflict resolution failed: ${response.errors?.join(', ')}`
       );
-
-      // Mark conflict as resolved
-      const { error: updateError } = await supabaseAdmin
-        .from('sync_conflicts')
-        .update({
-          resolved: true,
-          resolved_data: resolvedData,
-          resolution_strategy: request.resolution_strategy,
-          resolved_at: new Date().toISOString(),
-        })
-        .eq('id', request.conflict_id);
-
-      if (updateError) {
-        console.error('Error updating conflict resolution:', updateError);
-        throw new Error('Failed to mark conflict as resolved');
-      }
-
-      console.log('✅ Conflict resolved:', request.conflict_id);
-    } catch (error) {
-      console.error('❌ Error in resolveConflict:', error);
-      throw error;
     }
   }
 
   /**
    * Get sync statistics for user
    */
-  async getSyncStats(userId: string): Promise<SyncStats> {
-    try {
-      // Get metadata counts
-      const { data: metadata, error: metadataError } = await supabaseAdmin
-        .from('sync_metadata')
-        .select('sync_status')
-        .eq('user_id', userId);
-
-      if (metadataError) {
-        throw new Error('Failed to get sync metadata');
-      }
-
-      // Get conflicts count
-      const { data: conflicts, error: conflictsError } = await supabaseAdmin
-        .from('sync_conflicts')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('resolved', false);
-
-      if (conflictsError) {
-        throw new Error('Failed to get conflicts');
-      }
-
-      // Calculate stats
-      const totalRecords = metadata?.length || 0;
-      const syncedRecords =
-        metadata?.filter((m) => m.sync_status === 'synced').length || 0;
-      const pendingRecords =
-        metadata?.filter((m) => m.sync_status === 'pending').length || 0;
-      const conflictRecords = conflicts?.length || 0;
-
-      // Get last sync time
-      const { data: lastSync } = await supabaseAdmin
-        .from('sync_devices')
-        .select('last_sync')
-        .eq('user_id', userId)
-        .eq('is_active', true)
-        .order('last_sync', { ascending: false })
-        .limit(1)
-        .single();
-
-      return {
-        total_synced: syncedRecords,
-        total_pending: pendingRecords,
-        total_conflicts: conflictRecords,
-        last_sync: lastSync?.last_sync || new Date().toISOString(),
-        sync_success_rate:
-          totalRecords > 0 ? (syncedRecords / totalRecords) * 100 : 100,
-      };
-    } catch (error) {
-      console.error('❌ Error in getSyncStats:', error);
-      throw error;
+  async getSyncStats(userId: string): Promise<
+    SyncStats & {
+      conflicts_by_severity: Record<string, number>;
+      auto_resolvable_conflicts: number;
+      recent_resolutions: number;
     }
+  > {
+    const baseStats = await this.getBaseSyncStats(userId);
+
+    // Get conflict statistics
+    const { data: conflictStats } = await supabaseAdmin
+      .from('sync_conflicts')
+      .select('severity, auto_resolvable, resolved, created_at')
+      .eq('user_id', userId);
+
+    const conflictsBySeverity = {
+      low: 0,
+      medium: 0,
+      high: 0,
+      critical: 0,
+    };
+
+    let autoResolvableConflicts = 0;
+    let recentResolutions = 0;
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    if (conflictStats) {
+      for (const conflict of conflictStats) {
+        if (!conflict.resolved) {
+          conflictsBySeverity[
+            conflict.severity as keyof typeof conflictsBySeverity
+          ]++;
+
+          if (conflict.auto_resolvable) {
+            autoResolvableConflicts++;
+          }
+        } else if (new Date(conflict.created_at) > oneDayAgo) {
+          recentResolutions++;
+        }
+      }
+    }
+
+    return {
+      ...baseStats,
+      conflicts_by_severity: conflictsBySeverity,
+      auto_resolvable_conflicts: autoResolvableConflicts,
+      recent_resolutions: recentResolutions,
+    };
   }
 
   /**
@@ -407,6 +379,145 @@ class SyncService {
       console.error('❌ Error in getSyncHealth:', error);
       throw error;
     }
+  }
+
+  /**
+   * Auto-resolve all eligible conflicts for a user
+   */
+  async autoResolveUserConflicts(userId: string): Promise<number> {
+    return this.conflictResolutionService.autoResolveConflicts(userId);
+  }
+
+  /**
+   * Get conflicts for a user with enhanced metadata
+   */
+  async getUserConflicts(
+    userId: string,
+    options: {
+      resolved?: boolean;
+      severity?: string[];
+      table_names?: string[];
+      limit?: number;
+      offset?: number;
+    } = {}
+  ): Promise<{
+    conflicts: SyncConflict[];
+    total_count: number;
+    unresolved_count: number;
+  }> {
+    let query = supabaseAdmin
+      .from('sync_conflicts')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId);
+
+    if (options.resolved !== undefined) {
+      query = query.eq('resolved', options.resolved);
+    }
+
+    if (options.severity && options.severity.length > 0) {
+      query = query.in('severity', options.severity);
+    }
+
+    if (options.table_names && options.table_names.length > 0) {
+      query = query.in('table_name', options.table_names);
+    }
+
+    if (options.limit) {
+      query = query.limit(options.limit);
+    }
+
+    if (options.offset) {
+      query = query.range(
+        options.offset,
+        options.offset + (options.limit || 50) - 1
+      );
+    }
+
+    query = query.order('created_at', { ascending: false });
+
+    const { data: conflicts, error, count } = await query;
+
+    if (error) {
+      throw new Error(`Failed to get conflicts: ${error.message}`);
+    }
+
+    // Get unresolved count
+    const { count: unresolvedCount } = await supabaseAdmin
+      .from('sync_conflicts')
+      .select('id', { count: 'exact' })
+      .eq('user_id', userId)
+      .eq('resolved', false);
+
+    return {
+      conflicts: conflicts || [],
+      total_count: count || 0,
+      unresolved_count: unresolvedCount || 0,
+    };
+  }
+
+  /**
+   * Batch resolve conflicts
+   */
+  async batchResolveConflicts(
+    userId: string,
+    conflictIds: string[],
+    strategy: string,
+    saveAsPreference = false
+  ): Promise<{ resolved_count: number; failed_count: number }> {
+    // Validate user access to all conflicts
+    const { data: conflicts, error } = await supabaseAdmin
+      .from('sync_conflicts')
+      .select('id, user_id')
+      .in('id', conflictIds)
+      .eq('user_id', userId);
+
+    if (error) {
+      throw new Error(`Failed to validate conflicts: ${error.message}`);
+    }
+
+    if (conflicts.length !== conflictIds.length) {
+      throw new Error('Some conflicts not found or access denied');
+    }
+
+    const response = await this.conflictResolutionService.batchResolveConflicts(
+      {
+        conflict_ids: conflictIds,
+        resolution_strategy: strategy as any,
+        save_as_preference: saveAsPreference,
+      }
+    );
+
+    return {
+      resolved_count: response.resolved_count,
+      failed_count: response.failed_count,
+    };
+  }
+
+  /**
+   * Preview conflict resolution
+   */
+  async previewConflictResolution(
+    userId: string,
+    conflictId: string,
+    strategy: string,
+    fieldResolutions?: any[]
+  ): Promise<any> {
+    // Validate user access
+    const { data: conflict, error } = await supabaseAdmin
+      .from('sync_conflicts')
+      .select('user_id')
+      .eq('id', conflictId)
+      .single();
+
+    if (error || !conflict || conflict.user_id !== userId) {
+      throw new Error('Conflict not found or access denied');
+    }
+
+    return this.conflictResolutionService.previewConflictResolution({
+      conflict_id: conflictId,
+      resolution_strategy: strategy as any,
+      field_resolutions: fieldResolutions,
+    });
   }
 
   // Private helper methods
@@ -474,22 +585,71 @@ class SyncService {
 
   private async applyIndividualChange(
     userId: string,
-    change: SyncChange
+    change: SyncChange,
+    deviceId: string
   ): Promise<{ applied: boolean; conflict?: SyncConflict }> {
-    // Check for conflicts
+    // Check for conflicts using enhanced detection
     const existingRecord = await this.getExistingRecord(
       change.table_name,
       change.record_id
     );
 
     if (existingRecord && this.hasConflict(existingRecord, change)) {
-      // Create conflict record
-      const conflict = await this.createConflict(
-        userId,
-        change,
-        existingRecord
+      // Get device information for both local and remote
+      const localDeviceInfo = await this.getDeviceInfo(deviceId);
+      const remoteDeviceInfo = await this.getChangeDeviceInfo(change);
+
+      // Use enhanced conflict detection
+      const conflict = await this.conflictResolutionService.detectConflicts(
+        change.table_name,
+        change.record_id,
+        existingRecord,
+        change.data,
+        localDeviceInfo,
+        remoteDeviceInfo
       );
-      return { applied: false, conflict };
+
+      if (conflict) {
+        // Store the conflict in database
+        const { data: storedConflict, error } = await supabaseAdmin
+          .from('sync_conflicts')
+          .insert({
+            id: conflict.id,
+            table_name: conflict.table_name,
+            record_id: conflict.record_id,
+            user_id: conflict.user_id,
+            local_data: conflict.local_data,
+            remote_data: conflict.remote_data,
+            conflict_type: conflict.conflict_type,
+            severity: conflict.severity,
+            conflicting_fields: conflict.conflicting_fields,
+            local_device_info: conflict.local_device_info,
+            remote_device_info: conflict.remote_device_info,
+            auto_resolvable: conflict.auto_resolvable,
+            resolved: false,
+            created_at: conflict.created_at,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Failed to store conflict:', error);
+          return { applied: false };
+        }
+
+        // Try auto-resolution if possible
+        if (conflict.auto_resolvable) {
+          try {
+            await this.autoResolveConflict(storedConflict);
+            return { applied: true };
+          } catch (error) {
+            console.error('Auto-resolution failed:', error);
+            return { applied: false, conflict: storedConflict };
+          }
+        }
+
+        return { applied: false, conflict: storedConflict };
+      }
     }
 
     // Apply the change
@@ -528,31 +688,6 @@ class SyncService {
     return existingTime > changeTime;
   }
 
-  private async createConflict(
-    userId: string,
-    change: SyncChange,
-    existingRecord: any
-  ): Promise<SyncConflict> {
-    const { data: conflict, error } = await supabaseAdmin
-      .from('sync_conflicts')
-      .insert({
-        table_name: change.table_name,
-        record_id: change.record_id,
-        user_id: userId,
-        local_data: existingRecord,
-        remote_data: change.data,
-        conflict_type: 'update_conflict',
-      })
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error('Failed to create conflict record');
-    }
-
-    return conflict;
-  }
-
   private async applyChangeToTable(change: SyncChange): Promise<void> {
     const { table_name, record_id, operation, data } = change;
 
@@ -569,41 +704,125 @@ class SyncService {
     }
   }
 
-  private applyResolutionStrategy(
-    localData: any,
-    remoteData: any,
-    strategy: string
-  ): any {
-    switch (strategy) {
-      case 'last_write_wins': {
-        // Use the data with the latest timestamp
-        const localTime = new Date(localData.updated_at || 0);
-        const remoteTime = new Date(remoteData.updated_at || 0);
-        return remoteTime > localTime ? remoteData : localData;
-      }
+  private async getDeviceInfo(deviceId: string): Promise<ConflictDeviceInfo> {
+    const { data: device, error } = await supabaseAdmin
+      .from('sync_devices')
+      .select('*')
+      .eq('id', deviceId)
+      .single();
 
-      case 'merge': {
-        // Simple merge strategy - combine non-conflicting fields
-        return { ...localData, ...remoteData };
-      }
-
-      default:
-        return remoteData; // Default to remote data
+    if (error || !device) {
+      throw new Error(`Device not found: ${deviceId}`);
     }
+
+    return {
+      device_id: device.id,
+      device_name: device.device_name,
+      device_type: device.device_type,
+      platform: device.platform,
+      timestamp: device.last_sync,
+      app_version: device.app_version,
+    };
   }
 
-  private async updateRecordWithResolvedData(
-    tableName: string,
-    recordId: string,
-    resolvedData: any
-  ): Promise<void> {
-    await supabaseAdmin.from(tableName).update(resolvedData).eq('id', recordId);
+  private async getChangeDeviceInfo(
+    change: SyncChange
+  ): Promise<ConflictDeviceInfo> {
+    // If the change has device info embedded, use it
+    if (change.data._sync_device_info) {
+      return change.data._sync_device_info;
+    }
+
+    // Otherwise, create a generic remote device info
+    return {
+      device_id: 'remote',
+      device_name: 'Remote Device',
+      device_type: 'web',
+      platform: 'unknown',
+      timestamp: change.created_at,
+      app_version: 'unknown',
+    };
+  }
+
+  private async autoResolveConflict(conflict: SyncConflict): Promise<void> {
+    // Get user preferences to determine resolution strategy
+    const preferences = await this.conflictResolutionService.getUserPreferences(
+      conflict.user_id
+    );
+
+    let strategy = 'last_write_wins'; // Default strategy
+
+    if (preferences) {
+      strategy =
+        preferences.table_preferences[conflict.table_name] ||
+        preferences.default_strategy;
+    }
+
+    // Use content-aware strategy for better auto-resolution
+    if (conflict.severity === 'low' && conflict.auto_resolvable) {
+      strategy = 'content_aware';
+    }
+
+    const response = await this.conflictResolutionService.resolveConflict({
+      conflict_id: conflict.id,
+      resolution_strategy: strategy as any,
+    });
+
+    if (!response.success) {
+      throw new Error(`Auto-resolution failed: ${response.errors?.join(', ')}`);
+    }
   }
 
   private async markChangesAsSynced(changeIds: string[]): Promise<void> {
     await supabaseAdmin.rpc('mark_changes_synced', {
       change_ids: changeIds,
     });
+  }
+
+  private async getBaseSyncStats(userId: string): Promise<SyncStats> {
+    // Get basic sync statistics
+    const { data: syncData } = await supabaseAdmin
+      .from('sync_change_log')
+      .select('sync_status, created_at')
+      .eq('user_id', userId)
+      .gte(
+        'created_at',
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      );
+
+    const { count: totalConflicts } = await supabaseAdmin
+      .from('sync_conflicts')
+      .select('id', { count: 'exact' })
+      .eq('user_id', userId)
+      .eq('resolved', false);
+
+    let totalSynced = 0;
+    let totalPending = 0;
+    let lastSync = '';
+
+    if (syncData) {
+      totalSynced = syncData.filter((s) => s.sync_status === 'synced').length;
+      totalPending = syncData.filter((s) => s.sync_status === 'pending').length;
+
+      const sortedData = syncData.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      lastSync = sortedData[0]?.created_at || '';
+    }
+
+    const successRate =
+      totalSynced + totalPending > 0
+        ? (totalSynced / (totalSynced + totalPending)) * 100
+        : 100;
+
+    return {
+      total_synced: totalSynced,
+      total_pending: totalPending,
+      total_conflicts: totalConflicts || 0,
+      last_sync: lastSync,
+      sync_success_rate: successRate,
+    };
   }
 }
 

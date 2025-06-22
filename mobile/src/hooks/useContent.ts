@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { contentAPI, ContentItem, ContentQueryParams, ContentResponse } from '../services/contentAPI';
+import {
+  contentAPI,
+  ContentItem,
+  ContentQueryParams,
+  ContentResponse,
+} from '../services/contentAPI';
 
 interface UseContentResult {
   // State
@@ -15,7 +20,7 @@ interface UseContentResult {
     processingRate: number;
     contentTypes: Record<string, number>;
   } | null;
-  
+
   // Actions
   fetchContentItems: (params?: ContentQueryParams) => Promise<void>;
   fetchContentItem: (id: string) => Promise<void>;
@@ -32,7 +37,9 @@ interface UseContentResult {
 
 export const useContent = (): UseContentResult => {
   const [contentItems, setContentItems] = useState<ContentItem[]>([]);
-  const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null);
+  const [selectedContent, setSelectedContent] = useState<ContentItem | null>(
+    null
+  );
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,67 +54,82 @@ export const useContent = (): UseContentResult => {
   /**
    * Handle API response and update state
    */
-  const handleResponse = useCallback((response: ContentResponse, actionName: string) => {
-    if (response.success) {
-      setError(null);
-      
-      if (response.contentItems) {
-        setContentItems(response.contentItems);
-        console.log(`✅ ${actionName}: Retrieved ${response.contentItems.length} items`);
+  const handleResponse = useCallback(
+    (response: ContentResponse, actionName: string) => {
+      if (response.success) {
+        setError(null);
+
+        if (response.contentItems) {
+          setContentItems(response.contentItems);
+          console.log(
+            `✅ ${actionName}: Retrieved ${response.contentItems.length} items`
+          );
+        }
+
+        if (response.contentItem) {
+          setSelectedContent(response.contentItem);
+          console.log(
+            `✅ ${actionName}: Retrieved item ${response.contentItem.title}`
+          );
+        }
+
+        if (response.stats) {
+          setStats(response.stats);
+          console.log(`✅ ${actionName}: Retrieved stats`, response.stats);
+        }
+      } else {
+        setError(response.error || `Failed to ${actionName.toLowerCase()}`);
+        console.error(`❌ ${actionName} failed:`, response.error);
       }
-      
-      if (response.contentItem) {
-        setSelectedContent(response.contentItem);
-        console.log(`✅ ${actionName}: Retrieved item ${response.contentItem.title}`);
-      }
-      
-      if (response.stats) {
-        setStats(response.stats);
-        console.log(`✅ ${actionName}: Retrieved stats`, response.stats);
-      }
-    } else {
-      setError(response.error || `Failed to ${actionName.toLowerCase()}`);
-      console.error(`❌ ${actionName} failed:`, response.error);
-    }
-  }, []);
+    },
+    []
+  );
 
   /**
    * Fetch content items with optional parameters
    */
-  const fetchContentItems = useCallback(async (params?: ContentQueryParams) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await contentAPI.getContentItems(params);
-      handleResponse(response, 'Fetch Content Items');
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch content items';
-      setError(errorMessage);
-      console.error('❌ Fetch content items error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [handleResponse]);
+  const fetchContentItems = useCallback(
+    async (params?: ContentQueryParams) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await contentAPI.getContentItems(params);
+        handleResponse(response, 'Fetch Content Items');
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to fetch content items';
+        setError(errorMessage);
+        console.error('❌ Fetch content items error:', err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleResponse]
+  );
 
   /**
    * Fetch a specific content item by ID
    */
-  const fetchContentItem = useCallback(async (id: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await contentAPI.getContentItem(id);
-      handleResponse(response, 'Fetch Content Item');
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch content item';
-      setError(errorMessage);
-      console.error('❌ Fetch content item error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [handleResponse]);
+  const fetchContentItem = useCallback(
+    async (id: string) => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await contentAPI.getContentItem(id);
+        handleResponse(response, 'Fetch Content Item');
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to fetch content item';
+        setError(errorMessage);
+        console.error('❌ Fetch content item error:', err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [handleResponse]
+  );
 
   /**
    * Fetch recent content items (last 10)
@@ -117,18 +139,19 @@ export const useContent = (): UseContentResult => {
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log('📡 useContent: Calling contentAPI.getRecentItems()...');
       const response = await contentAPI.getRecentItems();
       console.log('📡 useContent: API response:', {
         success: response.success,
         itemCount: response.contentItems?.length,
-        error: response.error
+        error: response.error,
       });
-      
+
       handleResponse(response, 'Fetch Recent Items');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch recent items';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch recent items';
       console.error('❌ useContent: fetchRecentItems error:', err);
       setError(errorMessage);
     } finally {
@@ -143,11 +166,12 @@ export const useContent = (): UseContentResult => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await contentAPI.getProcessedItems();
       handleResponse(response, 'Fetch Processed Items');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch processed items';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch processed items';
       setError(errorMessage);
       console.error('❌ Fetch processed items error:', err);
     } finally {
@@ -162,11 +186,12 @@ export const useContent = (): UseContentResult => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await contentAPI.getPendingItems();
       handleResponse(response, 'Fetch Pending Items');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch pending items';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch pending items';
       setError(errorMessage);
       console.error('❌ Fetch pending items error:', err);
     } finally {
@@ -180,11 +205,12 @@ export const useContent = (): UseContentResult => {
   const fetchStats = useCallback(async () => {
     try {
       setError(null);
-      
+
       const response = await contentAPI.getUserStats();
       handleResponse(response, 'Fetch User Stats');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch stats';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch stats';
       setError(errorMessage);
       console.error('❌ Fetch stats error:', err);
     }
@@ -193,66 +219,74 @@ export const useContent = (): UseContentResult => {
   /**
    * Mark content item as processed
    */
-  const markAsProcessed = useCallback(async (id: string, summary?: string) => {
-    try {
-      setError(null);
-      
-      const response = await contentAPI.markAsProcessed(id, summary);
-      
-      if (response.success && response.contentItem) {
-        // Update the item in the list
-        setContentItems(prev => 
-          prev.map(item => 
-            item.id === id ? response.contentItem! : item
-          )
-        );
-        
-        // Update selected content if it's the same item
-        if (selectedContent?.id === id) {
-          setSelectedContent(response.contentItem);
+  const markAsProcessed = useCallback(
+    async (id: string, summary?: string) => {
+      try {
+        setError(null);
+
+        const response = await contentAPI.markAsProcessed(id, summary);
+
+        if (response.success && response.contentItem) {
+          // Update the item in the list
+          setContentItems((prev) =>
+            prev.map((item) => (item.id === id ? response.contentItem! : item))
+          );
+
+          // Update selected content if it's the same item
+          if (selectedContent?.id === id) {
+            setSelectedContent(response.contentItem);
+          }
+
+          console.log(
+            `✅ Marked content as processed: ${response.contentItem.title}`
+          );
+        } else {
+          setError(response.error || 'Failed to mark as processed');
+          console.error('❌ Mark as processed failed:', response.error);
         }
-        
-        console.log(`✅ Marked content as processed: ${response.contentItem.title}`);
-      } else {
-        setError(response.error || 'Failed to mark as processed');
-        console.error('❌ Mark as processed failed:', response.error);
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to mark as processed';
+        setError(errorMessage);
+        console.error('❌ Mark as processed error:', err);
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to mark as processed';
-      setError(errorMessage);
-      console.error('❌ Mark as processed error:', err);
-    }
-  }, [selectedContent]);
+    },
+    [selectedContent]
+  );
 
   /**
    * Delete content item
    */
-  const deleteContent = useCallback(async (id: string) => {
-    try {
-      setError(null);
-      
-      const response = await contentAPI.deleteContentItem(id);
-      
-      if (response.success) {
-        // Remove from the list
-        setContentItems(prev => prev.filter(item => item.id !== id));
-        
-        // Clear selection if it's the deleted item
-        if (selectedContent?.id === id) {
-          setSelectedContent(null);
+  const deleteContent = useCallback(
+    async (id: string) => {
+      try {
+        setError(null);
+
+        const response = await contentAPI.deleteContentItem(id);
+
+        if (response.success) {
+          // Remove from the list
+          setContentItems((prev) => prev.filter((item) => item.id !== id));
+
+          // Clear selection if it's the deleted item
+          if (selectedContent?.id === id) {
+            setSelectedContent(null);
+          }
+
+          console.log(`✅ Deleted content item: ${id}`);
+        } else {
+          setError(response.error || 'Failed to delete content');
+          console.error('❌ Delete content failed:', response.error);
         }
-        
-        console.log(`✅ Deleted content item: ${id}`);
-      } else {
-        setError(response.error || 'Failed to delete content');
-        console.error('❌ Delete content failed:', response.error);
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to delete content';
+        setError(errorMessage);
+        console.error('❌ Delete content error:', err);
       }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete content';
-      setError(errorMessage);
-      console.error('❌ Delete content error:', err);
-    }
-  }, [selectedContent]);
+    },
+    [selectedContent]
+  );
 
   /**
    * Refresh content items (pull-to-refresh)
@@ -261,11 +295,12 @@ export const useContent = (): UseContentResult => {
     try {
       setRefreshing(true);
       setError(null);
-      
+
       const response = await contentAPI.getRecentItems();
       handleResponse(response, 'Refresh Content');
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to refresh content';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to refresh content';
       setError(errorMessage);
       console.error('❌ Refresh content error:', err);
     } finally {
@@ -295,7 +330,7 @@ export const useContent = (): UseContentResult => {
     error,
     refreshing,
     stats,
-    
+
     // Actions
     fetchContentItems,
     fetchContentItem,
@@ -311,4 +346,4 @@ export const useContent = (): UseContentResult => {
   };
 };
 
-export default useContent; 
+export default useContent;

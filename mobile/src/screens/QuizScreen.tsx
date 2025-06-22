@@ -14,7 +14,11 @@ import { Header, Card, Button, LoadingIndicator } from '../components';
 import { theme } from '../constants/theme';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useQuiz } from '../hooks/useQuiz';
-import { QuizSet, QuizQuestion, QuizGenerationOptions } from '../services/quizAPI';
+import {
+  QuizSet,
+  QuizQuestion,
+  QuizGenerationOptions,
+} from '../services/quizAPI';
 import { contentAPI } from '../services';
 
 type QuizScreenMode = 'list' | 'generation' | 'taking' | 'results';
@@ -42,7 +46,7 @@ export const QuizScreen: React.FC = () => {
     clearError,
     clearCurrentSet,
   } = useQuiz();
-  
+
   // Quiz taking state
   const [mode, setMode] = useState<QuizScreenMode>('list');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -51,12 +55,13 @@ export const QuizScreen: React.FC = () => {
   const [showingExplanation, setShowingExplanation] = useState(false);
 
   // Generation options state
-  const [generationOptions, setGenerationOptions] = useState<QuizGenerationOptions>({
-    numberOfQuestions: 5,
-    difficulty: 'medium',
-    focusArea: 'general',
-    questionTypes: ['multiple_choice'],
-  });
+  const [generationOptions, setGenerationOptions] =
+    useState<QuizGenerationOptions>({
+      numberOfQuestions: 5,
+      difficulty: 'medium',
+      focusArea: 'general',
+      questionTypes: ['multiple_choice'],
+    });
 
   // Load quiz sets when screen mounts or selectedNote changes
   useEffect(() => {
@@ -90,18 +95,23 @@ export const QuizScreen: React.FC = () => {
     }
 
     setMode('generation');
-    
+
     try {
       // First, fetch the full content using the contentAPI
       console.log('🔍 Fetching full content for item:', selectedNote.id);
       const contentResponse = await contentAPI.getFullContent(selectedNote.id);
-      
+
       if (!contentResponse.success || !contentResponse.fullContent) {
         throw new Error('Failed to fetch content for quiz generation');
       }
-      
-      console.log('📑 Retrieved full content for:', contentResponse.contentItem?.title, 'Length:', contentResponse.fullContent.length);
-      
+
+      console.log(
+        '📑 Retrieved full content for:',
+        contentResponse.contentItem?.title,
+        'Length:',
+        contentResponse.fullContent.length
+      );
+
       const result = await generateQuiz({
         content: contentResponse.fullContent,
         contentType: selectedNote.type.toLowerCase() as any,
@@ -120,7 +130,10 @@ export const QuizScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('❌ Error in quiz generation:', error);
-      Alert.alert('Error', 'Failed to fetch content for quiz generation. Please try again.');
+      Alert.alert(
+        'Error',
+        'Failed to fetch content for quiz generation. Please try again.'
+      );
       setMode('list');
     }
   };
@@ -136,10 +149,10 @@ export const QuizScreen: React.FC = () => {
   };
 
   const handleAnswerSelect = (questionId: string, selectedAnswer: number) => {
-    setUserAnswers(prev => {
-      const existing = prev.find(a => a.questionId === questionId);
+    setUserAnswers((prev) => {
+      const existing = prev.find((a) => a.questionId === questionId);
       if (existing) {
-        return prev.map(a => 
+        return prev.map((a) =>
           a.questionId === questionId ? { ...a, selectedAnswer } : a
         );
       } else {
@@ -155,9 +168,9 @@ export const QuizScreen: React.FC = () => {
 
   const handleNext = () => {
     if (!currentSet) return;
-    
+
     if (currentQuestionIndex < currentSet.questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
+      setCurrentQuestionIndex((prev) => prev + 1);
       setShowingExplanation(false);
     } else {
       handleFinishQuiz();
@@ -166,7 +179,7 @@ export const QuizScreen: React.FC = () => {
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
+      setCurrentQuestionIndex((prev) => prev - 1);
       setShowingExplanation(false);
     }
   };
@@ -175,7 +188,7 @@ export const QuizScreen: React.FC = () => {
     if (!currentSet) return;
 
     const timeSpent = Math.floor((Date.now() - quizStartTime) / 1000);
-    
+
     // Debug logging
     console.log('🔍 Debug - Quiz submission data:', {
       quizSetId: currentSet.id,
@@ -183,9 +196,9 @@ export const QuizScreen: React.FC = () => {
       userAnswersCount: userAnswers.length,
       timeSpent,
       currentSetQuestions: currentSet.questions.length,
-      questionIds: currentSet.questions.map(q => q.id)
+      questionIds: currentSet.questions.map((q) => q.id),
     });
-    
+
     const result = await submitAttempt(currentSet.id, {
       answers: userAnswers,
       timeSpent,
@@ -202,8 +215,8 @@ export const QuizScreen: React.FC = () => {
       'Are you sure you want to exit? Your progress will be lost.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Exit', 
+        {
+          text: 'Exit',
           style: 'destructive',
           onPress: () => {
             clearCurrentSet();
@@ -211,7 +224,7 @@ export const QuizScreen: React.FC = () => {
             setCurrentQuestionIndex(0);
             setUserAnswers([]);
             setShowingExplanation(false);
-          }
+          },
         },
       ]
     );
@@ -228,7 +241,9 @@ export const QuizScreen: React.FC = () => {
   const getCurrentUserAnswer = (): number | undefined => {
     if (!currentSet) return undefined;
     const currentQuestion = currentSet.questions[currentQuestionIndex];
-    const userAnswer = userAnswers.find(a => a.questionId === currentQuestion.id);
+    const userAnswer = userAnswers.find(
+      (a) => a.questionId === currentQuestion.id
+    );
     return userAnswer?.selectedAnswer;
   };
 
@@ -236,14 +251,20 @@ export const QuizScreen: React.FC = () => {
   if (mode === 'generation') {
     return (
       <SafeAreaView style={styles.container}>
-        <Header 
+        <Header
           title="Generating Quiz..."
           leftAction={{
-            icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[600]} />,
+            icon: (
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color={theme.colors.gray[600]}
+              />
+            ),
             onPress: handleBackPress,
           }}
         />
-        
+
         <View style={styles.centerContainer}>
           <LoadingIndicator size="large" />
           <Text style={styles.generatingText}>
@@ -260,31 +281,37 @@ export const QuizScreen: React.FC = () => {
   if (mode === 'taking' && currentSet) {
     const currentQuestion = currentSet.questions[currentQuestionIndex];
     const userAnswer = getCurrentUserAnswer();
-    const isLastQuestion = currentQuestionIndex === currentSet.questions.length - 1;
+    const isLastQuestion =
+      currentQuestionIndex === currentSet.questions.length - 1;
     const canShowExplanation = userAnswer !== undefined;
     const canProceed = userAnswer !== undefined;
 
     return (
       <SafeAreaView style={styles.container}>
-        <Header 
+        <Header
           title={`${selectedNote ? `${selectedNote.title} - ` : ''}Quiz`}
           leftAction={{
-            icon: <Ionicons name="close" size={24} color={theme.colors.gray[600]} />,
+            icon: (
+              <Ionicons name="close" size={24} color={theme.colors.gray[600]} />
+            ),
             onPress: handleExitQuiz,
           }}
         />
-        
+
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.progressContainer}>
             <Text style={styles.progressText}>
-              Question {currentQuestionIndex + 1} of {currentSet.questions.length}
+              Question {currentQuestionIndex + 1} of{' '}
+              {currentSet.questions.length}
             </Text>
             <View style={styles.progressBar}>
-              <View 
+              <View
                 style={[
-                  styles.progressFill, 
-                  { width: `${((currentQuestionIndex + 1) / currentSet.questions.length) * 100}%` }
-                ]} 
+                  styles.progressFill,
+                  {
+                    width: `${((currentQuestionIndex + 1) / currentSet.questions.length) * 100}%`,
+                  },
+                ]}
               />
             </View>
           </View>
@@ -295,9 +322,9 @@ export const QuizScreen: React.FC = () => {
                 Difficulty: {currentQuestion.difficulty_level}/5
               </Text>
             </View>
-            
+
             <Text style={styles.questionText}>{currentQuestion.question}</Text>
-            
+
             <View style={styles.optionsContainer}>
               {currentQuestion.options.map((option, index) => (
                 <TouchableOpacity
@@ -305,31 +332,52 @@ export const QuizScreen: React.FC = () => {
                   style={[
                     styles.optionButton,
                     userAnswer === index && styles.optionButtonSelected,
-                    showingExplanation && index === currentQuestion.correctAnswer && styles.optionButtonCorrect,
-                    showingExplanation && userAnswer === index && userAnswer !== currentQuestion.correctAnswer && styles.optionButtonIncorrect,
+                    showingExplanation &&
+                      index === currentQuestion.correctAnswer &&
+                      styles.optionButtonCorrect,
+                    showingExplanation &&
+                      userAnswer === index &&
+                      userAnswer !== currentQuestion.correctAnswer &&
+                      styles.optionButtonIncorrect,
                   ]}
                   onPress={() => handleAnswerSelect(currentQuestion.id, index)}
                   disabled={showingExplanation}
                 >
-                  <View style={[
-                    styles.optionIndicator,
-                    userAnswer === index && styles.optionIndicatorSelected,
-                    showingExplanation && index === currentQuestion.correctAnswer && styles.optionIndicatorCorrect,
-                    showingExplanation && userAnswer === index && userAnswer !== currentQuestion.correctAnswer && styles.optionIndicatorIncorrect,
-                  ]}>
-                    <Text style={[
-                      styles.optionLetter,
-                      userAnswer === index && styles.optionLetterSelected,
-                      showingExplanation && index === currentQuestion.correctAnswer && styles.optionLetterCorrect,
-                      showingExplanation && userAnswer === index && userAnswer !== currentQuestion.correctAnswer && styles.optionLetterIncorrect,
-                    ]}>
+                  <View
+                    style={[
+                      styles.optionIndicator,
+                      userAnswer === index && styles.optionIndicatorSelected,
+                      showingExplanation &&
+                        index === currentQuestion.correctAnswer &&
+                        styles.optionIndicatorCorrect,
+                      showingExplanation &&
+                        userAnswer === index &&
+                        userAnswer !== currentQuestion.correctAnswer &&
+                        styles.optionIndicatorIncorrect,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.optionLetter,
+                        userAnswer === index && styles.optionLetterSelected,
+                        showingExplanation &&
+                          index === currentQuestion.correctAnswer &&
+                          styles.optionLetterCorrect,
+                        showingExplanation &&
+                          userAnswer === index &&
+                          userAnswer !== currentQuestion.correctAnswer &&
+                          styles.optionLetterIncorrect,
+                      ]}
+                    >
                       {String.fromCharCode(65 + index)}
                     </Text>
                   </View>
-                  <Text style={[
-                    styles.optionText,
-                    userAnswer === index && styles.optionTextSelected,
-                  ]}>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      userAnswer === index && styles.optionTextSelected,
+                    ]}
+                  >
                     {option}
                   </Text>
                 </TouchableOpacity>
@@ -339,7 +387,9 @@ export const QuizScreen: React.FC = () => {
             {showingExplanation && (
               <View style={styles.explanationContainer}>
                 <Text style={styles.explanationTitle}>Explanation:</Text>
-                <Text style={styles.explanationText}>{currentQuestion.explanation}</Text>
+                <Text style={styles.explanationText}>
+                  {currentQuestion.explanation}
+                </Text>
               </View>
             )}
           </Card>
@@ -364,7 +414,7 @@ export const QuizScreen: React.FC = () => {
               style={styles.navButton}
             />
             <Button
-              title={isLastQuestion ? "Finish Quiz" : "Next"}
+              title={isLastQuestion ? 'Finish Quiz' : 'Next'}
               onPress={handleNext}
               variant="primary"
               disabled={!canProceed}
@@ -379,14 +429,20 @@ export const QuizScreen: React.FC = () => {
   if (mode === 'results' && currentAttempt) {
     return (
       <SafeAreaView style={styles.container}>
-        <Header 
+        <Header
           title="Quiz Results"
           leftAction={{
-            icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[600]} />,
+            icon: (
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color={theme.colors.gray[600]}
+              />
+            ),
             onPress: () => setMode('list'),
           }}
         />
-        
+
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <Card style={styles.resultsCard}>
             <View style={styles.scoreContainer}>
@@ -394,14 +450,17 @@ export const QuizScreen: React.FC = () => {
               <Text style={styles.scoreNumber}>
                 {currentAttempt.score}/{currentAttempt.totalQuestions}
               </Text>
-              <Text style={styles.scorePercentage}>{currentAttempt.percentage}%</Text>
+              <Text style={styles.scorePercentage}>
+                {currentAttempt.percentage}%
+              </Text>
               {currentAttempt.timeSpent && (
                 <Text style={styles.timeSpent}>
-                  Time: {Math.floor(currentAttempt.timeSpent / 60)}:{(currentAttempt.timeSpent % 60).toString().padStart(2, '0')}
+                  Time: {Math.floor(currentAttempt.timeSpent / 60)}:
+                  {(currentAttempt.timeSpent % 60).toString().padStart(2, '0')}
                 </Text>
               )}
             </View>
-            
+
             <View style={styles.resultActions}>
               <Button
                 title="View Performance Analytics"
@@ -431,18 +490,36 @@ export const QuizScreen: React.FC = () => {
   // Default list mode
   return (
     <SafeAreaView style={styles.container}>
-      <Header 
-        title={selectedNote ? `${selectedNote.title} - Quizzes` : 'Practice Quizzes'}
-        leftAction={selectedNote ? {
-          icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[600]} />,
-          onPress: handleBackPress,
-        } : undefined}
+      <Header
+        title={
+          selectedNote ? `${selectedNote.title} - Quizzes` : 'Practice Quizzes'
+        }
+        leftAction={
+          selectedNote
+            ? {
+                icon: (
+                  <Ionicons
+                    name="arrow-back"
+                    size={24}
+                    color={theme.colors.gray[600]}
+                  />
+                ),
+                onPress: handleBackPress,
+              }
+            : undefined
+        }
         rightAction={{
-          icon: <Ionicons name="analytics" size={24} color={theme.colors.primary[600]} />,
+          icon: (
+            <Ionicons
+              name="analytics"
+              size={24}
+              color={theme.colors.primary[600]}
+            />
+          ),
           onPress: () => navigation.navigate('QuizPerformance' as never),
         }}
       />
-      
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {error && (
           <Card style={styles.errorCard}>
@@ -457,24 +534,33 @@ export const QuizScreen: React.FC = () => {
             <Text style={styles.generateDescription}>
               Create a personalized quiz from your {selectedNote.type} content
             </Text>
-            
+
             <View style={styles.optionsContainer}>
               <View style={styles.optionRow}>
                 <Text style={styles.optionLabel}>Questions:</Text>
                 <View style={styles.optionButtons}>
-                  {[3, 5, 10].map(num => (
+                  {[3, 5, 10].map((num) => (
                     <TouchableOpacity
                       key={num}
                       style={[
                         styles.optionChip,
-                        generationOptions.numberOfQuestions === num && styles.optionChipSelected
+                        generationOptions.numberOfQuestions === num &&
+                          styles.optionChipSelected,
                       ]}
-                      onPress={() => setGenerationOptions(prev => ({ ...prev, numberOfQuestions: num }))}
+                      onPress={() =>
+                        setGenerationOptions((prev) => ({
+                          ...prev,
+                          numberOfQuestions: num,
+                        }))
+                      }
                     >
-                      <Text style={[
-                        styles.optionChipText,
-                        generationOptions.numberOfQuestions === num && styles.optionChipTextSelected
-                      ]}>
+                      <Text
+                        style={[
+                          styles.optionChipText,
+                          generationOptions.numberOfQuestions === num &&
+                            styles.optionChipTextSelected,
+                        ]}
+                      >
                         {num}
                       </Text>
                     </TouchableOpacity>
@@ -485,19 +571,28 @@ export const QuizScreen: React.FC = () => {
               <View style={styles.optionRow}>
                 <Text style={styles.optionLabel}>Difficulty:</Text>
                 <View style={styles.optionButtons}>
-                  {(['easy', 'medium', 'hard'] as const).map(diff => (
+                  {(['easy', 'medium', 'hard'] as const).map((diff) => (
                     <TouchableOpacity
                       key={diff}
                       style={[
                         styles.optionChip,
-                        generationOptions.difficulty === diff && styles.optionChipSelected
+                        generationOptions.difficulty === diff &&
+                          styles.optionChipSelected,
                       ]}
-                      onPress={() => setGenerationOptions(prev => ({ ...prev, difficulty: diff }))}
+                      onPress={() =>
+                        setGenerationOptions((prev) => ({
+                          ...prev,
+                          difficulty: diff,
+                        }))
+                      }
                     >
-                      <Text style={[
-                        styles.optionChipText,
-                        generationOptions.difficulty === diff && styles.optionChipTextSelected
-                      ]}>
+                      <Text
+                        style={[
+                          styles.optionChipText,
+                          generationOptions.difficulty === diff &&
+                            styles.optionChipTextSelected,
+                        ]}
+                      >
                         {diff.charAt(0).toUpperCase() + diff.slice(1)}
                       </Text>
                     </TouchableOpacity>
@@ -524,25 +619,30 @@ export const QuizScreen: React.FC = () => {
         ) : sets.length > 0 ? (
           <View>
             <Text style={styles.sectionTitle}>Available Quizzes</Text>
-            {sets.map(quizSet => (
+            {sets.map((quizSet) => (
               <Card key={quizSet.id} style={styles.quizCard}>
                 <View style={styles.quizHeader}>
                   <Text style={styles.quizTitle}>{quizSet.title}</Text>
                   <View style={styles.quizBadge}>
-                    <Text style={styles.quizBadgeText}>{quizSet.difficulty}</Text>
+                    <Text style={styles.quizBadgeText}>
+                      {quizSet.difficulty}
+                    </Text>
                   </View>
                 </View>
-                
+
                 {quizSet.description && (
-                  <Text style={styles.quizDescription}>{quizSet.description}</Text>
+                  <Text style={styles.quizDescription}>
+                    {quizSet.description}
+                  </Text>
                 )}
-                
+
                 <View style={styles.quizMeta}>
                   <Text style={styles.metaText}>
-                    {quizSet.totalQuestions} questions • ~{quizSet.estimatedDuration} min
+                    {quizSet.totalQuestions} questions • ~
+                    {quizSet.estimatedDuration} min
                   </Text>
                 </View>
-                
+
                 <Button
                   title="Start Quiz"
                   onPress={() => handleStartQuiz(quizSet)}
@@ -554,13 +654,16 @@ export const QuizScreen: React.FC = () => {
           </View>
         ) : (
           <Card style={styles.emptyCard}>
-            <Ionicons name="help-circle-outline" size={48} color={theme.colors.gray[400]} />
+            <Ionicons
+              name="help-circle-outline"
+              size={48}
+              color={theme.colors.gray[400]}
+            />
             <Text style={styles.emptyTitle}>No Quizzes Available</Text>
             <Text style={styles.emptyDescription}>
-              {selectedNote 
+              {selectedNote
                 ? 'Generate your first quiz from this content'
-                : 'Import some content first to create quizzes'
-              }
+                : 'Import some content first to create quizzes'}
             </Text>
           </Card>
         )}
@@ -584,7 +687,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: theme.spacing.xl,
   },
-  
+
   // Error styles
   errorCard: {
     backgroundColor: theme.colors.error[50],
@@ -595,7 +698,7 @@ const styles = StyleSheet.create({
     color: theme.colors.error[600],
     marginBottom: theme.spacing.base,
   },
-  
+
   // Generation styles
   generatingText: {
     fontSize: theme.typography.fontSize.lg,
@@ -610,7 +713,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: theme.spacing.sm,
   },
-  
+
   // Generate card styles
   generateCard: {
     marginBottom: theme.spacing.lg,
@@ -665,7 +768,7 @@ const styles = StyleSheet.create({
   generateButton: {
     marginTop: theme.spacing.sm,
   },
-  
+
   // Quiz taking styles
   progressContainer: {
     marginBottom: theme.spacing.lg,
@@ -708,10 +811,11 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.lg,
     color: theme.colors.gray[900],
     fontWeight: theme.typography.fontWeight.semibold,
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.lg,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.lg,
     marginBottom: theme.spacing.lg,
   },
-  
+
   // Option styles
   optionButton: {
     flexDirection: 'row',
@@ -771,13 +875,14 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.gray[700],
-    lineHeight: theme.typography.lineHeight.normal * theme.typography.fontSize.base,
+    lineHeight:
+      theme.typography.lineHeight.normal * theme.typography.fontSize.base,
   },
   optionTextSelected: {
     color: theme.colors.gray[900],
     fontWeight: theme.typography.fontWeight.medium,
   },
-  
+
   // Explanation styles
   explanationContainer: {
     marginTop: theme.spacing.lg,
@@ -796,9 +901,10 @@ const styles = StyleSheet.create({
   explanationText: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.primary[700],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
-  
+
   // Action buttons
   actionButtons: {
     marginBottom: theme.spacing.base,
@@ -814,7 +920,7 @@ const styles = StyleSheet.create({
   navButton: {
     flex: 1,
   },
-  
+
   // Results styles
   resultsCard: {
     padding: theme.spacing.lg,
@@ -849,7 +955,7 @@ const styles = StyleSheet.create({
   actionButton: {
     marginBottom: theme.spacing.sm,
   },
-  
+
   // Quiz list styles
   loadingText: {
     fontSize: theme.typography.fontSize.base,
@@ -904,7 +1010,7 @@ const styles = StyleSheet.create({
   startButton: {
     alignSelf: 'flex-start',
   },
-  
+
   // Empty state
   emptyCard: {
     alignItems: 'center',
@@ -922,4 +1028,4 @@ const styles = StyleSheet.create({
     color: theme.colors.gray[600],
     textAlign: 'center',
   },
-}); 
+});

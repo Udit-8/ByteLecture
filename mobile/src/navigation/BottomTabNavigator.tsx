@@ -40,17 +40,21 @@ export const BottomTabNavigator: React.FC = () => {
           },
         }}
       >
-        <Tab.Screen 
-          name="Summary" 
+        <Tab.Screen
+          name="Summary"
           component={SummaryScreen}
           options={{
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="document-text-outline" size={size} color={color} />
+              <Ionicons
+                name="document-text-outline"
+                size={size}
+                color={color}
+              />
             ),
           }}
         />
-        <Tab.Screen 
-          name="Cards" 
+        <Tab.Screen
+          name="Cards"
           component={FlashcardsScreen}
           options={{
             tabBarIcon: ({ color, size }) => (
@@ -58,8 +62,8 @@ export const BottomTabNavigator: React.FC = () => {
             ),
           }}
         />
-        <Tab.Screen 
-          name="Quiz" 
+        <Tab.Screen
+          name="Quiz"
           component={QuizScreen}
           options={{
             tabBarIcon: ({ color, size }) => (
@@ -67,8 +71,8 @@ export const BottomTabNavigator: React.FC = () => {
             ),
           }}
         />
-        <Tab.Screen 
-          name="Mind Map" 
+        <Tab.Screen
+          name="Mind Map"
           component={MindMapScreen}
           options={{
             tabBarIcon: ({ color, size }) => (
@@ -76,8 +80,8 @@ export const BottomTabNavigator: React.FC = () => {
             ),
           }}
         />
-        <Tab.Screen 
-          name="Chat" 
+        <Tab.Screen
+          name="Chat"
           component={AITutorScreen}
           options={{
             tabBarIcon: ({ color, size }) => (
@@ -109,8 +113,8 @@ export const BottomTabNavigator: React.FC = () => {
         },
       }}
     >
-      <Tab.Screen 
-        name="Home" 
+      <Tab.Screen
+        name="Home"
         component={HomeScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
@@ -118,8 +122,8 @@ export const BottomTabNavigator: React.FC = () => {
           ),
         }}
       />
-      <Tab.Screen 
-        name="Import" 
+      <Tab.Screen
+        name="Import"
         component={ImportScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
@@ -127,8 +131,8 @@ export const BottomTabNavigator: React.FC = () => {
           ),
         }}
       />
-      <Tab.Screen 
-        name="Recent Notes" 
+      <Tab.Screen
+        name="Recent Notes"
         component={RecentNotesScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
@@ -138,4 +142,4 @@ export const BottomTabNavigator: React.FC = () => {
       />
     </Tab.Navigator>
   );
-}; 
+};

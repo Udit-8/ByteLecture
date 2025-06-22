@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 // Mind Map Types (matching backend)
 export type MindMapStyle = 'hierarchical' | 'radial' | 'flowchart';
@@ -11,11 +12,11 @@ export interface MindMapNode {
   content?: string;
   level: number;
   children?: MindMapNode[];
-  
+
   // Position for layout
   position_x?: number;
   position_y?: number;
-  
+
   // User customizations
   user_notes?: string;
   color?: string;
@@ -33,28 +34,28 @@ export interface MindMap {
   id: string;
   user_id: string;
   content_item_id?: string;
-  
+
   // Mind map metadata
   title: string;
   description?: string;
   style: MindMapStyle;
-  
+
   // Mind map structure
   mind_map_data: MindMapData;
-  
+
   // Metrics
   node_count: number;
   max_depth: number;
-  
+
   // Processing metadata
   ai_model?: string;
   tokens_used?: number;
   processing_time_ms?: number;
-  
+
   // Timestamps
   created_at: string;
   updated_at: string;
-  
+
   // Related content info
   content_items?: {
     title: string;
@@ -96,7 +97,7 @@ class MindMapAPI {
     const token = await AsyncStorage.getItem('auth_token');
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     };
   }
 
@@ -105,8 +106,11 @@ class MindMapAPI {
    */
   async generateMindMap(request: CreateMindMapRequest): Promise<MindMap> {
     try {
-      console.log('🧠 Generating mind map for content:', request.content_item_id);
-      
+      console.log(
+        '🧠 Generating mind map for content:',
+        request.content_item_id
+      );
+
       const headers = await this.getAuthHeaders();
       const response = await fetch(this.baseURL, {
         method: 'POST',
@@ -117,7 +121,9 @@ class MindMapAPI {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || data.details || 'Failed to generate mind map');
+        throw new Error(
+          data.error || data.details || 'Failed to generate mind map'
+        );
       }
 
       console.log('✅ Mind map generated successfully:', data.data.id);
@@ -179,7 +185,10 @@ class MindMapAPI {
   /**
    * Update a mind map
    */
-  async updateMindMap(id: string, updates: UpdateMindMapRequest): Promise<MindMap> {
+  async updateMindMap(
+    id: string,
+    updates: UpdateMindMapRequest
+  ): Promise<MindMap> {
     try {
       const headers = await this.getAuthHeaders();
       const response = await fetch(`${this.baseURL}/${id}`, {
@@ -225,7 +234,10 @@ class MindMapAPI {
   /**
    * Export a mind map
    */
-  async exportMindMap(id: string, options: MindMapExportOptions): Promise<string> {
+  async exportMindMap(
+    id: string,
+    options: MindMapExportOptions
+  ): Promise<string> {
     try {
       const headers = await this.getAuthHeaders();
       const queryParams = new URLSearchParams({
@@ -233,13 +245,18 @@ class MindMapAPI {
         include_notes: options.include_notes?.toString() || 'true',
         theme: options.theme || 'light',
         ...(options.font_size && { font_size: options.font_size.toString() }),
-        ...(options.node_colors && { node_colors: options.node_colors.join(',') }),
+        ...(options.node_colors && {
+          node_colors: options.node_colors.join(','),
+        }),
       });
 
-      const response = await fetch(`${this.baseURL}/${id}/export?${queryParams}`, {
-        method: 'GET',
-        headers,
-      });
+      const response = await fetch(
+        `${this.baseURL}/${id}/export?${queryParams}`,
+        {
+          method: 'GET',
+          headers,
+        }
+      );
 
       if (!response.ok) {
         const data = await response.json();
@@ -254,4 +271,4 @@ class MindMapAPI {
   }
 }
 
-export const mindMapAPI = new MindMapAPI(); 
+export const mindMapAPI = new MindMapAPI();

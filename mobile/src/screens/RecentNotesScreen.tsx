@@ -12,7 +12,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Header, Card, LoadingIndicator } from '../components';
 import { theme } from '../constants/theme';
-import { useNavigation, useContentRefresh, Note } from '../contexts/NavigationContext';
+import {
+  useNavigation,
+  useContentRefresh,
+  Note,
+} from '../contexts/NavigationContext';
 import { useContent } from '../hooks/useContent';
 import { ContentItem } from '../services/contentAPI';
 
@@ -46,13 +50,13 @@ export const RecentNotesScreen: React.FC = () => {
   useEffect(() => {
     console.log('📚 Content items changed:', {
       count: contentItems.length,
-      items: contentItems.map(item => ({
+      items: contentItems.map((item) => ({
         id: item.id,
         title: item.title,
         contentType: item.contentType,
         processed: item.processed,
-        createdAt: item.createdAt
-      }))
+        createdAt: item.createdAt,
+      })),
     });
   }, [contentItems]);
 
@@ -79,11 +83,13 @@ export const RecentNotesScreen: React.FC = () => {
         summary: contentItem.summary,
       },
     };
-    
+
     setNoteDetailMode(note);
   };
 
-  const mapContentTypeToNoteType = (contentType: ContentItem['contentType']): Note['type'] => {
+  const mapContentTypeToNoteType = (
+    contentType: ContentItem['contentType']
+  ): Note['type'] => {
     switch (contentType) {
       case 'pdf':
         return 'PDF';
@@ -128,10 +134,10 @@ export const RecentNotesScreen: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
@@ -159,9 +165,9 @@ export const RecentNotesScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <Header title="Recent Notes" />
-      
-      <ScrollView 
-        style={styles.content} 
+
+      <ScrollView
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -175,7 +181,11 @@ export const RecentNotesScreen: React.FC = () => {
         {error && (
           <Card style={styles.errorCard}>
             <View style={styles.errorContent}>
-              <Ionicons name="alert-circle" size={24} color={theme.colors.error[600]} />
+              <Ionicons
+                name="alert-circle"
+                size={24}
+                color={theme.colors.error[600]}
+              />
               <Text style={styles.errorText}>{error}</Text>
               <TouchableOpacity onPress={handleErrorDismiss}>
                 <Text style={styles.dismissText}>Dismiss</Text>
@@ -187,7 +197,8 @@ export const RecentNotesScreen: React.FC = () => {
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeTitle}>Your Learning Materials</Text>
           <Text style={styles.welcomeDescription}>
-            Access your imported content and continue learning where you left off.
+            Access your imported content and continue learning where you left
+            off.
           </Text>
         </View>
 
@@ -198,15 +209,11 @@ export const RecentNotesScreen: React.FC = () => {
               <Text style={styles.statLabel}>Total Notes</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {stats.processedItems}
-              </Text>
+              <Text style={styles.statNumber}>{stats.processedItems}</Text>
               <Text style={styles.statLabel}>Processed</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>
-                {stats.pendingItems}
-              </Text>
+              <Text style={styles.statNumber}>{stats.pendingItems}</Text>
               <Text style={styles.statLabel}>Pending</Text>
             </View>
           </View>
@@ -224,10 +231,10 @@ export const RecentNotesScreen: React.FC = () => {
                 <Card style={styles.noteCard}>
                   <View style={styles.noteHeader}>
                     <View style={styles.noteIcon}>
-                      <Ionicons 
-                        name={getTypeIcon(noteType) as any} 
-                        size={24} 
-                        color={getTypeColor(noteType)} 
+                      <Ionicons
+                        name={getTypeIcon(noteType) as any}
+                        size={24}
+                        color={getTypeColor(noteType)}
                       />
                     </View>
                     <View style={styles.noteInfo}>
@@ -236,7 +243,12 @@ export const RecentNotesScreen: React.FC = () => {
                       </Text>
                       <View style={styles.noteMeta}>
                         <View style={styles.typeTag}>
-                          <Text style={[styles.typeText, { color: getTypeColor(noteType) }]}>
+                          <Text
+                            style={[
+                              styles.typeText,
+                              { color: getTypeColor(noteType) },
+                            ]}
+                          >
                             {noteType}
                           </Text>
                         </View>
@@ -253,36 +265,62 @@ export const RecentNotesScreen: React.FC = () => {
                     <View style={styles.statusSection}>
                       {contentItem.processed ? (
                         <View style={styles.processedBadge}>
-                          <Ionicons name="checkmark-circle" size={16} color={theme.colors.success[600]} />
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={16}
+                            color={theme.colors.success[600]}
+                          />
                           <Text style={styles.processedText}>Ready</Text>
                         </View>
                       ) : (
                         <View style={styles.pendingBadge}>
-                          <Ionicons name="time" size={16} color={theme.colors.warning[600]} />
+                          <Ionicons
+                            name="time"
+                            size={16}
+                            color={theme.colors.warning[600]}
+                          />
                           <Text style={styles.pendingText}>Processing</Text>
                         </View>
                       )}
                     </View>
                   </View>
-                  
+
                   {contentItem.processed && (
                     <View style={styles.aiFeatures}>
-                      <Text style={styles.aiFeaturesTitle}>AI Features Available</Text>
+                      <Text style={styles.aiFeaturesTitle}>
+                        AI Features Available
+                      </Text>
                       <View style={styles.featuresList}>
                         <View style={styles.featureItem}>
-                          <Ionicons name="document-text" size={14} color={theme.colors.primary[600]} />
+                          <Ionicons
+                            name="document-text"
+                            size={14}
+                            color={theme.colors.primary[600]}
+                          />
                           <Text style={styles.featureText}>Summary</Text>
                         </View>
                         <View style={styles.featureItem}>
-                          <Ionicons name="library" size={14} color={theme.colors.primary[600]} />
+                          <Ionicons
+                            name="library"
+                            size={14}
+                            color={theme.colors.primary[600]}
+                          />
                           <Text style={styles.featureText}>Flashcards</Text>
                         </View>
                         <View style={styles.featureItem}>
-                          <Ionicons name="help-circle" size={14} color={theme.colors.primary[600]} />
+                          <Ionicons
+                            name="help-circle"
+                            size={14}
+                            color={theme.colors.primary[600]}
+                          />
                           <Text style={styles.featureText}>Quiz</Text>
                         </View>
                         <View style={styles.featureItem}>
-                          <Ionicons name="chatbubbles" size={14} color={theme.colors.primary[600]} />
+                          <Ionicons
+                            name="chatbubbles"
+                            size={14}
+                            color={theme.colors.primary[600]}
+                          />
                           <Text style={styles.featureText}>AI Tutor</Text>
                         </View>
                       </View>
@@ -297,10 +335,16 @@ export const RecentNotesScreen: React.FC = () => {
         {contentItems.length === 0 && !loading && (
           <Card style={styles.emptyCard}>
             <View style={styles.emptyContent}>
-              <Ionicons name="folder-open-outline" size={48} color={theme.colors.gray[400]} />
+              <Ionicons
+                name="folder-open-outline"
+                size={48}
+                color={theme.colors.gray[400]}
+              />
               <Text style={styles.emptyTitle}>No Content Yet</Text>
               <Text style={styles.emptyDescription}>
-                Import some content from the Import tab to see your learning materials here. Upload PDFs, add YouTube videos, or record lectures to get started.
+                Import some content from the Import tab to see your learning
+                materials here. Upload PDFs, add YouTube videos, or record
+                lectures to get started.
               </Text>
             </View>
           </Card>
@@ -365,7 +409,8 @@ const styles = StyleSheet.create({
   welcomeDescription: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.gray[600],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -422,7 +467,8 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[600],
     marginTop: theme.spacing.xs,
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
   noteMeta: {
     flexDirection: 'row',
@@ -523,6 +569,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[600],
     textAlign: 'center',
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
-}); 
+});

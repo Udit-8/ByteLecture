@@ -59,7 +59,10 @@ export const validatePDFFile = async (
     }
 
     // Validate file content structure
-    const structureValidation = await validatePDFStructure(file, validationOptions);
+    const structureValidation = await validatePDFStructure(
+      file,
+      validationOptions
+    );
     if (!structureValidation.isValid) {
       return structureValidation;
     }
@@ -110,7 +113,8 @@ export const validateBasicFile = (
   }
 
   // Check minimum file size (avoid empty or corrupted files)
-  if (file.size < 1024) { // Less than 1KB
+  if (file.size < 1024) {
+    // Less than 1KB
     return {
       isValid: false,
       error: 'File appears to be empty or corrupted (too small)',
@@ -132,10 +136,10 @@ const validatePDFStructure = async (
     const base64Content = await FileSystem.readAsStringAsync(file.uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
-    
+
     // Convert base64 to check PDF header
     const binaryString = atob(base64Content.substring(0, 100));
-    
+
     // Check PDF header (%PDF-)
     if (!binaryString.startsWith('%PDF-')) {
       return {
@@ -157,7 +161,10 @@ const validatePDFStructure = async (
     };
 
     // Check for encryption markers in the content
-    if (binaryString.includes('/Encrypt') || binaryString.includes('/Filter/Standard')) {
+    if (
+      binaryString.includes('/Encrypt') ||
+      binaryString.includes('/Filter/Standard')
+    ) {
       if (!options.allowEncrypted) {
         return {
           isValid: false,
@@ -183,7 +190,10 @@ const validatePDFStructure = async (
 /**
  * Quick file type validation for immediate feedback
  */
-export const quickValidateFileType = (fileName: string, mimeType?: string): boolean => {
+export const quickValidateFileType = (
+  fileName: string,
+  mimeType?: string
+): boolean => {
   const hasValidExtension = fileName.toLowerCase().endsWith('.pdf');
   const hasValidMimeType = !mimeType || mimeType.includes('pdf');
   return hasValidExtension && hasValidMimeType;
@@ -194,11 +204,11 @@ export const quickValidateFileType = (fileName: string, mimeType?: string): bool
  */
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 };
 
@@ -209,9 +219,12 @@ export const getValidationErrorMessage = (error: string): string => {
   const errorMessages: Record<string, string> = {
     'File must have a .pdf extension': '📄 Please select a PDF file',
     'File must be a PDF document': '📄 Only PDF documents are supported',
-    'Password-protected PDFs are not supported': '🔒 Password-protected PDFs cannot be processed',
-    'File does not exist or is not accessible': '❌ Unable to access the selected file',
-    'File appears to be empty or corrupted (too small)': '⚠️ The file appears to be empty or corrupted',
+    'Password-protected PDFs are not supported':
+      '🔒 Password-protected PDFs cannot be processed',
+    'File does not exist or is not accessible':
+      '❌ Unable to access the selected file',
+    'File appears to be empty or corrupted (too small)':
+      '⚠️ The file appears to be empty or corrupted',
   };
 
   // Check for file size errors
@@ -230,4 +243,4 @@ export const getValidationErrorMessage = (error: string): string => {
   }
 
   return errorMessages[error] || '❌ ' + error;
-}; 
+};

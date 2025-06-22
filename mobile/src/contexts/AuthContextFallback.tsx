@@ -13,9 +13,17 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  session: { access_token: string; refresh_token?: string; expires_in?: number } | null;
+  session: {
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+  } | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error?: string }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName?: string
+  ) => Promise<{ error?: string }>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<{ error?: string }>;
   resetPassword: (email: string) => Promise<{ error?: string }>;
@@ -32,7 +40,8 @@ export const useAuth = () => {
   return context;
 };
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -40,57 +49,52 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<{ access_token: string; refresh_token?: string; expires_in?: number } | null>(null);
+  const [session, setSession] = useState<{
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     checkStoredAuth();
-    
+
     // Listen for Supabase auth state changes
     console.log('🔄 Setting up auth state listener...');
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔄 Auth state change event:', { 
-          event, 
-          hasSession: !!session,
-          hasUser: !!session?.user,
-          email: session?.user?.email 
-        });
-        
-        if (event === 'SIGNED_IN' && session?.user) {
-          console.log('✅ User signed in via Supabase auth');
-          
-          // Update our auth context with the session
-          setSession({
-            access_token: session.access_token,
-            refresh_token: session.refresh_token,
-            expires_in: session.expires_in,
-          });
-          
-          // Try to fetch user profile from backend
-          try {
-            const response = await fetch(`${API_BASE_URL}/auth/me`, {
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-                'Content-Type': 'application/json',
-              },
-            });
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔄 Auth state change event:', {
+        event,
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        email: session?.user?.email,
+      });
 
-            if (response.ok) {
-              const userData = await response.json();
-              setUser(userData.user);
-            } else {
-              // Fallback to Supabase user data
-              setUser({
-                id: session.user.id,
-                email: session.user.email || '',
-                full_name: session.user.user_metadata?.full_name,
-                created_at: session.user.created_at || new Date().toISOString(),
-                plan_type: 'free',
-              });
-            }
-          } catch (error) {
-            console.warn('Failed to fetch user profile, using Supabase data:', error);
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('✅ User signed in via Supabase auth');
+
+        // Update our auth context with the session
+        setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          expires_in: session.expires_in,
+        });
+
+        // Try to fetch user profile from backend
+        try {
+          const response = await fetch(`${API_BASE_URL}/auth/me`, {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+
+          if (response.ok) {
+            const userData = await response.json();
+            setUser(userData.user);
+          } else {
+            // Fallback to Supabase user data
             setUser({
               id: session.user.id,
               email: session.user.email || '',
@@ -99,21 +103,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               plan_type: 'free',
             });
           }
-        } else if (event === 'SIGNED_OUT') {
-          console.log('✅ User signed out via Supabase auth');
-          setSession(null);
-          setUser(null);
-          await AsyncStorage.removeItem('auth_token');
-        } else if (event === 'TOKEN_REFRESHED' && session) {
-          console.log('🔄 Token refreshed');
-          setSession({
-            access_token: session.access_token,
-            refresh_token: session.refresh_token,
-            expires_in: session.expires_in,
+        } catch (error) {
+          console.warn(
+            'Failed to fetch user profile, using Supabase data:',
+            error
+          );
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            full_name: session.user.user_metadata?.full_name,
+            created_at: session.user.created_at || new Date().toISOString(),
+            plan_type: 'free',
           });
         }
+      } else if (event === 'SIGNED_OUT') {
+        console.log('✅ User signed out via Supabase auth');
+        setSession(null);
+        setUser(null);
+        await AsyncStorage.removeItem('auth_token');
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        console.log('🔄 Token refreshed');
+        setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          expires_in: session.expires_in,
+        });
       }
-    );
+    });
 
     return () => {
       console.log('🔄 Cleaning up auth state listener');
@@ -124,21 +140,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const checkStoredAuth = async () => {
     try {
       console.log('🔍 Checking stored auth...');
-      
+
       // First check if we have a Supabase session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
       if (session?.user) {
-        console.log('✅ Found existing Supabase session:', { 
-          hasUser: !!session.user, 
-          email: session.user.email 
+        console.log('✅ Found existing Supabase session:', {
+          hasUser: !!session.user,
+          email: session.user.email,
         });
-        
+
         // Fetch additional user data from backend
         try {
           const response = await fetch(`${API_BASE_URL}/auth/me`, {
             headers: {
-              'Authorization': `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${session.access_token}`,
               'Content-Type': 'application/json',
             },
           });
@@ -157,7 +176,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
           }
         } catch (fetchError) {
-          console.warn('Failed to fetch user profile from backend, using Supabase data:', fetchError);
+          console.warn(
+            'Failed to fetch user profile from backend, using Supabase data:',
+            fetchError
+          );
           setUser({
             id: session.user.id,
             email: session.user.email || '',
@@ -166,11 +188,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             plan_type: 'free',
           });
         }
-        
+
         // Store token for backward compatibility with other API services
         await AsyncStorage.setItem('auth_token', session.access_token);
-        console.log('💾 Stored auth_token from Supabase session for API compatibility');
-        
+        console.log(
+          '💾 Stored auth_token from Supabase session for API compatibility'
+        );
+
         setSession({
           access_token: session.access_token,
           refresh_token: session.refresh_token,
@@ -178,14 +202,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         });
       } else {
         console.log('❌ No existing Supabase session found');
-        
+
         // Fallback: check for stored token (for backward compatibility)
         const token = await AsyncStorage.getItem('auth_token');
         if (token) {
           console.log('🔍 Found stored auth token, verifying with backend...');
           const response = await fetch(`${API_BASE_URL}/auth/me`, {
             headers: {
-              'Authorization': `Bearer ${token}`,
+              Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
           });
@@ -211,7 +235,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       console.log('📝 Attempting registration for:', email);
-      
+
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: {
@@ -225,10 +249,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       const data = await response.json();
-      console.log('📝 Backend registration response:', { 
-        success: response.ok, 
+      console.log('📝 Backend registration response:', {
+        success: response.ok,
         hasSession: !!data.session,
-        hasUser: !!data.user 
+        hasUser: !!data.user,
       });
 
       if (!response.ok) {
@@ -236,8 +260,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       if (data.session?.access_token) {
-        console.log('✅ Got session from backend, setting up Supabase session...');
-        
+        console.log(
+          '✅ Got session from backend, setting up Supabase session...'
+        );
+
         // Set up the Supabase session with the tokens from backend
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: data.session.access_token,
@@ -253,7 +279,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // Store token for backward compatibility
         await AsyncStorage.setItem('auth_token', data.session.access_token);
-        
+
         setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
@@ -265,8 +291,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return {};
     } catch (error) {
       console.error('📝 Registration error:', error);
-      return { 
-        error: error instanceof Error ? error.message : 'Network error occurred' 
+      return {
+        error:
+          error instanceof Error ? error.message : 'Network error occurred',
       };
     } finally {
       setLoading(false);
@@ -277,7 +304,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       console.log('🔐 Attempting login for:', email);
-      
+
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
@@ -290,10 +317,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       const data = await response.json();
-      console.log('🔐 Backend login response:', { 
-        success: response.ok, 
+      console.log('🔐 Backend login response:', {
+        success: response.ok,
         hasSession: !!data.session,
-        hasUser: !!data.user 
+        hasUser: !!data.user,
       });
 
       if (!response.ok) {
@@ -301,8 +328,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       if (data.session?.access_token) {
-        console.log('✅ Got session from backend, setting up Supabase session...');
-        
+        console.log(
+          '✅ Got session from backend, setting up Supabase session...'
+        );
+
         // Set up the Supabase session with the tokens from backend
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: data.session.access_token,
@@ -318,7 +347,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // Store token for backward compatibility
         await AsyncStorage.setItem('auth_token', data.session.access_token);
-        
+
         setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
@@ -330,8 +359,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return {};
     } catch (error) {
       console.error('🔐 Login error:', error);
-      return { 
-        error: error instanceof Error ? error.message : 'Network error occurred' 
+      return {
+        error:
+          error instanceof Error ? error.message : 'Network error occurred',
       };
     } finally {
       setLoading(false);
@@ -342,52 +372,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       console.log('🚪 Attempting logout...');
-      
+
       const token = await AsyncStorage.getItem('auth_token');
-      
+
       // Clear local storage and state first (most important part)
       await AsyncStorage.removeItem('auth_token');
       setSession(null);
       setUser(null);
       console.log('✅ Local auth state cleared');
-      
+
       // Try to sign out from Supabase (non-critical, can fail gracefully)
       try {
         const { error: supabaseError } = await supabase.auth.signOut();
         if (supabaseError) {
-          console.warn('⚠️ Supabase logout warning (non-critical):', supabaseError.message);
+          console.warn(
+            '⚠️ Supabase logout warning (non-critical):',
+            supabaseError.message
+          );
         } else {
           console.log('✅ Supabase logout successful');
         }
       } catch (supabaseNetworkError) {
-        console.warn('⚠️ Supabase logout network error (non-critical):', supabaseNetworkError);
+        console.warn(
+          '⚠️ Supabase logout network error (non-critical):',
+          supabaseNetworkError
+        );
       }
-      
+
       // Try to call backend logout if we have a token (non-critical, can fail gracefully)
       if (token) {
         try {
           const response = await fetch(`${API_BASE_URL}/auth/logout`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${token}`,
+              Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
           });
-          
+
           if (response.ok) {
             console.log('✅ Backend logout successful');
           } else {
-            console.warn('⚠️ Backend logout failed (non-critical):', response.status);
+            console.warn(
+              '⚠️ Backend logout failed (non-critical):',
+              response.status
+            );
           }
         } catch (backendError) {
-          console.warn('⚠️ Backend logout network error (non-critical):', backendError);
+          console.warn(
+            '⚠️ Backend logout network error (non-critical):',
+            backendError
+          );
         }
       }
 
       return {};
     } catch (error) {
       console.error('🚪 Critical logout error:', error);
-      
+
       // Even if everything fails, ensure local state is cleared
       try {
         await AsyncStorage.removeItem('auth_token');
@@ -397,9 +439,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (emergencyError) {
         console.error('💥 Emergency clear failed:', emergencyError);
       }
-      
-      return { 
-        error: error instanceof Error ? error.message : 'Logout error occurred' 
+
+      return {
+        error: error instanceof Error ? error.message : 'Logout error occurred',
       };
     } finally {
       setLoading(false);
@@ -424,8 +466,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       return {};
     } catch (error) {
-      return { 
-        error: error instanceof Error ? error.message : 'Network error occurred' 
+      return {
+        error:
+          error instanceof Error ? error.message : 'Network error occurred',
       };
     }
   };
@@ -434,29 +477,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       // Get the current user's email from user state or stored data
       const userEmail = user?.email;
-      
+
       if (!userEmail) {
-        return { error: 'No email address found. Please try registering again.' };
+        return {
+          error: 'No email address found. Please try registering again.',
+        };
       }
 
-      const response = await fetch(`${API_BASE_URL}/auth/resend-verification-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: userEmail }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/auth/resend-verification-email`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: userEmail }),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        return { error: data.message || data.error || 'Resend verification email failed' };
+        return {
+          error:
+            data.message || data.error || 'Resend verification email failed',
+        };
       }
 
       return {};
     } catch (error) {
-      return { 
-        error: error instanceof Error ? error.message : 'Network error occurred' 
+      return {
+        error:
+          error instanceof Error ? error.message : 'Network error occurred',
       };
     }
   };
@@ -472,9 +524,5 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     resendVerificationEmail,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
-}; 
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};

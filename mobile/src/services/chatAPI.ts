@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 // Core interfaces matching backend types
 export interface ChatSession {
@@ -115,11 +116,11 @@ class ChatAPI {
   ): Promise<any> {
     try {
       const token = await AsyncStorage.getItem('auth_token');
-      
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
-      
+
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }
@@ -131,28 +132,28 @@ class ChatAPI {
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: data.message || data.error || 'Request failed',
-          errorCode: data.errorCode 
+          errorCode: data.errorCode,
         };
       }
 
       return data;
     } catch (error) {
       console.error('Chat API request failed:', error);
-      return { 
-        success: false, 
-        error: 'Network error occurred' 
+      return {
+        success: false,
+        error: 'Network error occurred',
       };
     }
   }
 
   // Session Management
   async createSession(
-    title?: string, 
+    title?: string,
     contextContentIds?: string[]
   ): Promise<ChatSessionResponse> {
     return await this.makeRequest('/sessions', 'POST', {
@@ -162,30 +163,34 @@ class ChatAPI {
   }
 
   async getSessions(
-    page: number = 1, 
+    page: number = 1,
     limit: number = 20
   ): Promise<ChatSessionsResponse> {
     return await this.makeRequest(`/sessions?page=${page}&limit=${limit}`);
   }
 
   async updateSession(
-    sessionId: string, 
+    sessionId: string,
     title: string
   ): Promise<ChatSessionResponse> {
     return await this.makeRequest(`/sessions/${sessionId}`, 'PUT', { title });
   }
 
-  async deleteSession(sessionId: string): Promise<{ success: boolean; error?: string }> {
+  async deleteSession(
+    sessionId: string
+  ): Promise<{ success: boolean; error?: string }> {
     return await this.makeRequest(`/sessions/${sessionId}`, 'DELETE');
   }
 
-  // Message Management  
+  // Message Management
   async getMessages(
     sessionId: string,
     page: number = 1,
     limit: number = 50
   ): Promise<ChatMessagesResponse> {
-    return await this.makeRequest(`/sessions/${sessionId}/messages?page=${page}&limit=${limit}`);
+    return await this.makeRequest(
+      `/sessions/${sessionId}/messages?page=${page}&limit=${limit}`
+    );
   }
 
   async sendMessage(
@@ -203,7 +208,9 @@ class ChatAPI {
   }
 
   // Content Processing
-  async generateEmbeddings(contentIds: string[]): Promise<GenerateEmbeddingsResponse> {
+  async generateEmbeddings(
+    contentIds: string[]
+  ): Promise<GenerateEmbeddingsResponse> {
     return await this.makeRequest('/embeddings/generate', 'POST', {
       contentIds,
     });
@@ -226,13 +233,15 @@ class ChatAPI {
   ): Promise<ChatSessionResponse> {
     // First try to find an existing session with the same content
     const sessionsResponse = await this.getSessions();
-    
+
     if (sessionsResponse.success && sessionsResponse.data) {
-      const existingSession = sessionsResponse.data.sessions.find(session => {
+      const existingSession = sessionsResponse.data.sessions.find((session) => {
         if (!session.context_content_ids || !contentIds.length) return false;
-        
-        return contentIds.length === session.context_content_ids.length &&
-               contentIds.every(id => session.context_content_ids!.includes(id));
+
+        return (
+          contentIds.length === session.context_content_ids.length &&
+          contentIds.every((id) => session.context_content_ids!.includes(id))
+        );
       });
 
       if (existingSession) {
@@ -246,4 +255,4 @@ class ChatAPI {
 }
 
 export const chatAPI = new ChatAPI();
-export default chatAPI; 
+export default chatAPI;

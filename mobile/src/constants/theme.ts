@@ -50,7 +50,7 @@ export const theme = {
     },
     white: '#FFFFFF',
     black: '#000000',
-    
+
     // Additional convenience colors
     background: '#F9FAFB', // gray[50]
     text: '#111827', // gray[900]
@@ -124,4 +124,4 @@ export const theme = {
   },
 } as const;
 
-export type Theme = typeof theme; 
+export type Theme = typeof theme;

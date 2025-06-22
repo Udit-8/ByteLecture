@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 // Types for AI summarization
 export interface SummaryOptions {
@@ -82,11 +83,11 @@ class SummaryAPI {
   ): Promise<any> {
     try {
       const token = await AsyncStorage.getItem('auth_token');
-      
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
-      
+
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }
@@ -98,22 +99,22 @@ class SummaryAPI {
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: data.error || 'Request failed',
-          message: data.message 
+          message: data.message,
         };
       }
 
       return data;
     } catch (error) {
       console.error('Summary API request failed:', error);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: 'Network error occurred',
-        message: 'Failed to connect to the summarization service'
+        message: 'Failed to connect to the summarization service',
       };
     }
   }
@@ -121,11 +122,13 @@ class SummaryAPI {
   /**
    * Generate a new AI summary
    */
-  async generateSummary(request: GenerateSummaryRequest): Promise<SummaryResponse> {
+  async generateSummary(
+    request: GenerateSummaryRequest
+  ): Promise<SummaryResponse> {
     console.log('🤖 Generating AI summary:', {
       contentType: request.contentType,
       contentLength: request.content.length,
-      options: request.options
+      options: request.options,
     });
 
     const startTime = Date.now();
@@ -133,7 +136,7 @@ class SummaryAPI {
     const duration = Date.now() - startTime;
 
     console.log(`📝 Summary generation completed in ${duration}ms`);
-    
+
     if (result.success && result.summary) {
       console.log('✅ Summary generated successfully');
       console.log('📊 Cache hit:', result.summary.metadata.cacheHit);
@@ -150,11 +153,11 @@ class SummaryAPI {
    */
   async getSummary(summaryId: string): Promise<SummaryResponse> {
     const result = await this.makeRequest(`/${summaryId}`);
-    
+
     if (result.success) {
       console.log('📖 Summary retrieved:', summaryId);
     }
-    
+
     return result;
   }
 
@@ -169,8 +172,9 @@ class SummaryAPI {
     sortOrder?: 'asc' | 'desc';
   }): Promise<SummaryResponse> {
     const queryParams = new URLSearchParams();
-    
-    if (params?.contentType) queryParams.append('contentType', params.contentType);
+
+    if (params?.contentType)
+      queryParams.append('contentType', params.contentType);
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.offset) queryParams.append('offset', params.offset.toString());
     if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
@@ -178,24 +182,26 @@ class SummaryAPI {
 
     const endpoint = queryParams.toString() ? `?${queryParams.toString()}` : '';
     const result = await this.makeRequest(endpoint);
-    
+
     if (result.success) {
       console.log('📋 Retrieved', result.summaries?.length || 0, 'summaries');
     }
-    
+
     return result;
   }
 
   /**
    * Get summaries for a specific content item
    */
-  async getSummariesByContentItem(contentItemId: string): Promise<SummaryResponse> {
+  async getSummariesByContentItem(
+    contentItemId: string
+  ): Promise<SummaryResponse> {
     const result = await this.makeRequest(`/content-item/${contentItemId}`);
-    
+
     if (result.success) {
       console.log('🔗 Retrieved summaries for content item:', contentItemId);
     }
-    
+
     return result;
   }
 
@@ -204,11 +210,11 @@ class SummaryAPI {
    */
   async updateSummaryAccess(summaryId: string): Promise<SummaryResponse> {
     const result = await this.makeRequest(`/${summaryId}/access`, 'PUT');
-    
+
     if (result.success) {
       console.log('👁️ Updated access tracking for summary:', summaryId);
     }
-    
+
     return result;
   }
 
@@ -217,24 +223,26 @@ class SummaryAPI {
    */
   async deleteSummary(summaryId: string): Promise<SummaryResponse> {
     const result = await this.makeRequest(`/${summaryId}`, 'DELETE');
-    
+
     if (result.success) {
       console.log('🗑️ Deleted summary:', summaryId);
     }
-    
+
     return result;
   }
 
   /**
    * Get cache performance statistics
    */
-  async getCacheStats(days: number = 7): Promise<{ success: boolean; stats?: CacheStats; error?: string }> {
+  async getCacheStats(
+    days: number = 7
+  ): Promise<{ success: boolean; stats?: CacheStats; error?: string }> {
     const result = await this.makeRequest(`/cache/stats?days=${days}`);
-    
+
     if (result.success) {
       console.log('📈 Retrieved cache statistics for', days, 'days');
     }
-    
+
     return result;
   }
 
@@ -242,12 +250,14 @@ class SummaryAPI {
    * Trigger manual cache cleanup
    */
   async cleanupCache(daysToKeep: number = 30): Promise<SummaryResponse> {
-    const result = await this.makeRequest('/cache/cleanup', 'POST', { daysToKeep });
-    
+    const result = await this.makeRequest('/cache/cleanup', 'POST', {
+      daysToKeep,
+    });
+
     if (result.success) {
       console.log('🧹 Cache cleanup triggered, keeping', daysToKeep, 'days');
     }
-    
+
     return result;
   }
 
@@ -256,14 +266,14 @@ class SummaryAPI {
    */
   async getHealthStatus(): Promise<HealthStatus> {
     const result = await this.makeRequest('/health');
-    
+
     if (result.success) {
       console.log('🏥 Service health check completed');
       console.log('  OpenAI:', result.health?.openai ? '✅' : '❌');
       console.log('  Database:', result.health?.database ? '✅' : '❌');
       console.log('  Cache:', result.health?.cache?.healthy ? '✅' : '❌');
     }
-    
+
     return result;
   }
 
@@ -271,7 +281,7 @@ class SummaryAPI {
    * Convenience method to generate summary with default options
    */
   async quickSummary(
-    content: string, 
+    content: string,
     contentType: 'pdf' | 'youtube' | 'audio' | 'text',
     length: 'short' | 'medium' | 'long' = 'medium'
   ): Promise<SummaryResponse> {
@@ -280,8 +290,8 @@ class SummaryAPI {
       contentType,
       options: {
         length,
-        focusArea: 'general'
-      }
+        focusArea: 'general',
+      },
     });
   }
 
@@ -291,9 +301,11 @@ class SummaryAPI {
   async isServiceAvailable(): Promise<boolean> {
     try {
       const health = await this.getHealthStatus();
-      return health.success && 
-             health.health?.openai === true && 
-             health.health?.database === true;
+      return (
+        health.success &&
+        health.health?.openai === true &&
+        health.health?.database === true
+      );
     } catch (error) {
       console.error('Failed to check service availability:', error);
       return false;
@@ -313,7 +325,7 @@ class SummaryAPI {
     try {
       const [userSummaries, cacheStats] = await Promise.all([
         this.getUserSummaries({ limit: 1000 }), // Get all summaries for stats
-        this.getCacheStats(30) // Get 30-day cache stats
+        this.getCacheStats(30), // Get 30-day cache stats
       ]);
 
       if (!userSummaries.success || !cacheStats.success) {
@@ -338,4 +350,4 @@ class SummaryAPI {
 }
 
 export const summaryAPI = new SummaryAPI();
-export default summaryAPI; 
+export default summaryAPI;

@@ -12,7 +12,11 @@ import { Header, Button, Card, FeatureCard, PDFUpload } from '../components';
 import { YouTubeInput, VideoData } from '../components/YouTubeInput';
 import type { PDFFile, UploadResult } from '../components';
 import { theme } from '../constants/theme';
-import { useContentRefresh, useNavigation, Note } from '../contexts/NavigationContext';
+import {
+  useContentRefresh,
+  useNavigation,
+  Note,
+} from '../contexts/NavigationContext';
 import { ContentItem } from '../services/contentAPI';
 import pdfAPI from '../services/pdfAPI';
 
@@ -41,7 +45,9 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
     try {
       // Wait for content refresh to get the latest content items
       await refreshContent();
-      console.log('✅ Content refreshed, attempting to find processed content...');
+      console.log(
+        '✅ Content refreshed, attempting to find processed content...'
+      );
 
       // For now, create a content item with the available data
       // In the future, we could fetch the specific content item by matching title/URL
@@ -55,7 +61,8 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
         processed: true,
         summary: contentData.summary,
         fileUrl: contentData.url,
-        youtubeUrl: contentData.contentType === 'youtube' ? contentData.url : undefined,
+        youtubeUrl:
+          contentData.contentType === 'youtube' ? contentData.url : undefined,
         youtubeVideoId: contentData.videoId,
         duration: contentData.duration,
       };
@@ -89,7 +96,8 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
         processed: true,
         summary: contentData.summary,
         fileUrl: contentData.url,
-        youtubeUrl: contentData.contentType === 'youtube' ? contentData.url : undefined,
+        youtubeUrl:
+          contentData.contentType === 'youtube' ? contentData.url : undefined,
         youtubeVideoId: contentData.videoId,
         duration: contentData.duration,
       };
@@ -111,7 +119,9 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
     }
   };
 
-  const mapContentTypeToNoteType = (contentType: ContentItem['contentType']): Note['type'] => {
+  const mapContentTypeToNoteType = (
+    contentType: ContentItem['contentType']
+  ): Note['type'] => {
     switch (contentType) {
       case 'pdf':
         return 'PDF';
@@ -130,7 +140,10 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
 
   const handleFileSelected = (file: PDFFile) => {
     console.log('File selected:', file);
-    Alert.alert('File Selected', `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+    Alert.alert(
+      'File Selected',
+      `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`
+    );
   };
 
   const handleUploadProgress = (progress: number) => {
@@ -148,13 +161,13 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
           generateSummary: false,
           enableOCR: true,
         });
-        
+
         console.log('✅ PDF processing completed:', processingResult);
-        
+
         // Step 2: Refresh the content list to get the new content item
         await refreshContent();
         console.log('✅ Content refreshed after PDF processing');
-        
+
         Alert.alert(
           'PDF Processed Successfully!',
           'Your PDF has been processed and is ready for AI analysis.',
@@ -171,27 +184,35 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
               style: 'default',
               onPress: async () => {
                 setShowPDFUpload(false);
-                
+
                 try {
                   // Step 3: Find the actual content item that was created
                   console.log('🔍 Looking for newly created content item...');
                   await refreshContent(); // Refresh again to ensure we have the latest data
-                  
+
                   // For now, we'll still use temp content and let the SummaryScreen handle fetching the real content
                   // The key is to ensure we pass a proper content identifier so it can find the real content
                   navigateToSummary({
-                    title: result.path?.split('/').pop()?.replace('.pdf', '') || 'PDF Document',
+                    title:
+                      result.path?.split('/').pop()?.replace('.pdf', '') ||
+                      'PDF Document',
                     contentType: 'pdf',
-                    description: processingResult.message || 'PDF document processed successfully',
+                    description:
+                      processingResult.message ||
+                      'PDF document processed successfully',
                     url: result.publicUrl || result.path,
                   });
                 } catch (error) {
                   console.error('❌ Failed to find content item:', error);
                   // Still navigate but with temp content
                   navigateToSummary({
-                    title: result.path?.split('/').pop()?.replace('.pdf', '') || 'PDF Document',
+                    title:
+                      result.path?.split('/').pop()?.replace('.pdf', '') ||
+                      'PDF Document',
                     contentType: 'pdf',
-                    description: processingResult.message || 'PDF document processed successfully',
+                    description:
+                      processingResult.message ||
+                      'PDF document processed successfully',
                     url: result.publicUrl || result.path,
                   });
                 }
@@ -230,7 +251,7 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
 
   const handleVideoProcessed = async (videoData: VideoData) => {
     console.log('Video processed:', videoData);
-    
+
     // Refresh the content list immediately
     try {
       await refreshContent();
@@ -238,7 +259,7 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
     } catch (error) {
       console.error('❌ Failed to refresh content:', error);
     }
-    
+
     Alert.alert(
       'Video Processed Successfully!',
       `Video: ${videoData.title}\nTranscript extracted and ready for AI analysis.`,
@@ -262,7 +283,9 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
               summary: videoData.transcript || undefined,
               videoId: videoData.videoId,
               url: videoData.url,
-              duration: videoData.duration ? parseInt(videoData.duration) : undefined,
+              duration: videoData.duration
+                ? parseInt(videoData.duration)
+                : undefined,
             });
           },
         },
@@ -294,7 +317,13 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
       id: 'pdf',
       title: 'Upload PDF',
       description: 'Import PDF documents for AI analysis',
-      icon: <Ionicons name="document-text" size={24} color={theme.colors.primary[600]} />,
+      icon: (
+        <Ionicons
+          name="document-text"
+          size={24}
+          color={theme.colors.primary[600]}
+        />
+      ),
       color: theme.colors.primary[100],
       onPress: handlePDFUpload,
     },
@@ -302,7 +331,13 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
       id: 'youtube',
       title: 'YouTube Link',
       description: 'Extract content from YouTube videos',
-      icon: <Ionicons name="logo-youtube" size={24} color={theme.colors.error[600]} />,
+      icon: (
+        <Ionicons
+          name="logo-youtube"
+          size={24}
+          color={theme.colors.error[600]}
+        />
+      ),
       color: theme.colors.error[100],
       onPress: handleYouTubeImport,
     },
@@ -319,17 +354,20 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <Header title="Import Content" />
-      
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.welcomeCard}>
-          <Text style={styles.welcomeTitle}>Import Your Learning Materials</Text>
+          <Text style={styles.welcomeTitle}>
+            Import Your Learning Materials
+          </Text>
           <Text style={styles.welcomeDescription}>
-            Upload PDFs, share YouTube links, or record lectures to get started with AI-powered learning.
+            Upload PDFs, share YouTube links, or record lectures to get started
+            with AI-powered learning.
           </Text>
         </View>
 
         <Text style={styles.sectionTitle}>Choose Import Method</Text>
-        
+
         {!showPDFUpload && !showYouTubeInput ? (
           <View style={styles.optionsGrid}>
             {importOptions.map((option) => (
@@ -388,9 +426,9 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
         <Card style={styles.infoCard}>
           <Text style={styles.infoTitle}>💡 Pro Tips</Text>
           <Text style={styles.infoText}>
-            • PDFs work best with text-based content{'\n'}
-            • YouTube videos should have clear audio{'\n'}
-            • Record in quiet environments for best results
+            • PDFs work best with text-based content{'\n'}• YouTube videos
+            should have clear audio{'\n'}• Record in quiet environments for best
+            results
           </Text>
         </Card>
       </ScrollView>
@@ -422,7 +460,8 @@ const styles = StyleSheet.create({
   welcomeDescription: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.primary[100],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize.lg,
@@ -449,7 +488,8 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[700],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
   uploadSection: {
     marginBottom: theme.spacing.lg,
@@ -460,4 +500,4 @@ const styles = StyleSheet.create({
   backButton: {
     alignSelf: 'flex-start',
   },
-}); 
+});

@@ -1,12 +1,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 export interface FlashcardGenerationOptions {
   numberOfCards?: number;
   difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
-  focusArea?: 'concepts' | 'definitions' | 'examples' | 'applications' | 'facts' | 'general';
-  questionTypes?: ('definition' | 'concept' | 'example' | 'application' | 'factual')[];
+  focusArea?:
+    | 'concepts'
+    | 'definitions'
+    | 'examples'
+    | 'applications'
+    | 'facts'
+    | 'general';
+  questionTypes?: (
+    | 'definition'
+    | 'concept'
+    | 'example'
+    | 'application'
+    | 'factual'
+  )[];
   maxTokens?: number;
   temperature?: number;
 }
@@ -73,11 +86,11 @@ class FlashcardAPI {
   ): Promise<any> {
     try {
       const token = await AsyncStorage.getItem('auth_token');
-      
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
-      
+
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }
@@ -89,22 +102,22 @@ class FlashcardAPI {
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: data.error || 'Request failed',
-          message: data.message 
+          message: data.message,
         };
       }
 
       return data;
     } catch (error) {
       console.error('Flashcard API request failed:', error);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: 'Network error occurred',
-        message: 'Failed to connect to the flashcard service'
+        message: 'Failed to connect to the flashcard service',
       };
     }
   }
@@ -112,11 +125,13 @@ class FlashcardAPI {
   /**
    * Generate flashcards from content
    */
-  async generateFlashcards(request: GenerateFlashcardsRequest): Promise<FlashcardResponse> {
-    console.log('🃏 Generating flashcards...', { 
+  async generateFlashcards(
+    request: GenerateFlashcardsRequest
+  ): Promise<FlashcardResponse> {
+    console.log('🃏 Generating flashcards...', {
       contentType: request.contentType,
       contentLength: request.content.length,
-      options: request.options 
+      options: request.options,
     });
 
     const startTime = Date.now();
@@ -124,10 +139,14 @@ class FlashcardAPI {
     const duration = Date.now() - startTime;
 
     console.log(`🃏 Flashcard generation completed in ${duration}ms`);
-    
+
     if (result.success && result.flashcardSet) {
       console.log('✅ Flashcards generated successfully');
-      console.log('📊 Cards generated:', result.flashcardSet.flashcards?.length || result.flashcardSet.metadata?.totalCards);
+      console.log(
+        '📊 Cards generated:',
+        result.flashcardSet.flashcards?.length ||
+          result.flashcardSet.metadata?.totalCards
+      );
     } else {
       console.error('❌ Flashcard generation failed:', result.error);
     }
@@ -144,18 +163,23 @@ class FlashcardAPI {
     contentItemId?: string;
   }): Promise<FlashcardResponse> {
     const queryParams = new URLSearchParams();
-    
+
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.offset) queryParams.append('offset', params.offset.toString());
-    if (params?.contentItemId) queryParams.append('content_item_id', params.contentItemId);
+    if (params?.contentItemId)
+      queryParams.append('content_item_id', params.contentItemId);
 
     const endpoint = `/sets${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     const result = await this.makeRequest(endpoint);
-    
+
     if (result.success) {
-      console.log('📋 Retrieved', result.flashcardSets?.length || 0, 'flashcard sets');
+      console.log(
+        '📋 Retrieved',
+        result.flashcardSets?.length || 0,
+        'flashcard sets'
+      );
     }
-    
+
     return result;
   }
 
@@ -164,24 +188,26 @@ class FlashcardAPI {
    */
   async getFlashcardSet(setId: string): Promise<FlashcardResponse> {
     const result = await this.makeRequest(`/sets/${setId}`);
-    
+
     if (result.success) {
       console.log('🃏 Retrieved flashcard set:', setId);
     }
-    
+
     return result;
   }
 
   /**
    * Get flashcard sets for a specific content item
    */
-  async getFlashcardsByContentItem(contentItemId: string): Promise<FlashcardResponse> {
+  async getFlashcardsByContentItem(
+    contentItemId: string
+  ): Promise<FlashcardResponse> {
     const result = await this.makeRequest(`/content-item/${contentItemId}`);
-    
+
     if (result.success) {
       console.log('🔗 Retrieved flashcards for content item:', contentItemId);
     }
-    
+
     return result;
   }
 
@@ -195,11 +221,11 @@ class FlashcardAPI {
     console.log('📝 Updating flashcard set...', { setId, updates });
 
     const result = await this.makeRequest(`/sets/${setId}`, 'PUT', updates);
-    
+
     if (result.success) {
       console.log('✅ Flashcard set updated successfully');
     }
-    
+
     return result;
   }
 
@@ -210,11 +236,11 @@ class FlashcardAPI {
     console.log('🗑️ Deleting flashcard set...', { setId });
 
     const result = await this.makeRequest(`/sets/${setId}`, 'DELETE');
-    
+
     if (result.success) {
       console.log('✅ Flashcard set deleted successfully');
     }
-    
+
     return result;
   }
 
@@ -223,11 +249,11 @@ class FlashcardAPI {
    */
   async getHealthStatus(): Promise<FlashcardResponse> {
     const result = await this.makeRequest('/health');
-    
+
     if (result.success) {
       console.log('✅ Flashcard service is healthy');
     }
-    
+
     return result;
   }
 
@@ -254,4 +280,4 @@ class FlashcardAPI {
 
 // Export singleton instance
 export const flashcardAPI = new FlashcardAPI();
-export default flashcardAPI; 
+export default flashcardAPI;

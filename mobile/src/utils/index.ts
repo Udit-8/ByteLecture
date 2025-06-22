@@ -1,1 +1,1 @@
-export * from './pdfValidation'; 
+export * from './pdfValidation';

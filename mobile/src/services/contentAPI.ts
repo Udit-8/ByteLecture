@@ -64,10 +64,11 @@ class ContentAPI {
   constructor() {
     // Get the backend URL from environment or use default
     // Strip /api from EXPO_PUBLIC_API_URL if present, since we add it in routes
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+    const apiUrl =
+      process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
     const baseUrl = apiUrl.replace('/api', '');
     this.baseURL = `${baseUrl}/api/content`;
-    
+
     console.log('🔧 ContentAPI initialized with baseUrl:', baseUrl);
     console.log('🔧 ContentAPI full endpoint base:', this.baseURL);
   }
@@ -87,7 +88,7 @@ class ContentAPI {
       console.log('🔑 ContentAPI: Auth token check:', {
         hasToken: !!token,
         tokenLength: token?.length,
-        tokenStart: token?.substring(0, 10) + '...'
+        tokenStart: token?.substring(0, 10) + '...',
       });
 
       if (!token) {
@@ -117,7 +118,7 @@ class ContentAPI {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       };
 
@@ -127,24 +128,30 @@ class ContentAPI {
 
       console.log(`📡 ContentAPI: ${method} ${url}`, {
         hasBody: !!body,
-        authHeaderSet: !!(config.headers as Record<string, string>)?.['Authorization']
+        authHeaderSet: !!(config.headers as Record<string, string>)?.[
+          'Authorization'
+        ],
       });
       const response = await fetch(url, config);
-      
-      console.log(`📡 ContentAPI: Response status ${response.status} for ${method} ${endpoint}`);
-      
+
+      console.log(
+        `📡 ContentAPI: Response status ${response.status} for ${method} ${endpoint}`
+      );
+
       const data = await response.json();
 
       if (!response.ok) {
         console.error(`❌ ContentAPI: HTTP ${response.status}:`, data);
-        throw new Error(data.message || data.error || `HTTP ${response.status}`);
+        throw new Error(
+          data.message || data.error || `HTTP ${response.status}`
+        );
       }
 
       console.log(`✅ ContentAPI: Success for ${method} ${endpoint}:`, {
         hasContentItems: !!data.contentItems,
         contentItemsCount: data.contentItems?.length,
         hasContentItem: !!data.contentItem,
-        hasStats: !!data.stats
+        hasStats: !!data.stats,
       });
 
       return data;
@@ -152,7 +159,8 @@ class ContentAPI {
       console.error('❌ ContentAPI Error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
   }
@@ -160,13 +168,20 @@ class ContentAPI {
   /**
    * Get all content items for the user
    */
-  async getContentItems(queryParams?: ContentQueryParams): Promise<ContentResponse> {
-    const result = await this.makeRequest('/items', 'GET', undefined, queryParams as any);
-    
+  async getContentItems(
+    queryParams?: ContentQueryParams
+  ): Promise<ContentResponse> {
+    const result = await this.makeRequest(
+      '/items',
+      'GET',
+      undefined,
+      queryParams as any
+    );
+
     if (result.success) {
       console.log('📚 Retrieved content items:', result.contentItems?.length);
     }
-    
+
     return result;
   }
 
@@ -175,50 +190,62 @@ class ContentAPI {
    */
   async getContentItem(id: string): Promise<ContentResponse> {
     const result = await this.makeRequest(`/items/${id}`);
-    
+
     if (result.success) {
       console.log('📄 Retrieved content item:', result.contentItem?.title);
     }
-    
+
     return result;
   }
 
   /**
    * Get full processed content for a content item (including extracted text)
    */
-  async getFullContent(id: string): Promise<ContentResponse & { fullContent?: string; additionalData?: any }> {
+  async getFullContent(
+    id: string
+  ): Promise<ContentResponse & { fullContent?: string; additionalData?: any }> {
     const result = await this.makeRequest(`/items/${id}/full`);
-    
+
     if (result.success) {
-      console.log('📑 Retrieved full content for:', result.contentItem?.title, 'Length:', (result as any).fullContent?.length);
+      console.log(
+        '📑 Retrieved full content for:',
+        result.contentItem?.title,
+        'Length:',
+        (result as any).fullContent?.length
+      );
     }
-    
+
     return result;
   }
 
   /**
    * Create a new content item
    */
-  async createContentItem(contentData: CreateContentItemRequest): Promise<ContentResponse> {
+  async createContentItem(
+    contentData: CreateContentItemRequest
+  ): Promise<ContentResponse> {
     const result = await this.makeRequest('/items', 'POST', contentData);
-    
+
     if (result.success) {
       console.log('✅ Created content item:', result.contentItem?.title);
     }
-    
+
     return result;
   }
 
   /**
    * Update a content item
    */
-  async updateContentItem(id: string, updateData: Partial<ContentItem>): Promise<ContentResponse> {
+  async updateContentItem(
+    id: string,
+    updateData: Partial<ContentItem>
+  ): Promise<ContentResponse> {
     const result = await this.makeRequest(`/items/${id}`, 'PUT', updateData);
-    
+
     if (result.success) {
       console.log('🔄 Updated content item:', result.contentItem?.title);
     }
-    
+
     return result;
   }
 
@@ -227,24 +254,32 @@ class ContentAPI {
    */
   async deleteContentItem(id: string): Promise<ContentResponse> {
     const result = await this.makeRequest(`/items/${id}`, 'DELETE');
-    
+
     if (result.success) {
       console.log('🗑️ Deleted content item:', id);
     }
-    
+
     return result;
   }
 
   /**
    * Mark a content item as processed
    */
-  async markAsProcessed(id: string, summary?: string): Promise<ContentResponse> {
-    const result = await this.makeRequest(`/items/${id}/processed`, 'POST', { summary });
-    
+  async markAsProcessed(
+    id: string,
+    summary?: string
+  ): Promise<ContentResponse> {
+    const result = await this.makeRequest(`/items/${id}/processed`, 'POST', {
+      summary,
+    });
+
     if (result.success) {
-      console.log('✅ Marked content item as processed:', result.contentItem?.title);
+      console.log(
+        '✅ Marked content item as processed:',
+        result.contentItem?.title
+      );
     }
-    
+
     return result;
   }
 
@@ -253,11 +288,11 @@ class ContentAPI {
    */
   async getUserStats(): Promise<ContentResponse> {
     const result = await this.makeRequest('/stats');
-    
+
     if (result.success) {
       console.log('📊 Retrieved user stats:', result.stats);
     }
-    
+
     return result;
   }
 
@@ -298,7 +333,9 @@ class ContentAPI {
   /**
    * Get content items by type
    */
-  async getContentByType(contentType: 'pdf' | 'youtube' | 'lecture_recording'): Promise<ContentResponse> {
+  async getContentByType(
+    contentType: 'pdf' | 'youtube' | 'lecture_recording'
+  ): Promise<ContentResponse> {
     return this.getContentItems({
       contentType,
       sortBy: 'created_at',
@@ -309,4 +346,4 @@ class ContentAPI {
 
 // Export singleton instance
 export const contentAPI = new ContentAPI();
-export default contentAPI; 
+export default contentAPI;

@@ -72,25 +72,29 @@ export const uploadPDFToSupabase = async (
   controller?: UploadController
 ): Promise<UploadResult> => {
   // Check authentication first
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
   if (sessionError) {
     return {
       success: false,
       error: `Authentication error: ${sessionError.message}`,
     };
   }
-  
+
   if (!session?.user) {
     return {
       success: false,
-      error: 'User must be authenticated to upload files. Please sign in and try again.',
+      error:
+        'User must be authenticated to upload files. Please sign in and try again.',
     };
   }
 
   const uploadOptions = { ...DEFAULT_OPTIONS, ...options };
   const uploadController = controller || new UploadController();
-  
+
   if (!uploadOptions.fileName) {
     uploadOptions.fileName = generateUniqueFileName(file.name);
   }
@@ -114,7 +118,9 @@ export const uploadPDFToSupabase = async (
     });
 
     // Convert base64 to Uint8Array for Supabase upload
-    const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    const binaryData = Uint8Array.from(atob(base64Data), (c) =>
+      c.charCodeAt(0)
+    );
 
     // For large files, use chunked upload; for small files, use direct upload
     if (file.size > uploadOptions.chunkSize) {
@@ -134,16 +140,18 @@ export const uploadPDFToSupabase = async (
     }
   } catch (error) {
     console.error('Upload error:', error);
-    
+
     // Implement exponential backoff retry
     if (uploadController.getRetryAttempts() < uploadOptions.retryCount) {
       uploadController.incrementRetryAttempts();
       const delay = Math.pow(2, uploadController.getRetryAttempts()) * 1000; // Exponential backoff
-      
-      console.log(`Retrying upload in ${delay}ms (attempt ${uploadController.getRetryAttempts()})`);
-      
-      await new Promise(resolve => setTimeout(resolve, delay));
-      
+
+      console.log(
+        `Retrying upload in ${delay}ms (attempt ${uploadController.getRetryAttempts()})`
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+
       // Retry the upload
       return uploadPDFToSupabase(file, options, uploadController);
     }
@@ -231,7 +239,7 @@ const uploadWithChunks = async (
     // For chunked upload, we'll use a temporary approach by uploading in one go
     // but with progress simulation. In a real implementation, you might want to
     // use resumable uploads or multipart uploads if Supabase supports them.
-    
+
     // Simulate chunked progress
     for (let i = 0; i < totalChunks; i++) {
       if (controller.isAborted()) {
@@ -241,12 +249,12 @@ const uploadWithChunks = async (
       const start = i * chunkSize;
       const end = Math.min(start + chunkSize, totalSize);
       const chunkBytes = end - start;
-      
+
       // Simulate chunk upload delay
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       uploadedBytes += chunkBytes;
-      
+
       options.onProgress({
         progress: Math.round((uploadedBytes / totalSize) * 95), // Leave 5% for finalization
         bytesUploaded: uploadedBytes,
@@ -300,32 +308,37 @@ const generateUniqueFileName = (originalName: string): string => {
   const randomSuffix = Math.random().toString(36).substring(2, 8);
   const nameWithoutExt = originalName.replace(/\.pdf$/i, '');
   const sanitizedName = nameWithoutExt.replace(/[^a-zA-Z0-9]/g, '_');
-  
+
   return `${sanitizedName}_${timestamp}_${randomSuffix}.pdf`;
 };
 
 /**
  * Check if a bucket exists and is accessible
  */
-export const checkBucketAccess = async (bucketName: string): Promise<boolean> => {
+export const checkBucketAccess = async (
+  bucketName: string
+): Promise<boolean> => {
   try {
     console.log(`[checkBucketAccess] Checking access to bucket: ${bucketName}`);
-    
+
     // Check authentication first
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
     console.log(`[checkBucketAccess] Session check:`, {
       hasSession: !!session,
       hasUser: !!session?.user,
       email: session?.user?.email,
-      sessionError: sessionError?.message
+      sessionError: sessionError?.message,
     });
-    
+
     if (sessionError) {
       console.log('Bucket access check: Session error -', sessionError.message);
       return false;
     }
-    
+
     if (!session?.user) {
       console.log('Bucket access check: User not authenticated');
       return false;
@@ -333,16 +346,16 @@ export const checkBucketAccess = async (bucketName: string): Promise<boolean> =>
 
     console.log(`[checkBucketAccess] User authenticated, checking bucket...`);
     const { data, error } = await supabase.storage.getBucket(bucketName);
-    
+
     console.log(`[checkBucketAccess] Bucket check result:`, {
       bucketExists: !!data,
       error: error?.message,
-      bucketData: data
+      bucketData: data,
     });
-    
+
     const hasAccess = !error && data !== null;
     console.log(`[checkBucketAccess] Final result: ${hasAccess}`);
-    
+
     return hasAccess;
   } catch (error) {
     console.error('Bucket access check failed:', error);
@@ -353,7 +366,9 @@ export const checkBucketAccess = async (bucketName: string): Promise<boolean> =>
 /**
  * Create a storage bucket if it doesn't exist (requires admin privileges)
  */
-export const createBucketIfNeeded = async (bucketName: string): Promise<boolean> => {
+export const createBucketIfNeeded = async (
+  bucketName: string
+): Promise<boolean> => {
   try {
     const exists = await checkBucketAccess(bucketName);
     if (exists) {
@@ -399,13 +414,13 @@ export const getProgressText = (progress: UploadProgress): string => {
   if (progress.isComplete) {
     return 'Upload complete!';
   }
-  
+
   if (progress.error) {
     return `Error: ${progress.error}`;
   }
-  
+
   const mbUploaded = (progress.bytesUploaded / (1024 * 1024)).toFixed(1);
   const mbTotal = (progress.totalBytes / (1024 * 1024)).toFixed(1);
-  
+
   return `Uploading... ${progress.progress}% (${mbUploaded}MB / ${mbTotal}MB)`;
-}; 
+};

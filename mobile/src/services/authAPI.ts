@@ -1,7 +1,8 @@
 // REST API authentication service as fallback for Supabase issues
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 interface User {
   id: string;
@@ -22,17 +23,17 @@ interface AuthResponse {
 
 class AuthAPI {
   private async makeRequest(
-    endpoint: string, 
-    method: 'GET' | 'POST' | 'PUT' = 'GET', 
+    endpoint: string,
+    method: 'GET' | 'POST' | 'PUT' = 'GET',
     body?: any
   ): Promise<AuthResponse> {
     try {
       const token = await AsyncStorage.getItem('auth_token');
-      
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
-      
+
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }
@@ -44,7 +45,7 @@ class AuthAPI {
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         return { error: data.message || data.error || 'Request failed' };
       }
@@ -56,7 +57,11 @@ class AuthAPI {
     }
   }
 
-  async register(email: string, password: string, fullName?: string): Promise<AuthResponse> {
+  async register(
+    email: string,
+    password: string,
+    fullName?: string
+  ): Promise<AuthResponse> {
     const result = await this.makeRequest('/auth/register', 'POST', {
       email,
       password,
@@ -103,4 +108,4 @@ class AuthAPI {
 }
 
 export const authAPI = new AuthAPI();
-export default authAPI; 
+export default authAPI;

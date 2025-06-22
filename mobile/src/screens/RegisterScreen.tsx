@@ -17,7 +17,9 @@ interface RegisterScreenProps {
   navigation: any;
 }
 
-export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
+export const RegisterScreen: React.FC<RegisterScreenProps> = ({
+  navigation,
+}) => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -97,7 +99,9 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) =>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.content}>
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join ByteLecture and start learning</Text>
+          <Text style={styles.subtitle}>
+            Join ByteLecture and start learning
+          </Text>
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
@@ -268,4 +272,4 @@ const styles = StyleSheet.create({
     color: '#3B82F6',
     fontWeight: '600',
   },
-}); 
+});

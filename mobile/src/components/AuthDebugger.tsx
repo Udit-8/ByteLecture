@@ -36,7 +36,7 @@ export const AuthDebugger: React.FC = () => {
 
   const addDebugLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
-    setDebugInfo(prev => [`[${timestamp}] ${message}`, ...prev].slice(0, 20));
+    setDebugInfo((prev) => [`[${timestamp}] ${message}`, ...prev].slice(0, 20));
     console.log(`[AuthDebugger] ${message}`);
   };
 
@@ -46,28 +46,28 @@ export const AuthDebugger: React.FC = () => {
     checkAsyncStorage();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        addDebugLog(`🔔 Auth event: ${event}`);
-        if (session) {
-          addDebugLog(`✅ Session received: ${session.user.email}`);
-          setAuthState({
-            user: session.user,
-            session: session,
-            loading: false,
-            error: null,
-          });
-        } else {
-          addDebugLog(`❌ No session in auth event`);
-          setAuthState({
-            user: null,
-            session: null,
-            loading: false,
-            error: null,
-          });
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      addDebugLog(`🔔 Auth event: ${event}`);
+      if (session) {
+        addDebugLog(`✅ Session received: ${session.user.email}`);
+        setAuthState({
+          user: session.user,
+          session: session,
+          loading: false,
+          error: null,
+        });
+      } else {
+        addDebugLog(`❌ No session in auth event`);
+        setAuthState({
+          user: null,
+          session: null,
+          loading: false,
+          error: null,
+        });
       }
-    );
+    });
 
     return () => {
       addDebugLog('🧹 Cleanup auth listener');
@@ -78,26 +78,38 @@ export const AuthDebugger: React.FC = () => {
   const checkAuthState = async () => {
     try {
       addDebugLog('🔍 Checking current auth state...');
-      
+
       // Check session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
       if (sessionError) {
         addDebugLog(`❌ Session error: ${sessionError.message}`);
-        setAuthState(prev => ({ ...prev, error: sessionError.message, loading: false }));
+        setAuthState((prev) => ({
+          ...prev,
+          error: sessionError.message,
+          loading: false,
+        }));
         return;
       }
 
       // Check user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
       if (userError) {
         addDebugLog(`❌ User error: ${userError.message}`);
       }
 
       if (session && session.user) {
         addDebugLog(`✅ Active session found: ${session.user.email}`);
-        addDebugLog(`📅 Expires: ${new Date(session.expires_at! * 1000).toLocaleString()}`);
+        addDebugLog(
+          `📅 Expires: ${new Date(session.expires_at! * 1000).toLocaleString()}`
+        );
         setAuthState({
           user: session.user,
           session: session,
@@ -124,7 +136,7 @@ export const AuthDebugger: React.FC = () => {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       addDebugLog(`💥 Auth check failed: ${errorMsg}`);
-      setAuthState(prev => ({ ...prev, error: errorMsg, loading: false }));
+      setAuthState((prev) => ({ ...prev, error: errorMsg, loading: false }));
     }
   };
 
@@ -132,14 +144,16 @@ export const AuthDebugger: React.FC = () => {
     try {
       addDebugLog('🔍 Checking AsyncStorage...');
       const keys = await AsyncStorage.getAllKeys();
-      const supabaseKeys = keys.filter(key => key.includes('supabase'));
-      
-      addDebugLog(`📦 Found ${supabaseKeys.length} Supabase keys in AsyncStorage`);
-      
+      const supabaseKeys = keys.filter((key) => key.includes('supabase'));
+
+      addDebugLog(
+        `📦 Found ${supabaseKeys.length} Supabase keys in AsyncStorage`
+      );
+
       if (supabaseKeys.length > 0) {
         const values = await AsyncStorage.multiGet(supabaseKeys);
         const storageData: any = {};
-        
+
         values.forEach(([key, value]) => {
           try {
             storageData[key] = value ? JSON.parse(value) : null;
@@ -149,7 +163,7 @@ export const AuthDebugger: React.FC = () => {
             addDebugLog(`📦 ${key}: Raw value`);
           }
         });
-        
+
         setAsyncStorageData(storageData);
       } else {
         addDebugLog('📦 No Supabase data in AsyncStorage');
@@ -160,7 +174,7 @@ export const AuthDebugger: React.FC = () => {
   };
 
   const refreshAuth = () => {
-    setAuthState(prev => ({ ...prev, loading: true }));
+    setAuthState((prev) => ({ ...prev, loading: true }));
     addDebugLog('🔄 Manual refresh requested');
     checkAuthState();
     checkAsyncStorage();
@@ -170,8 +184,8 @@ export const AuthDebugger: React.FC = () => {
     try {
       addDebugLog('🗑️ Clearing AsyncStorage...');
       const keys = await AsyncStorage.getAllKeys();
-      const supabaseKeys = keys.filter(key => key.includes('supabase'));
-      
+      const supabaseKeys = keys.filter((key) => key.includes('supabase'));
+
       if (supabaseKeys.length > 0) {
         await AsyncStorage.multiRemove(supabaseKeys);
         addDebugLog(`🗑️ Cleared ${supabaseKeys.length} Supabase keys`);
@@ -187,20 +201,23 @@ export const AuthDebugger: React.FC = () => {
   const testStorageAccess = async () => {
     try {
       addDebugLog('🧪 Testing storage access...');
-      
+
       if (!authState.session) {
         Alert.alert('No Session', 'Please authenticate first');
         return;
       }
 
       const { data: buckets, error } = await supabase.storage.listBuckets();
-      
+
       if (error) {
         addDebugLog(`❌ Storage error: ${error.message}`);
         Alert.alert('Storage Error', error.message);
       } else {
         addDebugLog(`✅ Storage accessible - ${buckets.length} buckets found`);
-        Alert.alert('Storage Test', `✅ Success! Found ${buckets.length} buckets`);
+        Alert.alert(
+          'Storage Test',
+          `✅ Success! Found ${buckets.length} buckets`
+        );
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -213,7 +230,7 @@ export const AuthDebugger: React.FC = () => {
     try {
       addDebugLog('🚪 Signing out...');
       const { error } = await supabase.auth.signOut();
-      
+
       if (error) {
         addDebugLog(`❌ Sign out error: ${error.message}`);
       } else {
@@ -236,11 +253,16 @@ export const AuthDebugger: React.FC = () => {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>🔍 Auth Debugger</Text>
-      
+
       {/* Current Auth State */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Current State</Text>
-        <View style={[styles.statusCard, authState.user ? styles.success : styles.warning]}>
+        <View
+          style={[
+            styles.statusCard,
+            authState.user ? styles.success : styles.warning,
+          ]}
+        >
           <Text style={styles.statusText}>
             {authState.user ? '✅ Authenticated' : '❌ Not Authenticated'}
           </Text>
@@ -250,7 +272,10 @@ export const AuthDebugger: React.FC = () => {
               <Text style={styles.detailText}>👤 {authState.user.id}</Text>
               {authState.session && (
                 <Text style={styles.detailText}>
-                  📅 Expires: {new Date(authState.session.expires_at! * 1000).toLocaleString()}
+                  📅 Expires:{' '}
+                  {new Date(
+                    authState.session.expires_at! * 1000
+                  ).toLocaleString()}
                 </Text>
               )}
             </>
@@ -273,11 +298,17 @@ export const AuthDebugger: React.FC = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={clearAsyncStorage}>
+          <TouchableOpacity
+            style={[styles.button, styles.dangerButton]}
+            onPress={clearAsyncStorage}
+          >
             <Text style={styles.buttonText}>🗑️ Clear Storage</Text>
           </TouchableOpacity>
           {authState.user && (
-            <TouchableOpacity style={[styles.button, styles.dangerButton]} onPress={signOut}>
+            <TouchableOpacity
+              style={[styles.button, styles.dangerButton]}
+              onPress={signOut}
+            >
               <Text style={styles.buttonText}>🚪 Sign Out</Text>
             </TouchableOpacity>
           )}
@@ -289,7 +320,9 @@ export const AuthDebugger: React.FC = () => {
         <Text style={styles.sectionTitle}>Debug Log</Text>
         <View style={styles.logContainer}>
           {debugInfo.map((log, index) => (
-            <Text key={index} style={styles.logText}>{log}</Text>
+            <Text key={index} style={styles.logText}>
+              {log}
+            </Text>
           ))}
           {debugInfo.length === 0 && (
             <Text style={styles.emptyText}>No debug logs yet</Text>
@@ -306,12 +339,16 @@ export const AuthDebugger: React.FC = () => {
               <View key={key} style={styles.storageItem}>
                 <Text style={styles.storageKey}>{key}:</Text>
                 <Text style={styles.storageValue}>
-                  {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                  {typeof value === 'object'
+                    ? JSON.stringify(value, null, 2)
+                    : String(value)}
                 </Text>
               </View>
             ))
           ) : (
-            <Text style={styles.emptyText}>No Supabase data in AsyncStorage</Text>
+            <Text style={styles.emptyText}>
+              No Supabase data in AsyncStorage
+            </Text>
           )}
         </View>
       </View>
@@ -434,4 +471,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AuthDebugger; 
+export default AuthDebugger;

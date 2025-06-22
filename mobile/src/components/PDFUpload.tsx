@@ -13,14 +13,18 @@ import * as FileSystem from 'expo-file-system';
 import { theme } from '../constants/theme';
 import { Card, LoadingIndicator } from './';
 import { UploadErrorBoundary } from './ErrorBoundary';
-import { validatePDFFile, getValidationErrorMessage, formatFileSize } from '../utils';
-import { 
-  uploadPDFToSupabase, 
-  UploadController, 
+import {
+  validatePDFFile,
+  getValidationErrorMessage,
+  formatFileSize,
+} from '../utils';
+import {
+  uploadPDFToSupabase,
+  UploadController,
   UploadProgress as ServiceUploadProgress,
   UploadResult as ServiceUploadResult,
   getProgressText,
-  checkBucketAccess 
+  checkBucketAccess,
 } from '../services/uploadService';
 import { supabase } from '../config/supabase';
 
@@ -65,8 +69,10 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
   const [isValidating, setIsValidating] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<PDFFile | null>(null);
-  const [uploadController, setUploadController] = useState<UploadController | null>(null);
-  const [detailedProgress, setDetailedProgress] = useState<ServiceUploadProgress | null>(null);
+  const [uploadController, setUploadController] =
+    useState<UploadController | null>(null);
+  const [detailedProgress, setDetailedProgress] =
+    useState<ServiceUploadProgress | null>(null);
   const [bucketReady, setBucketReady] = useState<boolean | null>(null);
 
   // Check bucket access on component mount
@@ -77,7 +83,7 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
       setBucketReady(hasAccess);
       if (!hasAccess) {
         console.warn('Documents bucket is not accessible. Uploads may fail.');
-        
+
         // Retry after a short delay in case auth wasn't ready
         setTimeout(async () => {
           console.log('[PDFUpload] Retrying bucket access check...');
@@ -96,30 +102,38 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
     checkBucket();
   }, []);
 
-  const performPDFValidation = useCallback(async (file: PDFFile): Promise<boolean> => {
-    setIsValidating(true);
-    
-    try {
-      const validationResult = await validatePDFFile(file, {
-        maxFileSize: maxFileSize,
-        allowEncrypted: false,
-      });
+  const performPDFValidation = useCallback(
+    async (file: PDFFile): Promise<boolean> => {
+      setIsValidating(true);
 
-      if (!validationResult.isValid) {
-        const errorMessage = getValidationErrorMessage(validationResult.error || 'Unknown error');
-        Alert.alert('Invalid PDF', errorMessage);
+      try {
+        const validationResult = await validatePDFFile(file, {
+          maxFileSize: maxFileSize,
+          allowEncrypted: false,
+        });
+
+        if (!validationResult.isValid) {
+          const errorMessage = getValidationErrorMessage(
+            validationResult.error || 'Unknown error'
+          );
+          Alert.alert('Invalid PDF', errorMessage);
+          return false;
+        }
+
+        return true;
+      } catch (error) {
+        console.error('PDF validation error:', error);
+        Alert.alert(
+          'Validation Error',
+          'Failed to validate PDF file. Please try again.'
+        );
         return false;
+      } finally {
+        setIsValidating(false);
       }
-
-      return true;
-    } catch (error) {
-      console.error('PDF validation error:', error);
-      Alert.alert('Validation Error', 'Failed to validate PDF file. Please try again.');
-      return false;
-    } finally {
-      setIsValidating(false);
-    }
-  }, [maxFileSize]);
+    },
+    [maxFileSize]
+  );
 
   const handleDocumentPicker = useCallback(async () => {
     if (disabled || isUploading || isValidating) return;
@@ -133,7 +147,7 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
-        
+
         const pdfFile: PDFFile = {
           uri: file.uri,
           name: file.name,
@@ -152,131 +166,172 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
       Alert.alert('Error', 'Failed to select file. Please try again.');
       onUploadError?.('Failed to select file');
     }
-  }, [disabled, isUploading, isValidating, performPDFValidation, onFileSelected, onUploadError]);
+  }, [
+    disabled,
+    isUploading,
+    isValidating,
+    performPDFValidation,
+    onFileSelected,
+    onUploadError,
+  ]);
 
-  const performSupabaseUpload = useCallback(async (file: PDFFile) => {
-    setIsUploading(true);
-    setUploadProgress(0);
-    setDetailedProgress(null);
-
-    // Create new upload controller
-    const controller = new UploadController();
-    setUploadController(controller);
-
-    try {
-      // Check bucket access before upload - but don't block if uncertain
-      if (bucketReady === false) {
-        console.warn('[PDFUpload] Bucket access check failed, but attempting upload anyway...');
-        // Don't throw error here - let the actual upload attempt reveal the real issue
-      }
-
-      // Double-check authentication right before upload
-      console.log('[PDFUpload] Verifying authentication before upload...');
-      const { data: { session }, error: authError } = await supabase.auth.getSession();
-      
-      if (authError || !session?.user) {
-        throw new Error('Authentication required. Please sign in and try again.');
-      }
-      
-      console.log(`[PDFUpload] Authentication verified for user: ${session.user.email}`);
-
-      const result = await uploadPDFToSupabase(file, {
-        bucketName: 'pdfs',
-        folder: 'pdfs',
-        retryCount: 3,
-        onProgress: (progress: ServiceUploadProgress) => {
-          setDetailedProgress(progress);
-          setUploadProgress(progress.progress);
-          onUploadProgress?.(progress.progress);
-        },
-      }, controller);
-
-      if (result.success) {
-        const uploadResult: UploadResult = {
-          success: true,
-          fileId: result.fileId,
-          publicUrl: result.publicUrl,
-          path: result.path,
-          message: result.message || 'PDF uploaded successfully',
-        };
-
-        onUploadComplete?.(uploadResult);
-        Alert.alert('Success', '✅ PDF uploaded successfully!');
-      } else {
-        throw new Error(result.error || 'Upload failed');
-      }
-    } catch (error) {
-      console.error('Upload error:', error);
-      
-      // Enhanced error handling for different error types
-      let errorMessage = error instanceof Error ? error.message : 'Failed to upload PDF. Please try again.';
-      let alertTitle = 'Upload Failed';
-      
-      // Check for quota exceeded errors
-      if (errorMessage.includes('quota') || errorMessage.includes('limit') || errorMessage.includes('exceeded')) {
-        alertTitle = 'Upload Limit Reached';
-        errorMessage = 'You have reached your daily upload limit. Please try again tomorrow or upgrade your plan for unlimited uploads.';
-        
-        // Show enhanced alert with upgrade option if navigation is available
-        if (navigation) {
-          Alert.alert(
-            alertTitle,
-            errorMessage,
-            [
-              { text: 'Cancel' },
-              { 
-                text: 'Upgrade Plan', 
-                style: 'default',
-                onPress: () => navigation.navigate('Subscription', { from: 'pdf-quota' })
-              }
-            ]
-          );
-          
-          const uploadResult: UploadResult = {
-            success: false,
-            error: errorMessage,
-          };
-          
-          onUploadError?.(errorMessage);
-          onUploadComplete?.(uploadResult);
-          setIsUploading(false);
-          setUploadProgress(0);
-          setDetailedProgress(null);
-          setUploadController(null);
-          return; // Exit early to avoid duplicate alerts
-        }
-      }
-      // Check for authentication errors
-      else if (errorMessage.includes('Authentication') || errorMessage.includes('auth') || errorMessage.includes('login')) {
-        alertTitle = 'Authentication Error';
-        errorMessage = 'Please sign in again and try uploading your file.';
-      }
-      // Check for network errors
-      else if (errorMessage.includes('Network') || errorMessage.includes('network') || errorMessage.includes('connection')) {
-        alertTitle = 'Connection Error';
-        errorMessage = 'Please check your internet connection and try again.';
-      }
-      // Check for file validation errors
-      else if (errorMessage.includes('file') || errorMessage.includes('format') || errorMessage.includes('size')) {
-        alertTitle = 'File Error';
-        errorMessage = 'There was an issue with your file. Please ensure it is a valid PDF under 10MB.';
-      }
-      
-      const uploadResult: UploadResult = {
-        success: false,
-        error: errorMessage,
-      };
-      
-      onUploadError?.(errorMessage);
-      onUploadComplete?.(uploadResult);
-      Alert.alert(alertTitle, `❌ ${errorMessage}`);
-    } finally {
-      setIsUploading(false);
+  const performSupabaseUpload = useCallback(
+    async (file: PDFFile) => {
+      setIsUploading(true);
       setUploadProgress(0);
       setDetailedProgress(null);
-      setUploadController(null);
-    }
-  }, [onUploadProgress, onUploadComplete, onUploadError, bucketReady]);
+
+      // Create new upload controller
+      const controller = new UploadController();
+      setUploadController(controller);
+
+      try {
+        // Check bucket access before upload - but don't block if uncertain
+        if (bucketReady === false) {
+          console.warn(
+            '[PDFUpload] Bucket access check failed, but attempting upload anyway...'
+          );
+          // Don't throw error here - let the actual upload attempt reveal the real issue
+        }
+
+        // Double-check authentication right before upload
+        console.log('[PDFUpload] Verifying authentication before upload...');
+        const {
+          data: { session },
+          error: authError,
+        } = await supabase.auth.getSession();
+
+        if (authError || !session?.user) {
+          throw new Error(
+            'Authentication required. Please sign in and try again.'
+          );
+        }
+
+        console.log(
+          `[PDFUpload] Authentication verified for user: ${session.user.email}`
+        );
+
+        const result = await uploadPDFToSupabase(
+          file,
+          {
+            bucketName: 'pdfs',
+            folder: 'pdfs',
+            retryCount: 3,
+            onProgress: (progress: ServiceUploadProgress) => {
+              setDetailedProgress(progress);
+              setUploadProgress(progress.progress);
+              onUploadProgress?.(progress.progress);
+            },
+          },
+          controller
+        );
+
+        if (result.success) {
+          const uploadResult: UploadResult = {
+            success: true,
+            fileId: result.fileId,
+            publicUrl: result.publicUrl,
+            path: result.path,
+            message: result.message || 'PDF uploaded successfully',
+          };
+
+          onUploadComplete?.(uploadResult);
+          Alert.alert('Success', '✅ PDF uploaded successfully!');
+        } else {
+          throw new Error(result.error || 'Upload failed');
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+
+        // Enhanced error handling for different error types
+        let errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Failed to upload PDF. Please try again.';
+        let alertTitle = 'Upload Failed';
+
+        // Check for quota exceeded errors
+        if (
+          errorMessage.includes('quota') ||
+          errorMessage.includes('limit') ||
+          errorMessage.includes('exceeded')
+        ) {
+          alertTitle = 'Upload Limit Reached';
+          errorMessage =
+            'You have reached your daily upload limit. Please try again tomorrow or upgrade your plan for unlimited uploads.';
+
+          // Show enhanced alert with upgrade option if navigation is available
+          if (navigation) {
+            Alert.alert(alertTitle, errorMessage, [
+              { text: 'Cancel' },
+              {
+                text: 'Upgrade Plan',
+                style: 'default',
+                onPress: () =>
+                  navigation.navigate('Subscription', { from: 'pdf-quota' }),
+              },
+            ]);
+
+            const uploadResult: UploadResult = {
+              success: false,
+              error: errorMessage,
+            };
+
+            onUploadError?.(errorMessage);
+            onUploadComplete?.(uploadResult);
+            setIsUploading(false);
+            setUploadProgress(0);
+            setDetailedProgress(null);
+            setUploadController(null);
+            return; // Exit early to avoid duplicate alerts
+          }
+        }
+        // Check for authentication errors
+        else if (
+          errorMessage.includes('Authentication') ||
+          errorMessage.includes('auth') ||
+          errorMessage.includes('login')
+        ) {
+          alertTitle = 'Authentication Error';
+          errorMessage = 'Please sign in again and try uploading your file.';
+        }
+        // Check for network errors
+        else if (
+          errorMessage.includes('Network') ||
+          errorMessage.includes('network') ||
+          errorMessage.includes('connection')
+        ) {
+          alertTitle = 'Connection Error';
+          errorMessage = 'Please check your internet connection and try again.';
+        }
+        // Check for file validation errors
+        else if (
+          errorMessage.includes('file') ||
+          errorMessage.includes('format') ||
+          errorMessage.includes('size')
+        ) {
+          alertTitle = 'File Error';
+          errorMessage =
+            'There was an issue with your file. Please ensure it is a valid PDF under 10MB.';
+        }
+
+        const uploadResult: UploadResult = {
+          success: false,
+          error: errorMessage,
+        };
+
+        onUploadError?.(errorMessage);
+        onUploadComplete?.(uploadResult);
+        Alert.alert(alertTitle, `❌ ${errorMessage}`);
+      } finally {
+        setIsUploading(false);
+        setUploadProgress(0);
+        setDetailedProgress(null);
+        setUploadController(null);
+      }
+    },
+    [onUploadProgress, onUploadComplete, onUploadError, bucketReady]
+  );
 
   const handleUpload = useCallback(() => {
     if (selectedFile && !isUploading) {
@@ -301,16 +356,15 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
     <UploadErrorBoundary
       onError={(error, errorInfo) => {
         console.error('PDFUpload error boundary caught:', error, errorInfo);
-        onUploadError?.('An unexpected error occurred during upload. Please try again.');
+        onUploadError?.(
+          'An unexpected error occurred during upload. Please try again.'
+        );
       }}
     >
       <View style={styles.container}>
         {!selectedFile ? (
           <TouchableOpacity
-            style={[
-              styles.uploadArea,
-              disabled && styles.uploadAreaDisabled,
-            ]}
+            style={[styles.uploadArea, disabled && styles.uploadAreaDisabled]}
             onPress={handleDocumentPicker}
             disabled={disabled || isUploading || isValidating}
             activeOpacity={0.7}
@@ -320,29 +374,41 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
                 {isValidating ? (
                   <LoadingIndicator size="large" />
                 ) : (
-                  <Ionicons 
-                    name="cloud-upload-outline" 
-                    size={48} 
-                    color={disabled ? theme.colors.gray[400] : theme.colors.primary[600]} 
+                  <Ionicons
+                    name="cloud-upload-outline"
+                    size={48}
+                    color={
+                      disabled
+                        ? theme.colors.gray[400]
+                        : theme.colors.primary[600]
+                    }
                   />
                 )}
               </View>
-              <Text style={[
-                styles.uploadTitle,
-                disabled && styles.uploadTitleDisabled,
-              ]}>
+              <Text
+                style={[
+                  styles.uploadTitle,
+                  disabled && styles.uploadTitleDisabled,
+                ]}
+              >
                 {isValidating ? 'Validating PDF...' : 'Upload PDF File'}
               </Text>
-              <Text style={[
-                styles.uploadSubtitle,
-                disabled && styles.uploadSubtitleDisabled,
-              ]}>
-                {isValidating ? 'Please wait while we validate your file' : 'Tap to select a PDF file from your device'}
+              <Text
+                style={[
+                  styles.uploadSubtitle,
+                  disabled && styles.uploadSubtitleDisabled,
+                ]}
+              >
+                {isValidating
+                  ? 'Please wait while we validate your file'
+                  : 'Tap to select a PDF file from your device'}
               </Text>
-              <Text style={[
-                styles.uploadHint,
-                disabled && styles.uploadHintDisabled,
-              ]}>
+              <Text
+                style={[
+                  styles.uploadHint,
+                  disabled && styles.uploadHintDisabled,
+                ]}
+              >
                 Maximum file size: {maxFileSize}MB
               </Text>
             </View>
@@ -351,7 +417,11 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
           <Card style={styles.fileCard}>
             <View style={styles.fileInfo}>
               <View style={styles.fileIcon}>
-                <Ionicons name="document-text" size={24} color={theme.colors.error[600]} />
+                <Ionicons
+                  name="document-text"
+                  size={24}
+                  color={theme.colors.error[600]}
+                />
               </View>
               <View style={styles.fileDetails}>
                 <Text style={styles.fileName} numberOfLines={2}>
@@ -366,7 +436,11 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
                   style={styles.removeButton}
                   onPress={handleRemoveFile}
                 >
-                  <Ionicons name="close-circle" size={24} color={theme.colors.gray[400]} />
+                  <Ionicons
+                    name="close-circle"
+                    size={24}
+                    color={theme.colors.gray[400]}
+                  />
                 </TouchableOpacity>
               )}
             </View>
@@ -375,24 +449,30 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
               <View style={styles.progressContainer}>
                 <View style={styles.progressHeader}>
                   <Text style={styles.progressText}>
-                    {detailedProgress ? getProgressText(detailedProgress) : `Uploading... ${uploadProgress}%`}
+                    {detailedProgress
+                      ? getProgressText(detailedProgress)
+                      : `Uploading... ${uploadProgress}%`}
                   </Text>
                   {allowCancellation && (
                     <TouchableOpacity
                       style={styles.cancelButton}
                       onPress={handleCancelUpload}
                     >
-                      <Ionicons name="close" size={16} color={theme.colors.gray[600]} />
+                      <Ionicons
+                        name="close"
+                        size={16}
+                        color={theme.colors.gray[600]}
+                      />
                       <Text style={styles.cancelText}>Cancel</Text>
                     </TouchableOpacity>
                   )}
                 </View>
                 <View style={styles.progressBar}>
-                  <View 
+                  <View
                     style={[
-                      styles.progressFill, 
-                      { width: `${uploadProgress}%` }
-                    ]} 
+                      styles.progressFill,
+                      { width: `${uploadProgress}%` },
+                    ]}
                   />
                 </View>
                 {bucketReady === false && (
@@ -605,4 +685,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: theme.borderRadius.lg,
   },
-}); 
+});

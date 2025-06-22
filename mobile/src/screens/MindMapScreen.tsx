@@ -18,7 +18,11 @@ import { MindMapViewer } from '../components/MindMapViewer';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { theme } from '../constants/theme';
-import { MindMap, CreateMindMapRequest, MindMapStyle } from '../services/mindMapAPI';
+import {
+  MindMap,
+  CreateMindMapRequest,
+  MindMapStyle,
+} from '../services/mindMapAPI';
 
 export const MindMapScreen: React.FC = () => {
   const {
@@ -43,9 +47,10 @@ export const MindMapScreen: React.FC = () => {
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedContentId, setSelectedContentId] = useState<string>('');
   const [mindMapTitle, setMindMapTitle] = useState('');
-  const [mindMapStyle, setMindMapStyle] = useState<MindMapStyle>('hierarchical');
+  const [mindMapStyle, setMindMapStyle] =
+    useState<MindMapStyle>('hierarchical');
   const [maxNodes, setMaxNodes] = useState('20');
-  
+
   // Export state
   const [exporting, setExporting] = useState(false);
 
@@ -96,28 +101,27 @@ export const MindMapScreen: React.FC = () => {
   };
 
   const handleExportMindMap = (mindMap: MindMap) => {
-    Alert.alert(
-      'Export Mind Map',
-      'Choose export format:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'JSON', 
-          onPress: () => performExport(mindMap, 'json') 
-        },
-        { 
-          text: 'PNG Image', 
-          onPress: () => performExport(mindMap, 'png') 
-        },
-        { 
-          text: 'SVG Vector', 
-          onPress: () => performExport(mindMap, 'svg') 
-        },
-      ]
-    );
+    Alert.alert('Export Mind Map', 'Choose export format:', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'JSON',
+        onPress: () => performExport(mindMap, 'json'),
+      },
+      {
+        text: 'PNG Image',
+        onPress: () => performExport(mindMap, 'png'),
+      },
+      {
+        text: 'SVG Vector',
+        onPress: () => performExport(mindMap, 'svg'),
+      },
+    ]);
   };
 
-  const performExport = async (mindMap: MindMap, format: 'json' | 'png' | 'svg') => {
+  const performExport = async (
+    mindMap: MindMap,
+    format: 'json' | 'png' | 'svg'
+  ) => {
     setExporting(true);
     try {
       await exportMindMap(mindMap.id, {
@@ -125,7 +129,7 @@ export const MindMapScreen: React.FC = () => {
         include_notes: true,
         theme: 'light',
       });
-      
+
       // exportMindMap already shows success alert, so no need to show another one
     } catch (error) {
       console.error('Export failed:', error);
@@ -153,42 +157,62 @@ export const MindMapScreen: React.FC = () => {
               style={styles.actionButton}
               disabled={exporting}
             >
-              <Ionicons 
-                name="download-outline" 
-                size={20} 
-                color={exporting ? theme.colors.textSecondary : theme.colors.primary[500]} 
+              <Ionicons
+                name="download-outline"
+                size={20}
+                color={
+                  exporting
+                    ? theme.colors.textSecondary
+                    : theme.colors.primary[500]
+                }
               />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => handleDeleteMindMap(item)}
               style={styles.actionButton}
             >
-              <Ionicons name="trash-outline" size={20} color={theme.colors.error[500]} />
+              <Ionicons
+                name="trash-outline"
+                size={20}
+                color={theme.colors.error[500]}
+              />
             </TouchableOpacity>
           </View>
         </View>
-        
+
         {item.description && (
           <Text style={styles.mindMapDescription}>{item.description}</Text>
         )}
-        
+
         <View style={styles.mindMapMeta}>
           <View style={styles.metaItem}>
-            <Ionicons name="git-network-outline" size={16} color={theme.colors.textSecondary} />
+            <Ionicons
+              name="git-network-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+            />
             <Text style={styles.metaText}>{item.node_count} nodes</Text>
           </View>
-          
+
           <View style={styles.metaItem}>
-            <Ionicons name="layers-outline" size={16} color={theme.colors.textSecondary} />
+            <Ionicons
+              name="layers-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+            />
             <Text style={styles.metaText}>{item.max_depth} levels</Text>
           </View>
-          
+
           <View style={styles.metaItem}>
-            <Ionicons name="shapes-outline" size={16} color={theme.colors.textSecondary} />
+            <Ionicons
+              name="shapes-outline"
+              size={16}
+              color={theme.colors.textSecondary}
+            />
             <Text style={styles.metaText}>{item.style}</Text>
           </View>
         </View>
-        
+
         <Text style={styles.mindMapDate}>
           Created {new Date(item.created_at).toLocaleDateString()}
         </Text>
@@ -224,22 +248,26 @@ export const MindMapScreen: React.FC = () => {
                 ]}
                 onPress={() => setSelectedContentId(item.id)}
               >
-                                 <View style={styles.contentItemContent}>
-                   <Ionicons
-                     name={
-                       item.contentType === 'pdf'
-                         ? 'document-text-outline'
-                         : item.contentType === 'youtube'
-                         ? 'logo-youtube'
-                         : 'mic-outline'
-                     }
-                     size={20}
-                     color={theme.colors.primary[500]}
-                   />
-                   <Text style={styles.contentItemTitle}>{item.title}</Text>
-                 </View>
+                <View style={styles.contentItemContent}>
+                  <Ionicons
+                    name={
+                      item.contentType === 'pdf'
+                        ? 'document-text-outline'
+                        : item.contentType === 'youtube'
+                          ? 'logo-youtube'
+                          : 'mic-outline'
+                    }
+                    size={20}
+                    color={theme.colors.primary[500]}
+                  />
+                  <Text style={styles.contentItemTitle}>{item.title}</Text>
+                </View>
                 {selectedContentId === item.id && (
-                  <Ionicons name="checkmark" size={20} color={theme.colors.success[500]} />
+                  <Ionicons
+                    name="checkmark"
+                    size={20}
+                    color={theme.colors.success[500]}
+                  />
                 )}
               </TouchableOpacity>
             )}
@@ -255,25 +283,27 @@ export const MindMapScreen: React.FC = () => {
 
           <Text style={styles.fieldLabel}>Style</Text>
           <View style={styles.styleOptions}>
-            {(['hierarchical', 'radial', 'flowchart'] as MindMapStyle[]).map((style) => (
-              <TouchableOpacity
-                key={style}
-                style={[
-                  styles.styleOption,
-                  mindMapStyle === style && styles.styleOptionSelected,
-                ]}
-                onPress={() => setMindMapStyle(style)}
-              >
-                <Text
+            {(['hierarchical', 'radial', 'flowchart'] as MindMapStyle[]).map(
+              (style) => (
+                <TouchableOpacity
+                  key={style}
                   style={[
-                    styles.styleOptionText,
-                    mindMapStyle === style && styles.styleOptionTextSelected,
+                    styles.styleOption,
+                    mindMapStyle === style && styles.styleOptionSelected,
                   ]}
+                  onPress={() => setMindMapStyle(style)}
                 >
-                  {style.charAt(0).toUpperCase() + style.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.styleOptionText,
+                      mindMapStyle === style && styles.styleOptionTextSelected,
+                    ]}
+                  >
+                    {style.charAt(0).toUpperCase() + style.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              )
+            )}
           </View>
 
           <Text style={styles.fieldLabel}>
@@ -288,7 +318,8 @@ export const MindMapScreen: React.FC = () => {
           />
           {!isPremium && parseInt(maxNodes) > 20 && (
             <Text style={styles.warningText}>
-              ⚠️ Free plan limited to 20 nodes. Upgrade to Premium for up to 100 nodes!
+              ⚠️ Free plan limited to 20 nodes. Upgrade to Premium for up to 100
+              nodes!
             </Text>
           )}
         </View>
@@ -327,14 +358,18 @@ export const MindMapScreen: React.FC = () => {
             style={styles.actionButton}
             disabled={exporting}
           >
-            <Ionicons 
-              name="download-outline" 
-              size={24} 
-              color={exporting ? theme.colors.textSecondary : theme.colors.primary[500]} 
+            <Ionicons
+              name="download-outline"
+              size={24}
+              color={
+                exporting
+                  ? theme.colors.textSecondary
+                  : theme.colors.primary[500]
+              }
             />
           </TouchableOpacity>
         </View>
-        
+
         <MindMapViewer
           mindMapData={currentMindMap.mind_map_data}
           style={styles.viewer}
@@ -368,7 +403,11 @@ export const MindMapScreen: React.FC = () => {
         </View>
       ) : mindMaps.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="git-network-outline" size={64} color={theme.colors.textSecondary} />
+          <Ionicons
+            name="git-network-outline"
+            size={64}
+            color={theme.colors.textSecondary}
+          />
           <Text style={styles.emptyTitle}>No Mind Maps Yet</Text>
           <Text style={styles.emptyDescription}>
             Create your first mind map from uploaded content
@@ -421,14 +460,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-     errorContainer: {
-     margin: theme.spacing.base,
-     padding: theme.spacing.md,
-     backgroundColor: theme.colors.error[50],
-     borderRadius: theme.borderRadius.base,
-     borderWidth: 1,
-     borderColor: theme.colors.error[100],
-   },
+  errorContainer: {
+    margin: theme.spacing.base,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.error[50],
+    borderRadius: theme.borderRadius.base,
+    borderWidth: 1,
+    borderColor: theme.colors.error[100],
+  },
   errorText: {
     color: theme.colors.error[700],
     textAlign: 'center',
@@ -653,4 +692,4 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
     fontStyle: 'italic',
   },
-}); 
+});

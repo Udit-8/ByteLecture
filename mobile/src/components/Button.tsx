@@ -12,7 +12,7 @@ import { theme } from '../constants/theme';
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   loading?: boolean;
@@ -54,9 +54,13 @@ export const Button: React.FC<ButtonProps> = ({
       activeOpacity={0.7}
     >
       {loading ? (
-        <ActivityIndicator 
-          color={variant === 'primary' ? theme.colors.white : theme.colors.primary[600]} 
-          size="small" 
+        <ActivityIndicator
+          color={
+            variant === 'primary' || variant === 'danger'
+              ? theme.colors.white
+              : theme.colors.primary[600]
+          }
+          size="small"
         />
       ) : (
         <Text style={buttonTextStyle}>{title}</Text>
@@ -72,7 +76,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.base,
     flexDirection: 'row',
   },
-  
+
   // Variants
   primary: {
     backgroundColor: theme.colors.primary[600],
@@ -90,7 +94,11 @@ const styles = StyleSheet.create({
   ghost: {
     backgroundColor: 'transparent',
   },
-  
+  danger: {
+    backgroundColor: theme.colors.error[600],
+    ...theme.shadow.base,
+  },
+
   // Sizes
   size_sm: {
     paddingHorizontal: theme.spacing.md,
@@ -107,7 +115,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.base,
     minHeight: 52,
   },
-  
+
   // Text styles
   text: {
     fontWeight: theme.typography.fontWeight.semibold,
@@ -125,7 +133,10 @@ const styles = StyleSheet.create({
   text_ghost: {
     color: theme.colors.primary[600],
   },
-  
+  text_danger: {
+    color: theme.colors.white,
+  },
+
   // Text sizes
   textSize_sm: {
     fontSize: theme.typography.fontSize.sm,
@@ -136,7 +147,7 @@ const styles = StyleSheet.create({
   textSize_lg: {
     fontSize: theme.typography.fontSize.lg,
   },
-  
+
   // Disabled states
   disabled: {
     opacity: 0.5,
@@ -144,4 +155,4 @@ const styles = StyleSheet.create({
   textDisabled: {
     opacity: 0.5,
   },
-}); 
+});

@@ -6,4 +6,4 @@ export { Header } from './Header';
 export { FeatureCard } from './FeatureCard';
 export { AISummary } from './AISummary';
 export { PDFUpload } from './PDFUpload';
-export type { PDFFile, UploadResult } from './PDFUpload'; 
+export type { PDFFile, UploadResult } from './PDFUpload';

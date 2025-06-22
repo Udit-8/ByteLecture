@@ -19,8 +19,9 @@ export async function testSupabaseConnection(): Promise<SupabaseTestResult> {
     console.log('🔄 Testing Supabase connection...');
 
     // Test basic storage connection
-    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-    
+    const { data: buckets, error: bucketsError } =
+      await supabase.storage.listBuckets();
+
     if (bucketsError) {
       return {
         success: false,
@@ -30,19 +31,22 @@ export async function testSupabaseConnection(): Promise<SupabaseTestResult> {
     }
 
     console.log('✅ Supabase storage connection successful');
-    console.log('📁 Available buckets:', buckets?.map(b => b.name));
+    console.log(
+      '📁 Available buckets:',
+      buckets?.map((b) => b.name)
+    );
 
     return {
       success: true,
       message: 'Supabase connection successful',
       details: {
         bucketsCount: buckets?.length || 0,
-        availableBuckets: buckets?.map(b => b.name) || [],
+        availableBuckets: buckets?.map((b) => b.name) || [],
       },
     };
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
     console.error('❌ Supabase connection test failed:', error);
 
     return {
@@ -61,8 +65,9 @@ export async function testSupabaseAuth(): Promise<SupabaseTestResult> {
     console.log('🔄 Testing Supabase auth...');
 
     // Test getting current session (should return null if not logged in)
-    const { data: session, error: sessionError } = await supabase.auth.getSession();
-    
+    const { data: session, error: sessionError } =
+      await supabase.auth.getSession();
+
     if (sessionError) {
       return {
         success: false,
@@ -82,9 +87,9 @@ export async function testSupabaseAuth(): Promise<SupabaseTestResult> {
         sessionInfo: session ? 'User logged in' : 'No active session',
       },
     };
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
     console.error('❌ Supabase auth test failed:', error);
 
     return {
@@ -104,7 +109,7 @@ export async function runAllSupabaseTests(): Promise<{
   overall: boolean;
 }> {
   console.log('🚀 Running complete Supabase test suite...');
-  console.log('=' .repeat(50));
+  console.log('='.repeat(50));
 
   const connectionResult = await testSupabaseConnection();
   const authResult = await testSupabaseAuth();
@@ -112,8 +117,10 @@ export async function runAllSupabaseTests(): Promise<{
   const overall = connectionResult.success && authResult.success;
 
   console.log('\n📊 Test Results Summary:');
-  console.log('=' .repeat(30));
-  console.log(`Connection: ${connectionResult.success ? '✅ PASS' : '❌ FAIL'}`);
+  console.log('='.repeat(30));
+  console.log(
+    `Connection: ${connectionResult.success ? '✅ PASS' : '❌ FAIL'}`
+  );
   console.log(`Auth: ${authResult.success ? '✅ PASS' : '❌ FAIL'}`);
   console.log(`Overall: ${overall ? '✅ SUCCESS' : '❌ FAILURE'}`);
 
@@ -128,4 +135,4 @@ export async function runAllSupabaseTests(): Promise<{
     auth: authResult,
     overall,
   };
-} 
+}

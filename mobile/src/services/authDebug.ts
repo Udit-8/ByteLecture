@@ -12,8 +12,11 @@ export class AuthDebug {
     error?: string;
   }> {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
+
       if (error) {
         return {
           isAuthenticated: false,
@@ -31,11 +34,13 @@ export class AuthDebug {
         isAuthenticated,
         hasSession,
         hasAccessToken,
-        userInfo: session?.user ? {
-          id: session.user.id,
-          email: session.user.email,
-          created_at: session.user.created_at,
-        } : null,
+        userInfo: session?.user
+          ? {
+              id: session.user.id,
+              email: session.user.email,
+              created_at: session.user.created_at,
+            }
+          : null,
       };
     } catch (error) {
       return {
@@ -60,19 +65,19 @@ export class AuthDebug {
    */
   static async waitForAuth(timeout = 10000): Promise<boolean> {
     const startTime = Date.now();
-    
+
     while (Date.now() - startTime < timeout) {
       const status = await this.getAuthStatus();
       if (status.isAuthenticated) {
         return true;
       }
-      
+
       // Wait 500ms before next check
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    
+
     return false;
   }
 }
 
-export default AuthDebug; 
+export default AuthDebug;

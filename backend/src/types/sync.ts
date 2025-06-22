@@ -6,12 +6,19 @@ export type SyncOperation = 'INSERT' | 'UPDATE' | 'DELETE';
 export type ConflictType =
   | 'update_conflict'
   | 'delete_conflict'
-  | 'version_conflict';
+  | 'version_conflict'
+  | 'field_conflict'
+  | 'schema_conflict';
+
 export type ResolutionStrategy =
   | 'last_write_wins'
   | 'merge'
   | 'user_choice'
-  | 'custom';
+  | 'custom'
+  | 'field_merge'
+  | 'content_aware';
+
+export type ConflictSeverity = 'low' | 'medium' | 'high' | 'critical';
 
 export interface SyncDevice {
   id: string;
@@ -54,6 +61,7 @@ export interface SyncChangeLog {
   processed_at?: string;
 }
 
+// Enhanced conflict interface with detailed metadata
 export interface SyncConflict {
   id: string;
   table_name: string;
@@ -62,11 +70,88 @@ export interface SyncConflict {
   local_data: any;
   remote_data: any;
   conflict_type: ConflictType;
+  severity: ConflictSeverity;
+  conflicting_fields: string[];
+  local_device_info: ConflictDeviceInfo;
+  remote_device_info: ConflictDeviceInfo;
   resolution_strategy?: ResolutionStrategy;
+  auto_resolvable: boolean;
   resolved: boolean;
   resolved_data?: any;
+  resolution_metadata?: ConflictResolutionMetadata;
   created_at: string;
   resolved_at?: string;
+}
+
+export interface ConflictDeviceInfo {
+  device_id: string;
+  device_name: string;
+  device_type: DeviceType;
+  platform: string;
+  timestamp: string;
+  app_version: string;
+}
+
+export interface ConflictResolutionMetadata {
+  resolved_by: 'auto' | 'user';
+  resolution_strategy_used: ResolutionStrategy;
+  user_id?: string;
+  resolution_time_ms: number;
+  field_resolutions?: FieldResolution[];
+}
+
+export interface FieldResolution {
+  field_name: string;
+  chosen_value: 'local' | 'remote' | 'merged' | 'custom';
+  custom_value?: any;
+  resolution_reason: string;
+}
+
+// Field-level conflict detection
+export interface FieldConflict {
+  field_name: string;
+  local_value: any;
+  remote_value: any;
+  conflict_type: 'value_mismatch' | 'type_mismatch' | 'null_conflict';
+  is_mergeable: boolean;
+  suggested_resolution?: 'local' | 'remote' | 'merge';
+  merge_strategy?: string;
+}
+
+// Content-aware resolution rules
+export interface ContentAwareRule {
+  table_name: string;
+  field_name: string;
+  conflict_type: ConflictType;
+  default_strategy: ResolutionStrategy;
+  conditions?: ContentAwareCondition[];
+}
+
+export interface ContentAwareCondition {
+  field: string;
+  operator: 'equals' | 'contains' | 'greater_than' | 'less_than';
+  value: any;
+  strategy: ResolutionStrategy;
+}
+
+// User preferences for conflict resolution
+export interface ConflictResolutionPreferences {
+  user_id: string;
+  default_strategy: ResolutionStrategy;
+  table_preferences: Record<string, ResolutionStrategy>;
+  field_preferences: Record<string, ResolutionStrategy>;
+  auto_resolve_low_severity: boolean;
+  notification_preferences: ConflictNotificationPreferences;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConflictNotificationPreferences {
+  notify_on_conflict: boolean;
+  notify_on_auto_resolution: boolean;
+  notification_methods: ('in_app' | 'email' | 'push')[];
+  batch_notifications: boolean;
+  batch_interval_minutes: number;
 }
 
 // Request/Response types
@@ -119,10 +204,49 @@ export interface SyncError {
   retryable: boolean;
 }
 
+// Enhanced conflict resolution requests
 export interface ResolveConflictRequest {
   conflict_id: string;
   resolution_strategy: ResolutionStrategy;
   resolved_data?: any;
+  field_resolutions?: FieldResolution[];
+  save_as_preference?: boolean;
+}
+
+export interface ResolveConflictResponse {
+  success: boolean;
+  resolved_data: any;
+  resolution_metadata: ConflictResolutionMetadata;
+  errors?: string[];
+}
+
+export interface BatchResolveConflictsRequest {
+  conflict_ids: string[];
+  resolution_strategy: ResolutionStrategy;
+  save_as_preference?: boolean;
+}
+
+export interface BatchResolveConflictsResponse {
+  resolved_count: number;
+  failed_count: number;
+  results: Array<{
+    conflict_id: string;
+    success: boolean;
+    error?: string;
+  }>;
+}
+
+export interface ConflictPreviewRequest {
+  conflict_id: string;
+  resolution_strategy: ResolutionStrategy;
+  field_resolutions?: FieldResolution[];
+}
+
+export interface ConflictPreviewResponse {
+  preview_data: any;
+  field_conflicts: FieldConflict[];
+  warnings: string[];
+  is_safe: boolean;
 }
 
 export interface DeviceListResponse {
@@ -240,3 +364,4 @@ export interface SyncHealth {
   error_count: number;
   average_sync_time_ms: number;
 }
+ 

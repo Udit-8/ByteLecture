@@ -15,6 +15,7 @@ import { AITutorScreen } from '../screens/AITutorScreen';
 import { AudioRecordingScreen } from '../screens/AudioRecordingScreen';
 import { AuthDebugScreen } from '../screens/AuthDebugScreen';
 import { QuizPerformanceScreen } from '../screens/QuizPerformanceScreen';
+import { SyncSettingsScreen } from '../screens/SyncSettingsScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import { BottomTabNavigator } from './BottomTabNavigator';
 
@@ -27,9 +28,9 @@ export const AppNavigator: React.FC = () => {
   useEffect(() => {
     const deepLinkHandler = DeepLinkHandler.getInstance();
     deepLinkHandler.setNavigationRef(navigationRef);
-    
+
     const cleanup = deepLinkHandler.initialize();
-    
+
     return cleanup;
   }, []);
 
@@ -46,13 +47,26 @@ export const AppNavigator: React.FC = () => {
             <>
               <Stack.Screen name="Main" component={BottomTabNavigator} />
               <Stack.Screen name="AITutor" component={AITutorScreen} />
-              <Stack.Screen name="AudioRecording" component={AudioRecordingScreen} />
-              <Stack.Screen name="QuizPerformance" component={QuizPerformanceScreen} />
-              <Stack.Screen name="Subscription" component={SubscriptionScreen} />
-              <Stack.Screen 
-                name="AuthDebug" 
-                component={AuthDebugScreen} 
-                options={{ headerShown: true, title: 'Auth Debug' }} 
+              <Stack.Screen
+                name="AudioRecording"
+                component={AudioRecordingScreen}
+              />
+              <Stack.Screen
+                name="QuizPerformance"
+                component={QuizPerformanceScreen}
+              />
+              <Stack.Screen
+                name="SyncSettings"
+                component={SyncSettingsScreen}
+              />
+              <Stack.Screen
+                name="Subscription"
+                component={SubscriptionScreen}
+              />
+              <Stack.Screen
+                name="AuthDebug"
+                component={AuthDebugScreen}
+                options={{ headerShown: true, title: 'Auth Debug' }}
               />
             </>
           ) : (
@@ -61,11 +75,14 @@ export const AppNavigator: React.FC = () => {
               <Stack.Screen name="Landing" component={LandingScreen} />
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="Register" component={RegisterScreen} />
-              <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
-              <Stack.Screen 
-                name="AuthDebug" 
-                component={AuthDebugScreen} 
-                options={{ headerShown: true, title: 'Auth Debug' }} 
+              <Stack.Screen
+                name="EmailVerification"
+                component={EmailVerificationScreen}
+              />
+              <Stack.Screen
+                name="AuthDebug"
+                component={AuthDebugScreen}
+                options={{ headerShown: true, title: 'Auth Debug' }}
               />
             </>
           )}
@@ -73,4 +90,4 @@ export const AppNavigator: React.FC = () => {
       </NavigationProvider>
     </NavigationContainer>
   );
-}; 
+};

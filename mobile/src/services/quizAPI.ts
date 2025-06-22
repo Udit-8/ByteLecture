@@ -1,11 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 export interface QuizGenerationOptions {
   numberOfQuestions?: number;
   difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
-  focusArea?: 'concepts' | 'applications' | 'analysis' | 'recall' | 'synthesis' | 'general';
+  focusArea?:
+    | 'concepts'
+    | 'applications'
+    | 'analysis'
+    | 'recall'
+    | 'synthesis'
+    | 'general';
   questionTypes?: ('multiple_choice' | 'true_false' | 'fill_blank')[];
   maxTokens?: number;
   temperature?: number;
@@ -194,11 +201,11 @@ class QuizAPI {
   ): Promise<any> {
     try {
       const token = await AsyncStorage.getItem('auth_token');
-      
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
-      
+
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }
@@ -210,22 +217,22 @@ class QuizAPI {
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: data.error || 'Request failed',
-          message: data.message 
+          message: data.message,
         };
       }
 
       return data;
     } catch (error) {
       console.error('Quiz API request failed:', error);
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: 'Network error occurred',
-        message: 'Failed to connect to the quiz service'
+        message: 'Failed to connect to the quiz service',
       };
     }
   }
@@ -234,10 +241,10 @@ class QuizAPI {
    * Generate quiz from content
    */
   async generateQuiz(request: GenerateQuizRequest): Promise<QuizResponse> {
-    console.log('🧩 Generating quiz...', { 
+    console.log('🧩 Generating quiz...', {
       contentType: request.contentType,
       contentLength: request.content.length,
-      options: request.options 
+      options: request.options,
     });
 
     const startTime = Date.now();
@@ -245,10 +252,13 @@ class QuizAPI {
     const duration = Date.now() - startTime;
 
     console.log(`🧩 Quiz generation completed in ${duration}ms`);
-    
+
     if (result.success && result.quizSet) {
       console.log('✅ Quiz generated successfully');
-      console.log('📊 Questions generated:', result.quizSet.questions?.length || result.quizSet.totalQuestions);
+      console.log(
+        '📊 Questions generated:',
+        result.quizSet.questions?.length || result.quizSet.totalQuestions
+      );
     } else {
       console.error('❌ Quiz generation failed:', result.error);
     }
@@ -265,18 +275,19 @@ class QuizAPI {
     contentItemId?: string;
   }): Promise<QuizResponse> {
     const queryParams = new URLSearchParams();
-    
+
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.offset) queryParams.append('offset', params.offset.toString());
-    if (params?.contentItemId) queryParams.append('content_item_id', params.contentItemId);
+    if (params?.contentItemId)
+      queryParams.append('content_item_id', params.contentItemId);
 
     const endpoint = `/sets${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     const result = await this.makeRequest(endpoint);
-    
+
     if (result.success) {
       console.log('📋 Retrieved', result.quizSets?.length || 0, 'quiz sets');
     }
-    
+
     return result;
   }
 
@@ -285,11 +296,11 @@ class QuizAPI {
    */
   async getQuizSet(setId: string): Promise<QuizResponse> {
     const result = await this.makeRequest(`/sets/${setId}`);
-    
+
     if (result.success) {
       console.log('🧩 Retrieved quiz set:', setId);
     }
-    
+
     return result;
   }
 
@@ -298,11 +309,11 @@ class QuizAPI {
    */
   async getQuizzesByContentItem(contentItemId: string): Promise<QuizResponse> {
     const result = await this.makeRequest(`/content/${contentItemId}`);
-    
+
     if (result.success) {
       console.log('🔗 Retrieved quizzes for content item:', contentItemId);
     }
-    
+
     return result;
   }
 
@@ -313,7 +324,7 @@ class QuizAPI {
     console.log('🗑️ Deleting quiz set...', { setId });
 
     const result = await this.makeRequest(`/sets/${setId}`, 'DELETE');
-    
+
     if (result.success) {
       console.log('✅ Quiz set deleted successfully');
     } else {
@@ -327,20 +338,27 @@ class QuizAPI {
    * Submit a quiz attempt
    */
   async submitQuizAttempt(
-    quizSetId: string, 
+    quizSetId: string,
     request: SubmitQuizAttemptRequest
   ): Promise<QuizResponse> {
-    console.log('📝 Submitting quiz attempt...', { 
-      quizSetId, 
+    console.log('📝 Submitting quiz attempt...', {
+      quizSetId,
       answersCount: request.answers.length,
-      timeSpent: request.timeSpent 
+      timeSpent: request.timeSpent,
     });
 
-    const result = await this.makeRequest(`/sets/${quizSetId}/attempts`, 'POST', request);
-    
+    const result = await this.makeRequest(
+      `/sets/${quizSetId}/attempts`,
+      'POST',
+      request
+    );
+
     if (result.success && result.attempt) {
       console.log('✅ Quiz attempt submitted successfully');
-      console.log('📊 Score:', `${result.attempt.score}/${result.attempt.totalQuestions} (${result.attempt.percentage}%)`);
+      console.log(
+        '📊 Score:',
+        `${result.attempt.score}/${result.attempt.totalQuestions} (${result.attempt.percentage}%)`
+      );
     } else {
       console.error('❌ Failed to submit quiz attempt:', result.error);
     }
@@ -353,26 +371,34 @@ class QuizAPI {
    */
   async getQuizAttempts(quizSetId: string): Promise<QuizResponse> {
     const result = await this.makeRequest(`/sets/${quizSetId}/attempts`);
-    
+
     if (result.success) {
       console.log('📊 Retrieved quiz attempts for set:', quizSetId);
     }
-    
+
     return result;
   }
 
   /**
    * Get user's overall performance analytics
    */
-  async getPerformanceAnalytics(timeframe: number = 30): Promise<PerformanceAnalytics | null> {
+  async getPerformanceAnalytics(
+    timeframe: number = 30
+  ): Promise<PerformanceAnalytics | null> {
     console.log('📊 Fetching performance analytics...', { timeframe });
 
     const result = await this.makeRequest(`/analytics?timeframe=${timeframe}`);
-    
+
     if (result.success && result.analytics) {
       console.log('✅ Performance analytics retrieved successfully');
-      console.log('📈 Total attempts:', result.analytics.overview.totalAttempts);
-      console.log('🎯 Overall accuracy:', `${result.analytics.overview.overallAccuracy}%`);
+      console.log(
+        '📈 Total attempts:',
+        result.analytics.overview.totalAttempts
+      );
+      console.log(
+        '🎯 Overall accuracy:',
+        `${result.analytics.overview.overallAccuracy}%`
+      );
       return result.analytics;
     } else {
       console.error('❌ Failed to fetch performance analytics:', result.error);
@@ -383,15 +409,25 @@ class QuizAPI {
   /**
    * Get detailed performance for a specific content item
    */
-  async getContentPerformance(contentItemId: string): Promise<ContentPerformance | null> {
+  async getContentPerformance(
+    contentItemId: string
+  ): Promise<ContentPerformance | null> {
     console.log('📊 Fetching content performance...', { contentItemId });
 
-    const result = await this.makeRequest(`/content/${contentItemId}/performance`);
-    
+    const result = await this.makeRequest(
+      `/content/${contentItemId}/performance`
+    );
+
     if (result.success && result.contentPerformance) {
       console.log('✅ Content performance retrieved successfully');
-      console.log('📈 Content attempts:', result.contentPerformance.totalAttempts);
-      console.log('🎯 Content accuracy:', `${result.contentPerformance.overallAccuracy}%`);
+      console.log(
+        '📈 Content attempts:',
+        result.contentPerformance.totalAttempts
+      );
+      console.log(
+        '🎯 Content accuracy:',
+        `${result.contentPerformance.overallAccuracy}%`
+      );
       return result.contentPerformance;
     } else {
       console.error('❌ Failed to fetch content performance:', result.error);
@@ -404,22 +440,27 @@ class QuizAPI {
    */
   async getHealthStatus(): Promise<QuizResponse> {
     const result = await this.makeRequest('/health');
-    
+
     if (result.success) {
       console.log('✅ Quiz service is healthy');
     }
-    
+
     return result;
   }
 
   /**
    * Retry quiz by regenerating questions on same topic
    */
-  async retryQuiz(setId: string, preserveOptions: boolean = true): Promise<QuizResponse> {
+  async retryQuiz(
+    setId: string,
+    preserveOptions: boolean = true
+  ): Promise<QuizResponse> {
     console.log('🔄 Retrying quiz...', { setId, preserveOptions });
 
-    const result = await this.makeRequest(`/sets/${setId}/retry`, 'POST', { preserveOptions });
-    
+    const result = await this.makeRequest(`/sets/${setId}/retry`, 'POST', {
+      preserveOptions,
+    });
+
     if (result.success && result.quizSet) {
       console.log('✅ Quiz retry successful');
       console.log('🆕 New quiz ID:', result.quizSet.id);
@@ -434,11 +475,18 @@ class QuizAPI {
   /**
    * Generate sharing link for a quiz
    */
-  async shareQuiz(setId: string, options?: ShareQuizRequest): Promise<QuizResponse> {
+  async shareQuiz(
+    setId: string,
+    options?: ShareQuizRequest
+  ): Promise<QuizResponse> {
     console.log('🔗 Generating share link...', { setId, options });
 
-    const result = await this.makeRequest(`/sets/${setId}/share`, 'POST', options || {});
-    
+    const result = await this.makeRequest(
+      `/sets/${setId}/share`,
+      'POST',
+      options || {}
+    );
+
     if (result.success && result.shareData) {
       console.log('✅ Share link generated successfully');
       console.log('🔗 Web URL:', result.shareData.webUrl);
@@ -458,7 +506,7 @@ class QuizAPI {
     console.log('🔓 Accessing shared quiz...', { shareId });
 
     const result = await this.makeRequest(`/shared/${shareId}`);
-    
+
     if (result.success && result.quizSet) {
       console.log('✅ Shared quiz accessed successfully');
       console.log('📋 Quiz title:', result.quizSet.title);
@@ -473,12 +521,16 @@ class QuizAPI {
   /**
    * Get user's current usage and quota information
    */
-  async getUserUsage(): Promise<{ quota?: QuizQuotaInfo; success: boolean; error?: string }> {
+  async getUserUsage(): Promise<{
+    quota?: QuizQuotaInfo;
+    success: boolean;
+    error?: string;
+  }> {
     console.log('📊 Fetching user usage information...');
 
     try {
       const result = await this.makeRequest('/usage');
-      
+
       if (result.success) {
         console.log('✅ Usage information retrieved successfully');
         console.log('📈 Current usage:', result.quota?.current);
@@ -509,14 +561,14 @@ class QuizAPI {
         numberOfQuestions,
         difficulty: 'medium',
         focusArea: 'general',
-        questionTypes: ['multiple_choice']
-      }
+        questionTypes: ['multiple_choice'],
+      },
     };
-    
+
     return this.generateQuiz(request);
   }
 }
 
 // Export singleton instance
 export const quizAPI = new QuizAPI();
-export default quizAPI; 
+export default quizAPI;

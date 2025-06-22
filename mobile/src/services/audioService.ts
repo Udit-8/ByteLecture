@@ -78,7 +78,9 @@ const DEFAULT_AUDIO_OPTIONS: Required<AudioUploadOptions> = {
 /**
  * Get audio file information
  */
-export const getAudioFileInfo = async (uri: string): Promise<AudioFile | null> => {
+export const getAudioFileInfo = async (
+  uri: string
+): Promise<AudioFile | null> => {
   try {
     const fileInfo = await FileSystem.getInfoAsync(uri);
     if (!fileInfo.exists) {
@@ -99,7 +101,7 @@ export const getAudioFileInfo = async (uri: string): Promise<AudioFile | null> =
     }
 
     const fileName = uri.split('/').pop() || 'recording.m4a';
-    
+
     return {
       uri,
       name: fileName,
@@ -125,13 +127,13 @@ export const compressAudioFile = async (
     // For now, we'll skip actual compression since expo-av doesn't have built-in compression
     // In a production app, you might use FFmpeg or a similar library
     // This is a placeholder that simulates compression progress
-    
+
     onProgress?.(0);
-    
+
     // Simulate compression progress
     const steps = 10;
     for (let i = 1; i <= steps; i++) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       onProgress?.((i / steps) * 100);
     }
 
@@ -140,7 +142,7 @@ export const compressAudioFile = async (
     // 1. Use FFmpeg to compress the audio
     // 2. Adjust bitrate based on quality setting
     // 3. Save compressed file to a new URI
-    
+
     return audioFile;
   } catch (error) {
     console.error('Error compressing audio:', error);
@@ -157,25 +159,29 @@ export const uploadAudioToSupabase = async (
   controller?: AudioUploadController
 ): Promise<AudioUploadResult> => {
   // Check authentication first
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-  
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
   if (sessionError) {
     return {
       success: false,
       error: `Authentication error: ${sessionError.message}`,
     };
   }
-  
+
   if (!session?.user) {
     return {
       success: false,
-      error: 'User must be authenticated to upload audio files. Please sign in and try again.',
+      error:
+        'User must be authenticated to upload audio files. Please sign in and try again.',
     };
   }
 
   const uploadOptions = { ...DEFAULT_AUDIO_OPTIONS, ...options };
   const uploadController = controller || new AudioUploadController();
-  
+
   if (!uploadOptions.fileName) {
     uploadOptions.fileName = generateUniqueAudioFileName(audioFile.name);
   }
@@ -223,7 +229,7 @@ export const uploadAudioToSupabase = async (
       uploadOptions.compressionQuality,
       (compressionProgress) => {
         uploadOptions.onProgress?.({
-          progress: 10 + (compressionProgress * 0.2), // 10% to 30%
+          progress: 10 + compressionProgress * 0.2, // 10% to 30%
           bytesUploaded: 0,
           totalBytes: audioFile.size,
           isComplete: false,
@@ -254,7 +260,9 @@ export const uploadAudioToSupabase = async (
     });
 
     // Convert base64 to Uint8Array for Supabase upload
-    const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    const binaryData = Uint8Array.from(atob(base64Data), (c) =>
+      c.charCodeAt(0)
+    );
 
     // Upload progress callback
     const uploadProgressCallback = (bytesUploaded: number) => {
@@ -301,19 +309,20 @@ export const uploadAudioToSupabase = async (
       audioFile: compressedAudio,
       message: 'Audio uploaded successfully',
     };
-
   } catch (error) {
     console.error('Audio upload error:', error);
-    
+
     // Implement exponential backoff retry
     if (uploadController.getRetryAttempts() < uploadOptions.retryCount) {
       uploadController.incrementRetryAttempts();
       const delay = Math.pow(2, uploadController.getRetryAttempts()) * 1000; // Exponential backoff
-      
-      console.log(`Retrying audio upload in ${delay}ms (attempt ${uploadController.getRetryAttempts()})`);
-      
-      await new Promise(resolve => setTimeout(resolve, delay));
-      
+
+      console.log(
+        `Retrying audio upload in ${delay}ms (attempt ${uploadController.getRetryAttempts()})`
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+
       // Retry the upload
       return uploadAudioToSupabase(audioFile, options, uploadController);
     }
@@ -334,14 +343,16 @@ const generateUniqueAudioFileName = (originalName: string): string => {
   const extension = originalName.split('.').pop() || 'm4a';
   const baseName = originalName.replace(/\.[^/.]+$/, '');
   const sanitizedBaseName = baseName.replace(/[^a-zA-Z0-9-_]/g, '_');
-  
+
   return `${sanitizedBaseName}_${timestamp}_${randomSuffix}.${extension}`;
 };
 
 /**
  * Check if audio bucket exists and is accessible
  */
-export const checkAudioBucketAccess = async (bucketName: string): Promise<boolean> => {
+export const checkAudioBucketAccess = async (
+  bucketName: string
+): Promise<boolean> => {
   try {
     const { data, error } = await supabase.storage.from(bucketName).list('', {
       limit: 1,
@@ -362,26 +373,32 @@ export const checkAudioBucketAccess = async (bucketName: string): Promise<boolea
 /**
  * Create audio bucket if needed
  */
-export const createAudioBucketIfNeeded = async (bucketName: string): Promise<boolean> => {
+export const createAudioBucketIfNeeded = async (
+  bucketName: string
+): Promise<boolean> => {
   try {
     // First check if bucket exists
-    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-    
+    const { data: buckets, error: listError } =
+      await supabase.storage.listBuckets();
+
     if (listError) {
       console.error('Error listing buckets:', listError);
       return false;
     }
 
-    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
-    
+    const bucketExists = buckets?.some((bucket) => bucket.name === bucketName);
+
     if (bucketExists) {
       return true;
     }
 
     // Create bucket if it doesn't exist
-    const { error: createError } = await supabase.storage.createBucket(bucketName, {
-      public: false, // Audio files should be private
-    });
+    const { error: createError } = await supabase.storage.createBucket(
+      bucketName,
+      {
+        public: false, // Audio files should be private
+      }
+    );
 
     if (createError) {
       console.error('Error creating audio bucket:', createError);
@@ -424,7 +441,7 @@ export const deleteUploadedAudioFile = async (
  */
 export const getAudioProgressText = (progress: AudioUploadProgress): string => {
   const { stage, progress: percent, bytesUploaded, totalBytes } = progress;
-  
+
   switch (stage) {
     case 'processing':
       return 'Processing audio file...';
@@ -437,4 +454,4 @@ export const getAudioProgressText = (progress: AudioUploadProgress): string => {
     default:
       return `Processing (${Math.round(percent)}%)...`;
   }
-}; 
+};

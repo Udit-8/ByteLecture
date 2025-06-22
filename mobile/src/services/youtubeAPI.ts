@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 export interface YouTubeVideoInfo {
   videoId: string;
@@ -74,11 +75,11 @@ class YouTubeAPI {
   ): Promise<any> {
     try {
       const token = await AsyncStorage.getItem('auth_token');
-      
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
-      
+
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }
@@ -90,9 +91,11 @@ class YouTubeAPI {
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.error || data.message || `API error: ${response.status}`);
+        throw new Error(
+          data.error || data.message || `API error: ${response.status}`
+        );
       }
 
       return data;
@@ -107,7 +110,9 @@ class YouTubeAPI {
    */
   async validateVideo(url: string): Promise<YouTubeValidationResult> {
     try {
-      const response = await this.makeRequest('/youtube/validate', 'POST', { url });
+      const response = await this.makeRequest('/youtube/validate', 'POST', {
+        url,
+      });
       return response.data;
     } catch (error) {
       return {
@@ -129,7 +134,9 @@ class YouTubeAPI {
    * Process a YouTube video completely (extract transcript, store in DB)
    */
   async processVideo(url: string): Promise<YouTubeProcessingResult> {
-    const response = await this.makeRequest('/youtube/process', 'POST', { url });
+    const response = await this.makeRequest('/youtube/process', 'POST', {
+      url,
+    });
     return response.data;
   }
 
@@ -166,4 +173,4 @@ class YouTubeAPI {
 }
 
 export const youtubeAPI = new YouTubeAPI();
-export default youtubeAPI; 
+export default youtubeAPI;

@@ -27,7 +27,7 @@ export const FlashcardsScreen: React.FC = () => {
   const [autoGenerating, setAutoGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [isStudyMode, setIsStudyMode] = useState(false);
-  
+
   const {
     sets,
     currentSet,
@@ -60,21 +60,21 @@ export const FlashcardsScreen: React.FC = () => {
 
       // Get full content from the backend
       const contentResponse = await contentAPI.getFullContent(contentItemId);
-      
+
       if (!contentResponse.success || !contentResponse.fullContent) {
         throw new Error('Could not fetch content for flashcard generation');
       }
 
       const { contentItem, fullContent } = contentResponse;
-      
+
       if (!contentItem) {
         throw new Error('Content item not found');
       }
-      
+
       console.log('📄 Got full content for flashcards:', {
         title: contentItem.title,
         contentType: contentItem.contentType,
-        contentLength: fullContent.length
+        contentLength: fullContent.length,
       });
 
       // Generate flashcards with the full content
@@ -91,16 +91,20 @@ export const FlashcardsScreen: React.FC = () => {
       });
 
       if (flashcardSet) {
-        console.log('✅ Flashcards auto-generated successfully:', flashcardSet.id);
+        console.log(
+          '✅ Flashcards auto-generated successfully:',
+          flashcardSet.id
+        );
         setSelectedSetId(flashcardSet.id);
         // The generateFlashcards hook already updates the sets and currentSet
       } else {
         throw new Error('Failed to generate flashcards');
       }
-
     } catch (error) {
       console.error('❌ Auto-generation failed:', error);
-      setGenerationError(error instanceof Error ? error.message : 'Failed to generate flashcards');
+      setGenerationError(
+        error instanceof Error ? error.message : 'Failed to generate flashcards'
+      );
     } finally {
       setAutoGenerating(false);
     }
@@ -115,16 +119,24 @@ export const FlashcardsScreen: React.FC = () => {
   useEffect(() => {
     if (selectedNote && !selectedSetId && !loading && !autoGenerating) {
       // Try to find existing flashcards for the selected content
-      const contentSets = sets.filter(set => set.contentItemId === selectedNote.id);
-      
+      const contentSets = sets.filter(
+        (set) => set.contentItemId === selectedNote.id
+      );
+
       if (contentSets.length > 0) {
         // Found existing flashcards, load them
-        console.log('📚 Found existing flashcards for content:', selectedNote.id);
+        console.log(
+          '📚 Found existing flashcards for content:',
+          selectedNote.id
+        );
         setSelectedSetId(contentSets[0].id);
         loadSet(contentSets[0].id);
       } else {
         // No flashcards exist, auto-generate them
-        console.log('🤖 No flashcards found, auto-generating for:', selectedNote.id);
+        console.log(
+          '🤖 No flashcards found, auto-generating for:',
+          selectedNote.id
+        );
         autoGenerateFlashcards(selectedNote.id);
       }
     } else if (!selectedNote && sets.length > 0 && !selectedSetId) {
@@ -212,16 +224,28 @@ export const FlashcardsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header 
-        title={selectedNote ? `${selectedNote.title} - Cards` : 'Smart Flashcards'}
-        leftAction={selectedNote ? {
-          icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[600]} />,
-          onPress: handleBackPress,
-        } : undefined}
+      <Header
+        title={
+          selectedNote ? `${selectedNote.title} - Cards` : 'Smart Flashcards'
+        }
+        leftAction={
+          selectedNote
+            ? {
+                icon: (
+                  <Ionicons
+                    name="arrow-back"
+                    size={24}
+                    color={theme.colors.gray[600]}
+                  />
+                ),
+                onPress: handleBackPress,
+              }
+            : undefined
+        }
       />
-      
-      <ScrollView 
-        style={styles.content} 
+
+      <ScrollView
+        style={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -236,7 +260,11 @@ export const FlashcardsScreen: React.FC = () => {
           <View style={styles.loadingContainer}>
             <LoadingIndicator size="large" color={theme.colors.primary[600]} />
             <Text style={styles.loadingText}>
-              {autoGenerating ? 'Auto-generating flashcards...' : generating ? 'Generating flashcards...' : 'Loading flashcards...'}
+              {autoGenerating
+                ? 'Auto-generating flashcards...'
+                : generating
+                  ? 'Generating flashcards...'
+                  : 'Loading flashcards...'}
             </Text>
             {autoGenerating && (
               <Text style={styles.loadingSubtext}>
@@ -249,9 +277,15 @@ export const FlashcardsScreen: React.FC = () => {
         {generationError && (
           <Card style={styles.errorCard}>
             <View style={styles.errorContainer}>
-              <Ionicons name="warning" size={24} color={theme.colors.error[600]} />
+              <Ionicons
+                name="warning"
+                size={24}
+                color={theme.colors.error[600]}
+              />
               <View style={styles.errorContent}>
-                <Text style={styles.errorText}>Failed to generate flashcards</Text>
+                <Text style={styles.errorText}>
+                  Failed to generate flashcards
+                </Text>
                 <Text style={styles.errorSubtext}>{generationError}</Text>
                 <TouchableOpacity
                   style={styles.retryButton}
@@ -272,7 +306,9 @@ export const FlashcardsScreen: React.FC = () => {
         <View style={styles.welcomeCard}>
           <Text style={styles.welcomeTitle}>AI-Generated Flashcards</Text>
           <Text style={styles.welcomeDescription}>
-            {activeSet ? `Study "${activeSet.title}" flashcards` : 'Study with intelligent flashcards created from your learning materials.'}
+            {activeSet
+              ? `Study "${activeSet.title}" flashcards`
+              : 'Study with intelligent flashcards created from your learning materials.'}
           </Text>
         </View>
 
@@ -288,7 +324,12 @@ export const FlashcardsScreen: React.FC = () => {
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>
-                {currentFlashcards.length > 0 ? Math.round((flippedCards.size / currentFlashcards.length) * 100) : 0}%
+                {currentFlashcards.length > 0
+                  ? Math.round(
+                      (flippedCards.size / currentFlashcards.length) * 100
+                    )
+                  : 0}
+                %
               </Text>
               <Text style={styles.statLabel}>Progress</Text>
             </View>
@@ -300,7 +341,7 @@ export const FlashcardsScreen: React.FC = () => {
             {currentFlashcards.map((card: Flashcard, index: number) => {
               const cardId = card.id || `card-${index}`;
               const isFlipped = flippedCards.has(cardId);
-              const cardStyle = isFlipped 
+              const cardStyle = isFlipped
                 ? [styles.flashcard, styles.flashcardFlipped]
                 : [styles.flashcard];
               return (
@@ -314,14 +355,27 @@ export const FlashcardsScreen: React.FC = () => {
                     <View style={styles.flashcardHeader}>
                       <View style={styles.subjectTag}>
                         <Text style={styles.subjectText}>
-                          {card.tags?.join(', ') || activeSet?.title || 'Study Cards'}
+                          {card.tags?.join(', ') ||
+                            activeSet?.title ||
+                            'Study Cards'}
                         </Text>
                       </View>
-                      <View style={[styles.difficultyTag, { backgroundColor: getDifficultyColor(card.difficulty_level) }]}>
-                        <Text style={styles.difficultyText}>{getDifficultyText(card.difficulty_level)}</Text>
+                      <View
+                        style={[
+                          styles.difficultyTag,
+                          {
+                            backgroundColor: getDifficultyColor(
+                              card.difficulty_level
+                            ),
+                          },
+                        ]}
+                      >
+                        <Text style={styles.difficultyText}>
+                          {getDifficultyText(card.difficulty_level)}
+                        </Text>
                       </View>
                     </View>
-                    
+
                     <View style={styles.flashcardContent}>
                       <Text style={styles.flashcardText}>
                         {isFlipped ? card.answer : card.question}
@@ -332,13 +386,13 @@ export const FlashcardsScreen: React.FC = () => {
                         </Text>
                       )}
                     </View>
-                    
+
                     <View style={styles.flashcardFooter}>
                       <View style={styles.flipIndicator}>
-                        <Ionicons 
-                          name={isFlipped ? "eye" : "eye-outline"} 
-                          size={16} 
-                          color={theme.colors.gray[500]} 
+                        <Ionicons
+                          name={isFlipped ? 'eye' : 'eye-outline'}
+                          size={16}
+                          color={theme.colors.gray[500]}
                         />
                         <Text style={styles.flipText}>
                           {isFlipped ? 'Showing answer' : 'Tap to reveal'}
@@ -353,10 +407,15 @@ export const FlashcardsScreen: React.FC = () => {
         ) : (
           <Card style={styles.emptyCard}>
             <View style={styles.emptyContent}>
-              <Ionicons name="library-outline" size={48} color={theme.colors.gray[400]} />
+              <Ionicons
+                name="library-outline"
+                size={48}
+                color={theme.colors.gray[400]}
+              />
               <Text style={styles.emptyTitle}>No Flashcards Yet</Text>
               <Text style={styles.emptyDescription}>
-                Import some content to generate AI-powered flashcards for studying.
+                Import some content to generate AI-powered flashcards for
+                studying.
               </Text>
             </View>
           </Card>
@@ -412,7 +471,8 @@ const styles = StyleSheet.create({
   welcomeDescription: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.warning[100],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -489,7 +549,8 @@ const styles = StyleSheet.create({
   flashcardText: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.gray[900],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
     textAlign: 'center',
   },
   flashcardFooter: {
@@ -523,7 +584,8 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[600],
     textAlign: 'center',
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
   actionButtons: {
     flexDirection: 'row',
@@ -549,7 +611,8 @@ const styles = StyleSheet.create({
     color: theme.colors.gray[600],
     fontStyle: 'italic',
     textAlign: 'center',
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
   loadingSubtext: {
     marginTop: theme.spacing.sm,
@@ -582,7 +645,8 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.error[600],
     marginBottom: theme.spacing.md,
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
   retryButton: {
     backgroundColor: theme.colors.error[600],
@@ -596,4 +660,4 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.medium,
   },
-}); 
+});

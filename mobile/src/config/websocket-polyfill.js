@@ -17,4 +17,4 @@ if (WebSocketImpl) {
   module.exports.OPEN = WebSocketImpl.OPEN || 1;
   module.exports.CLOSING = WebSocketImpl.CLOSING || 2;
   module.exports.CLOSED = WebSocketImpl.CLOSED || 3;
-} 
+}

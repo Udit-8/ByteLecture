@@ -68,7 +68,7 @@ export const validateYouTubeUrl = (url: string): YouTubeValidationResult => {
   }
 
   const trimmedUrl = url.trim();
-  
+
   if (!trimmedUrl) {
     return {
       isValid: false,
@@ -77,7 +77,7 @@ export const validateYouTubeUrl = (url: string): YouTubeValidationResult => {
   }
 
   const videoId = extractVideoId(trimmedUrl);
-  
+
   if (!videoId) {
     return {
       isValid: false,
@@ -109,7 +109,10 @@ export const generateYouTubeUrl = (videoId: string): string => {
 /**
  * Generate YouTube thumbnail URL from video ID
  */
-export const generateThumbnailUrl = (videoId: string, quality: 'default' | 'medium' | 'high' | 'standard' | 'maxres' = 'medium'): string => {
+export const generateThumbnailUrl = (
+  videoId: string,
+  quality: 'default' | 'medium' | 'high' | 'standard' | 'maxres' = 'medium'
+): string => {
   return `https://img.youtube.com/vi/${videoId}/${quality}default.jpg`;
 };
 
@@ -118,7 +121,7 @@ export const generateThumbnailUrl = (videoId: string, quality: 'default' | 'medi
  */
 export const isYouTubeUrl = (url: string): boolean => {
   if (!url || typeof url !== 'string') return false;
-  
+
   const cleanUrl = url.toLowerCase().trim();
   return cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be');
 };
@@ -128,19 +131,19 @@ export const isYouTubeUrl = (url: string): boolean => {
  */
 export const sanitizeYouTubeUrl = (input: string): string => {
   if (!input || typeof input !== 'string') return '';
-  
+
   let sanitized = input.trim();
-  
+
   // If it's just a video ID, convert to full URL
   if (/^[a-zA-Z0-9_-]{11}$/.test(sanitized)) {
     sanitized = generateYouTubeUrl(sanitized);
   }
-  
+
   // Ensure protocol
   if (sanitized.includes('youtube.') && !sanitized.startsWith('http')) {
     sanitized = 'https://' + sanitized;
   }
-  
+
   return sanitized;
 };
 
@@ -150,9 +153,11 @@ export const sanitizeYouTubeUrl = (input: string): string => {
 export const formatValidationError = (error: string): string => {
   const errorMap: Record<string, string> = {
     'Please enter a YouTube URL': '🔗 Please enter a YouTube URL',
-    'Invalid YouTube URL. Please enter a valid YouTube video link.': '❌ Invalid YouTube URL. Please check the link and try again.',
-    'Invalid video ID format': '❌ This does not appear to be a valid YouTube video.',
+    'Invalid YouTube URL. Please enter a valid YouTube video link.':
+      '❌ Invalid YouTube URL. Please check the link and try again.',
+    'Invalid video ID format':
+      '❌ This does not appear to be a valid YouTube video.',
   };
-  
+
   return errorMap[error] || `❌ ${error}`;
-}; 
+};

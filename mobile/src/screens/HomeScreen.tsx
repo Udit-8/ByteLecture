@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Header, Button, Card, FeatureCard } from '../components';
+import SyncStatusIndicator from '../components/SyncStatusIndicator';
 import { theme } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContextFallback';
 
@@ -20,26 +21,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, signOut } = useAuth();
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          const { error } = await signOut();
+          if (error) {
+            Alert.alert('Error', 'Failed to logout: ' + error);
+          }
         },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await signOut();
-            if (error) {
-              Alert.alert('Error', 'Failed to logout: ' + error);
-            }
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
 
   const features = [
@@ -47,33 +44,69 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       id: 'summary',
       title: 'AI Summaries',
       description: 'Get concise summaries of your learning materials',
-      icon: <Ionicons name="document-text" size={24} color={theme.colors.primary[600]} />,
+      icon: (
+        <Ionicons
+          name="document-text"
+          size={24}
+          color={theme.colors.primary[600]}
+        />
+      ),
       color: theme.colors.primary[100],
-      onPress: () => Alert.alert('Coming Soon', 'AI Summaries will be available when you import content!'),
+      onPress: () =>
+        Alert.alert(
+          'Coming Soon',
+          'AI Summaries will be available when you import content!'
+        ),
     },
     {
       id: 'flashcards',
       title: 'Smart Flashcards',
       description: 'Auto-generated cards to boost retention',
-      icon: <Ionicons name="library" size={24} color={theme.colors.success[600]} />,
+      icon: (
+        <Ionicons name="library" size={24} color={theme.colors.success[600]} />
+      ),
       color: theme.colors.success[100],
-      onPress: () => Alert.alert('Coming Soon', 'Smart Flashcards will be available when you import content!'),
+      onPress: () =>
+        Alert.alert(
+          'Coming Soon',
+          'Smart Flashcards will be available when you import content!'
+        ),
     },
     {
       id: 'quiz',
       title: 'Practice Quizzes',
       description: 'Test your knowledge with AI-created quizzes',
-      icon: <Ionicons name="help-circle" size={24} color={theme.colors.warning[600]} />,
+      icon: (
+        <Ionicons
+          name="help-circle"
+          size={24}
+          color={theme.colors.warning[600]}
+        />
+      ),
       color: theme.colors.warning[100],
-      onPress: () => Alert.alert('Coming Soon', 'Practice Quizzes will be available when you import content!'),
+      onPress: () =>
+        Alert.alert(
+          'Coming Soon',
+          'Practice Quizzes will be available when you import content!'
+        ),
     },
     {
       id: 'tutor',
       title: 'AI Tutor',
       description: 'Get personalized help when you need it',
-      icon: <Ionicons name="chatbubbles" size={24} color={theme.colors.error[600]} />,
+      icon: (
+        <Ionicons
+          name="chatbubbles"
+          size={24}
+          color={theme.colors.error[600]}
+        />
+      ),
       color: theme.colors.error[100],
-      onPress: () => Alert.alert('Coming Soon', 'AI Tutor will be available when you import content!'),
+      onPress: () =>
+        Alert.alert(
+          'Coming Soon',
+          'AI Tutor will be available when you import content!'
+        ),
     },
   ];
 
@@ -94,18 +127,38 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header 
-        title="ByteLecture" 
+      <Header
+        title="ByteLecture"
         rightAction={{
-          icon: <Ionicons name="log-out-outline" size={24} color={theme.colors.gray[600]} />,
+          icon: (
+            <Ionicons
+              name="log-out-outline"
+              size={24}
+              color={theme.colors.gray[600]}
+            />
+          ),
           onPress: handleLogout,
         }}
         leftAction={{
-          icon: <Ionicons name="diamond-outline" size={24} color={theme.colors.primary[600]} />,
+          icon: (
+            <Ionicons
+              name="diamond-outline"
+              size={24}
+              color={theme.colors.primary[600]}
+            />
+          ),
           onPress: () => navigation.navigate('Subscription', { from: 'home' }),
         }}
       />
-      
+
+      {/* Sync Status Indicator */}
+      <View style={styles.syncStatusContainer}>
+        <SyncStatusIndicator
+          showDetails={true}
+          onPress={() => navigation.navigate('SyncSettings')}
+        />
+      </View>
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.welcomeCard}>
           <Text style={styles.welcomeTitle}>Welcome back!</Text>
@@ -115,17 +168,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <Text style={styles.userEmail}>{user?.email}</Text>
           <Button
             title="Import New Content"
-            onPress={() => Alert.alert('Coming Soon', 'Content import will be available soon!')}
+            onPress={() =>
+              Alert.alert(
+                'Coming Soon',
+                'Content import will be available soon!'
+              )
+            }
             variant="secondary"
             style={styles.importButton}
           />
         </View>
 
         <Text style={styles.sectionTitle}>Learning Tools</Text>
-        
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.featuresContainer}
         >
           {features.map((feature) => (
@@ -141,7 +199,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </ScrollView>
 
         <Text style={styles.sectionTitle}>Recent Content</Text>
-        
+
         <View style={styles.recentContent}>
           {recentContent.map((content) => (
             <Card key={content.id} style={styles.contentCard}>
@@ -150,22 +208,35 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   {content.title}
                 </Text>
                 <View style={styles.sourceTag}>
-                  <Ionicons 
-                    name={content.source === 'YouTube' ? 'logo-youtube' : 'document-text'} 
-                    size={12} 
-                    color={content.source === 'YouTube' ? theme.colors.error[600] : theme.colors.primary[600]} 
+                  <Ionicons
+                    name={
+                      content.source === 'YouTube'
+                        ? 'logo-youtube'
+                        : 'document-text'
+                    }
+                    size={12}
+                    color={
+                      content.source === 'YouTube'
+                        ? theme.colors.error[600]
+                        : theme.colors.primary[600]
+                    }
                   />
                   <Text style={styles.sourceText}>{content.source}</Text>
                 </View>
               </View>
-              
+
               <View style={styles.progressContainer}>
                 <View style={styles.progressBar}>
-                  <View 
-                    style={[styles.progressFill, { width: `${content.progress}%` }]} 
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${content.progress}%` },
+                    ]}
                   />
                 </View>
-                <Text style={styles.progressText}>{content.progress}% complete</Text>
+                <Text style={styles.progressText}>
+                  {content.progress}% complete
+                </Text>
               </View>
             </Card>
           ))}
@@ -197,6 +268,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.gray[50],
+  },
+  syncStatusContainer: {
+    paddingHorizontal: theme.spacing.base,
+    paddingBottom: theme.spacing.sm,
   },
   content: {
     flex: 1,
@@ -321,4 +396,4 @@ const styles = StyleSheet.create({
     color: theme.colors.gray[600],
     fontWeight: theme.typography.fontWeight.medium,
   },
-}); 
+});

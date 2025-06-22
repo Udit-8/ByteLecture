@@ -21,16 +21,19 @@ export const AuthDebugScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'auth' | 'debug'>('auth');
 
   const handleAuthStateChange = (user: User | null) => {
-    console.log('[AuthDebugScreen] Auth state changed:', { 
-      hasUser: !!user, 
-      email: user?.email 
+    console.log('[AuthDebugScreen] Auth state changed:', {
+      hasUser: !!user,
+      email: user?.email,
     });
     setCurrentUser(user);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>🔍 Authentication Debug Center</Text>
@@ -40,14 +43,19 @@ export const AuthDebugScreen: React.FC = () => {
         </View>
 
         {/* Status Banner */}
-        <View style={[styles.statusBanner, currentUser ? styles.success : styles.warning]}>
+        <View
+          style={[
+            styles.statusBanner,
+            currentUser ? styles.success : styles.warning,
+          ]}
+        >
           <Text style={styles.statusText}>
-            {currentUser ? `✅ Authenticated as ${currentUser.email}` : '❌ Not Authenticated'}
+            {currentUser
+              ? `✅ Authenticated as ${currentUser.email}`
+              : '❌ Not Authenticated'}
           </Text>
           {currentUser && (
-            <Text style={styles.statusSubtext}>
-              Ready to upload files! 🎯
-            </Text>
+            <Text style={styles.statusSubtext}>Ready to upload files! 🎯</Text>
           )}
         </View>
 
@@ -57,7 +65,12 @@ export const AuthDebugScreen: React.FC = () => {
             style={[styles.tab, activeTab === 'auth' && styles.activeTab]}
             onPress={() => setActiveTab('auth')}
           >
-            <Text style={[styles.tabText, activeTab === 'auth' && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'auth' && styles.activeTabText,
+              ]}
+            >
               🔐 Authentication
             </Text>
           </TouchableOpacity>
@@ -65,7 +78,12 @@ export const AuthDebugScreen: React.FC = () => {
             style={[styles.tab, activeTab === 'debug' && styles.activeTab]}
             onPress={() => setActiveTab('debug')}
           >
-            <Text style={[styles.tabText, activeTab === 'debug' && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'debug' && styles.activeTabText,
+              ]}
+            >
               🔍 Debug Info
             </Text>
           </TouchableOpacity>
@@ -77,7 +95,8 @@ export const AuthDebugScreen: React.FC = () => {
             <View style={styles.tabContent}>
               <Text style={styles.sectionTitle}>Sign In / Sign Up</Text>
               <Text style={styles.sectionDescription}>
-                Use this to test authentication. Check the debug tab and console logs for detailed information.
+                Use this to test authentication. Check the debug tab and console
+                logs for detailed information.
               </Text>
               <SimpleAuth onAuthStateChange={handleAuthStateChange} />
             </View>
@@ -85,7 +104,8 @@ export const AuthDebugScreen: React.FC = () => {
             <View style={styles.tabContent}>
               <Text style={styles.sectionTitle}>Debug Information</Text>
               <Text style={styles.sectionDescription}>
-                View authentication state, AsyncStorage data, and test storage access.
+                View authentication state, AsyncStorage data, and test storage
+                access.
               </Text>
               <AuthDebugger />
             </View>
@@ -115,7 +135,8 @@ export const AuthDebugScreen: React.FC = () => {
         {/* Console Log Reminder */}
         <View style={styles.reminder}>
           <Text style={styles.reminderText}>
-            💡 Don't forget to check the console logs in your terminal or React Native debugger for detailed authentication flow information!
+            💡 Don't forget to check the console logs in your terminal or React
+            Native debugger for detailed authentication flow information!
           </Text>
         </View>
       </ScrollView>
@@ -259,4 +280,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AuthDebugScreen; 
+export default AuthDebugScreen;

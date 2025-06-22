@@ -17,10 +17,9 @@ interface EmailVerificationScreenProps {
   route: any;
 }
 
-export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = ({ 
-  navigation, 
-  route 
-}) => {
+export const EmailVerificationScreen: React.FC<
+  EmailVerificationScreenProps
+> = ({ navigation, route }) => {
   const { user, resendVerificationEmail } = useAuth();
   const [isResending, setIsResending] = useState(false);
   const [newEmail, setNewEmail] = useState('');
@@ -42,7 +41,7 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
     let interval: NodeJS.Timeout;
     if (resendCooldown > 0) {
       interval = setInterval(() => {
-        setResendCooldown(prev => prev - 1);
+        setResendCooldown((prev) => prev - 1);
       }, 1000);
     }
     return () => clearInterval(interval);
@@ -98,22 +97,26 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
     Alert.alert(
       'Open Email App',
       'Please check your email app for the verification email. Make sure to check your spam/junk folder as well.',
-      [
-        { text: 'OK', style: 'default' }
-      ]
+      [{ text: 'OK', style: 'default' }]
     );
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header 
+      <Header
         title="Verify Email"
         leftAction={{
-          icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[600]} />,
+          icon: (
+            <Ionicons
+              name="arrow-back"
+              size={24}
+              color={theme.colors.gray[600]}
+            />
+          ),
           onPress: handleBackToLogin,
         }}
       />
-      
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.iconContainer}>
           <View style={styles.emailIcon}>
@@ -122,24 +125,36 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
         </View>
 
         <Text style={styles.title}>Check Your Email</Text>
-        <Text style={styles.subtitle}>
-          We've sent a verification link to:
-        </Text>
-        
+        <Text style={styles.subtitle}>We've sent a verification link to:</Text>
+
         <Card style={styles.emailCard}>
           <View style={styles.emailDisplay}>
-            <Ionicons name="mail-outline" size={20} color={theme.colors.gray[600]} />
+            <Ionicons
+              name="mail-outline"
+              size={20}
+              color={theme.colors.gray[600]}
+            />
             <Text style={styles.emailText}>{userEmail}</Text>
           </View>
         </Card>
 
         <Card style={styles.instructionsCard}>
-          <Text style={styles.instructionsTitle}>📧 Verification Instructions</Text>
+          <Text style={styles.instructionsTitle}>
+            📧 Verification Instructions
+          </Text>
           <View style={styles.instructionsList}>
-            <Text style={styles.instructionItem}>• Check your inbox for a verification email</Text>
-            <Text style={styles.instructionItem}>• Click the verification link in the email</Text>
-            <Text style={styles.instructionItem}>• You'll be automatically redirected back to the app</Text>
-            <Text style={styles.instructionItem}>• Check your spam/junk folder if you don't see the email</Text>
+            <Text style={styles.instructionItem}>
+              • Check your inbox for a verification email
+            </Text>
+            <Text style={styles.instructionItem}>
+              • Click the verification link in the email
+            </Text>
+            <Text style={styles.instructionItem}>
+              • You'll be automatically redirected back to the app
+            </Text>
+            <Text style={styles.instructionItem}>
+              • Check your spam/junk folder if you don't see the email
+            </Text>
           </View>
         </Card>
 
@@ -153,9 +168,9 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
 
           <Button
             title={
-              resendCooldown > 0 
-                ? `Resend in ${resendCooldown}s` 
-                : "Resend Verification Email"
+              resendCooldown > 0
+                ? `Resend in ${resendCooldown}s`
+                : 'Resend Verification Email'
             }
             onPress={handleResendVerification}
             variant="outline"
@@ -167,7 +182,7 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
 
         <View style={styles.troubleshootSection}>
           <Text style={styles.troubleshootTitle}>Having trouble?</Text>
-          
+
           {!showUpdateEmail ? (
             <Button
               title="Use Different Email Address"
@@ -278,7 +293,8 @@ const styles = StyleSheet.create({
   instructionItem: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[700],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
   actionButtons: {
     gap: theme.spacing.md,
@@ -320,4 +336,4 @@ const styles = StyleSheet.create({
   updateButton: {
     flex: 1,
   },
-}); 
+});

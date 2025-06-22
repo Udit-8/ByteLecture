@@ -30,12 +30,16 @@ interface AITutorScreenProps {
   };
 }
 
-export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route }) => {
+export const AITutorScreen: React.FC<AITutorScreenProps> = ({
+  navigation,
+  route,
+}) => {
   const { selectedNote, mode } = useNavigation();
   const isFromNote = route?.params?.fromNote || mode === 'note-detail';
-  const noteTitle = selectedNote?.title || route?.params?.noteTitle || 'AI Tutor';
+  const noteTitle =
+    selectedNote?.title || route?.params?.noteTitle || 'AI Tutor';
   const contentItemId = route?.params?.contentItemId || selectedNote?.id;
-  
+
   const {
     currentSession,
     messages,
@@ -46,7 +50,7 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
     sendMessage,
     usage,
     getUsage,
-    generateEmbeddings
+    generateEmbeddings,
   } = useChat();
 
   const [inputText, setInputText] = useState('');
@@ -58,26 +62,34 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
     const initializeChat = async () => {
       try {
         const contextContentIds = contentItemId ? [contentItemId] : [];
-        const sessionTitle = isFromNote ? `${noteTitle} - Chat` : 'AI Tutor Chat';
-        
+        const sessionTitle = isFromNote
+          ? `${noteTitle} - Chat`
+          : 'AI Tutor Chat';
+
         // Generate embeddings for content first (if we have content)
         if (contextContentIds.length > 0) {
-          console.log('🔍 Generating embeddings for content:', contextContentIds);
+          console.log(
+            '🔍 Generating embeddings for content:',
+            contextContentIds
+          );
           try {
-            const embeddingsSuccess = await generateEmbeddings(contextContentIds);
+            const embeddingsSuccess =
+              await generateEmbeddings(contextContentIds);
             if (embeddingsSuccess) {
               console.log('✅ Embeddings generated successfully');
             } else {
-              console.warn('⚠️ Embeddings generation failed, but continuing with chat');
+              console.warn(
+                '⚠️ Embeddings generation failed, but continuing with chat'
+              );
             }
           } catch (embeddingError) {
             console.error('❌ Embedding generation error:', embeddingError);
             // Continue with chat even if embeddings fail
           }
         }
-        
+
         await createSession(sessionTitle, contextContentIds);
-        
+
         // Refresh usage information
         await getUsage();
       } catch (error) {
@@ -128,17 +140,17 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
   const getQuickQuestions = () => {
     if (isFromNote) {
       return [
-        "Explain this concept in simple terms",
-        "Give me examples of this",
-        "Create a practice question",
-        "Summarize the key points",
+        'Explain this concept in simple terms',
+        'Give me examples of this',
+        'Create a practice question',
+        'Summarize the key points',
       ];
     }
     return [
-      "Can you explain this concept?",
-      "Help me understand this formula", 
-      "Give me a practice problem",
-      "Summarize the key points",
+      'Can you explain this concept?',
+      'Help me understand this formula',
+      'Give me a practice problem',
+      'Summarize the key points',
     ];
   };
 
@@ -162,9 +174,15 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
           <View key={index} style={styles.sourceItem}>
             <Text style={styles.sourceTitle}>{source.content_title}</Text>
             {source.section_title && (
-              <Text style={styles.sourceSectionTitle}>{source.section_title}</Text>
+              <Text style={styles.sourceSectionTitle}>
+                {source.section_title}
+              </Text>
             )}
-            <Text style={styles.sourceChunk}>"{source.section_text?.substring(0, 100) || 'No content available'}..."</Text>
+            <Text style={styles.sourceChunk}>
+              "
+              {source.section_text?.substring(0, 100) || 'No content available'}
+              ..."
+            </Text>
           </View>
         ))}
       </View>
@@ -176,42 +194,58 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
       key={message.id}
       style={[
         styles.messageContainer,
-        message.role === 'user' ? styles.userMessageContainer : styles.aiMessageContainer,
+        message.role === 'user'
+          ? styles.userMessageContainer
+          : styles.aiMessageContainer,
       ]}
     >
       {message.role === 'assistant' && (
         <View style={styles.aiAvatar}>
-          <Ionicons name="chatbubbles" size={16} color={theme.colors.primary[600]} />
+          <Ionicons
+            name="chatbubbles"
+            size={16}
+            color={theme.colors.primary[600]}
+          />
         </View>
       )}
-      
+
       <View
         style={[
           styles.messageBubble,
-          message.role === 'user' ? styles.userMessageBubble : styles.aiMessageBubble,
+          message.role === 'user'
+            ? styles.userMessageBubble
+            : styles.aiMessageBubble,
         ]}
       >
         <Text
           style={[
             styles.messageText,
-            message.role === 'user' ? styles.userMessageText : styles.aiMessageText,
+            message.role === 'user'
+              ? styles.userMessageText
+              : styles.aiMessageText,
           ]}
         >
           {message.content}
         </Text>
-        
-        {message.role === 'assistant' && renderContextSources(message.context_sources)}
-        
+
+        {message.role === 'assistant' &&
+          renderContextSources(message.context_sources)}
+
         <Text
           style={[
             styles.messageTime,
-            message.role === 'user' ? styles.userMessageTime : styles.aiMessageTime,
+            message.role === 'user'
+              ? styles.userMessageTime
+              : styles.aiMessageTime,
           ]}
         >
-          {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {new Date(message.created_at).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
         </Text>
       </View>
-      
+
       {message.role === 'user' && (
         <View style={styles.userAvatar}>
           <Ionicons name="person" size={16} color={theme.colors.white} />
@@ -224,10 +258,16 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
   if (loading && !currentSession) {
     return (
       <SafeAreaView style={styles.container}>
-        <Header 
+        <Header
           title="AI Tutor"
           leftAction={{
-            icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[600]} />,
+            icon: (
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color={theme.colors.gray[600]}
+              />
+            ),
             onPress: handleBackPress,
           }}
         />
@@ -241,29 +281,41 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header 
+      <Header
         title={getHeaderTitle()}
         leftAction={{
-          icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[600]} />,
+          icon: (
+            <Ionicons
+              name="arrow-back"
+              size={24}
+              color={theme.colors.gray[600]}
+            />
+          ),
           onPress: handleBackPress,
         }}
         rightAction={{
-          icon: <Ionicons name="information-circle-outline" size={24} color={theme.colors.gray[600]} />,
+          icon: (
+            <Ionicons
+              name="information-circle-outline"
+              size={24}
+              color={theme.colors.gray[600]}
+            />
+          ),
           onPress: () => {
-            const usageText = usage 
+            const usageText = usage
               ? `\n\nUsage: ${usage.questionsUsed}/${usage.dailyLimit} questions today`
               : '';
-            
+
             Alert.alert(
               isFromNote ? 'Note Chat' : 'AI Tutor',
-              isFromNote 
+              isFromNote
                 ? `Chat about "${noteTitle}". Ask questions about this specific content and get detailed explanations.${usageText}`
                 : `Your personal AI tutor is here to help explain concepts, answer questions, and provide additional practice problems based on your learning materials.${usageText}`
             );
           },
         }}
       />
-      
+
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
@@ -277,8 +329,8 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
           </Text>
         </View>
       )}
-      
-      <KeyboardAvoidingView 
+
+      <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
@@ -289,11 +341,15 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
           showsVerticalScrollIndicator={false}
         >
           {messages.map(renderMessage)}
-          
+
           {isTyping && (
             <View style={styles.typingContainer}>
               <View style={styles.aiAvatar}>
-                <Ionicons name="chatbubbles" size={16} color={theme.colors.primary[600]} />
+                <Ionicons
+                  name="chatbubbles"
+                  size={16}
+                  color={theme.colors.primary[600]}
+                />
               </View>
               <View style={styles.typingBubble}>
                 <LoadingIndicator size="small" />
@@ -327,7 +383,9 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
               style={styles.textInput}
               value={inputText}
               onChangeText={setInputText}
-              placeholder={isFromNote ? "Ask about this note..." : "Ask me anything..."}
+              placeholder={
+                isFromNote ? 'Ask about this note...' : 'Ask me anything...'
+              }
               multiline
               maxLength={500}
               editable={!loading}
@@ -335,7 +393,9 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
             <TouchableOpacity
               style={[
                 styles.sendButton,
-                inputText.trim() && !loading ? styles.sendButtonActive : styles.sendButtonDisabled
+                inputText.trim() && !loading
+                  ? styles.sendButtonActive
+                  : styles.sendButtonDisabled,
               ]}
               onPress={handleSendMessage}
               disabled={!inputText.trim() || loading}
@@ -343,10 +403,14 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({ navigation, route 
               {loading ? (
                 <LoadingIndicator size="small" color={theme.colors.white} />
               ) : (
-                <Ionicons 
-                  name="send" 
-                  size={20} 
-                  color={inputText.trim() && !loading ? theme.colors.white : theme.colors.gray[400]} 
+                <Ionicons
+                  name="send"
+                  size={20}
+                  color={
+                    inputText.trim() && !loading
+                      ? theme.colors.white
+                      : theme.colors.gray[400]
+                  }
                 />
               )}
             </TouchableOpacity>
@@ -453,7 +517,8 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: theme.typography.fontSize.base,
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
     marginBottom: theme.spacing.xs,
   },
   userMessageText: {
@@ -586,4 +651,4 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     backgroundColor: theme.colors.gray[300],
   },
-}); 
+});

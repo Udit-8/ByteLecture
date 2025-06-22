@@ -35,16 +35,18 @@ interface AudioContent {
   }>;
 }
 
-export const AudioLearningScreen: React.FC<AudioLearningScreenProps> = ({ 
-  navigation, 
-  route 
+export const AudioLearningScreen: React.FC<AudioLearningScreenProps> = ({
+  navigation,
+  route,
 }) => {
   const { selectedNote, setMainMode } = useNavigation();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const [showTranscript, setShowTranscript] = useState(true);
-  const [activeTranscriptId, setActiveTranscriptId] = useState<string | null>(null);
+  const [activeTranscriptId, setActiveTranscriptId] = useState<string | null>(
+    null
+  );
 
   // Mock audio content data
   const audioContent: AudioContent = {
@@ -67,13 +69,13 @@ export const AudioLearningScreen: React.FC<AudioLearningScreenProps> = ({
       {
         id: '3',
         timestamp: 45,
-        text: "Machine learning is a subset of artificial intelligence that focuses on the development of algorithms.",
+        text: 'Machine learning is a subset of artificial intelligence that focuses on the development of algorithms.',
         speaker: 'Professor',
       },
       {
         id: '4',
         timestamp: 75,
-        text: "These algorithms can learn and make decisions from data without being explicitly programmed for every scenario.",
+        text: 'These algorithms can learn and make decisions from data without being explicitly programmed for every scenario.',
         speaker: 'Professor',
       },
     ],
@@ -96,19 +98,24 @@ export const AudioLearningScreen: React.FC<AudioLearningScreenProps> = ({
     let interval: NodeJS.Timeout;
     if (isPlaying) {
       interval = setInterval(() => {
-        setCurrentTime(prev => {
+        setCurrentTime((prev) => {
           const newTime = prev + 1;
-          
+
           // Update active transcript based on current time
-          const currentTranscript = audioContent.transcript.find((item, index) => {
-            const nextItem = audioContent.transcript[index + 1];
-            return newTime >= item.timestamp && (!nextItem || newTime < nextItem.timestamp);
-          });
-          
+          const currentTranscript = audioContent.transcript.find(
+            (item, index) => {
+              const nextItem = audioContent.transcript[index + 1];
+              return (
+                newTime >= item.timestamp &&
+                (!nextItem || newTime < nextItem.timestamp)
+              );
+            }
+          );
+
           if (currentTranscript) {
             setActiveTranscriptId(currentTranscript.id);
           }
-          
+
           return Math.min(newTime, audioContent.duration);
         });
       }, 1000);
@@ -148,7 +155,10 @@ export const AudioLearningScreen: React.FC<AudioLearningScreenProps> = ({
       `Would you like to add a bookmark at ${formatTime(currentTime)}?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Add', onPress: () => Alert.alert('Success', 'Bookmark added!') },
+        {
+          text: 'Add',
+          onPress: () => Alert.alert('Success', 'Bookmark added!'),
+        },
       ]
     );
   };
@@ -157,7 +167,7 @@ export const AudioLearningScreen: React.FC<AudioLearningScreenProps> = ({
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
+
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
@@ -170,24 +180,42 @@ export const AudioLearningScreen: React.FC<AudioLearningScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header 
-        title={selectedNote ? `${selectedNote.title} - Audio` : "Audio Learning"}
+      <Header
+        title={
+          selectedNote ? `${selectedNote.title} - Audio` : 'Audio Learning'
+        }
         leftAction={{
-          icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[600]} />,
+          icon: (
+            <Ionicons
+              name="arrow-back"
+              size={24}
+              color={theme.colors.gray[600]}
+            />
+          ),
           onPress: handleBackPress,
         }}
         rightAction={{
-          icon: <Ionicons name="bookmark-outline" size={24} color={theme.colors.gray[600]} />,
+          icon: (
+            <Ionicons
+              name="bookmark-outline"
+              size={24}
+              color={theme.colors.gray[600]}
+            />
+          ),
           onPress: handleAddBookmark,
         }}
       />
-      
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Audio Content Info */}
         <Card style={styles.audioInfoCard}>
           <View style={styles.audioHeader}>
             <View style={styles.audioIcon}>
-              <Ionicons name="headset" size={32} color={theme.colors.primary[600]} />
+              <Ionicons
+                name="headset"
+                size={32}
+                color={theme.colors.primary[600]}
+              />
             </View>
             <View style={styles.audioDetails}>
               <Text style={styles.audioTitle} numberOfLines={2}>
@@ -205,11 +233,16 @@ export const AudioLearningScreen: React.FC<AudioLearningScreenProps> = ({
           <View style={styles.progressContainer}>
             <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
             <View style={styles.progressBar}>
-              <View 
-                style={[styles.progressFill, { width: `${getProgressPercentage()}%` }]} 
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${getProgressPercentage()}%` },
+                ]}
               />
             </View>
-            <Text style={styles.timeText}>{formatTime(audioContent.duration)}</Text>
+            <Text style={styles.timeText}>
+              {formatTime(audioContent.duration)}
+            </Text>
           </View>
 
           <View style={styles.controlsContainer}>
@@ -217,25 +250,35 @@ export const AudioLearningScreen: React.FC<AudioLearningScreenProps> = ({
               style={styles.controlButton}
               onPress={() => handleSeek(Math.max(0, currentTime - 15))}
             >
-              <Ionicons name="play-back" size={20} color={theme.colors.gray[600]} />
+              <Ionicons
+                name="play-back"
+                size={20}
+                color={theme.colors.gray[600]}
+              />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.playButton}
               onPress={handlePlayPause}
             >
-              <Ionicons 
-                name={isPlaying ? "pause" : "play"} 
-                size={32} 
-                color={theme.colors.white} 
+              <Ionicons
+                name={isPlaying ? 'pause' : 'play'}
+                size={32}
+                color={theme.colors.white}
               />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.controlButton}
-              onPress={() => handleSeek(Math.min(audioContent.duration, currentTime + 15))}
+              onPress={() =>
+                handleSeek(Math.min(audioContent.duration, currentTime + 15))
+              }
             >
-              <Ionicons name="play-forward" size={20} color={theme.colors.gray[600]} />
+              <Ionicons
+                name="play-forward"
+                size={20}
+                color={theme.colors.gray[600]}
+              />
             </TouchableOpacity>
           </View>
 
@@ -251,10 +294,10 @@ export const AudioLearningScreen: React.FC<AudioLearningScreenProps> = ({
               style={styles.transcriptToggle}
               onPress={() => setShowTranscript(!showTranscript)}
             >
-              <Ionicons 
-                name={showTranscript ? "document" : "document-outline"} 
-                size={20} 
-                color={theme.colors.primary[600]} 
+              <Ionicons
+                name={showTranscript ? 'document' : 'document-outline'}
+                size={20}
+                color={theme.colors.primary[600]}
               />
               <Text style={styles.transcriptToggleText}>Transcript</Text>
             </TouchableOpacity>
@@ -271,23 +314,27 @@ export const AudioLearningScreen: React.FC<AudioLearningScreenProps> = ({
                   key={item.id}
                   style={[
                     styles.transcriptItem,
-                    activeTranscriptId === item.id && styles.transcriptItemActive,
+                    activeTranscriptId === item.id &&
+                      styles.transcriptItemActive,
                   ]}
                   onPress={() => handleSeek(item.timestamp)}
                 >
                   <Text style={styles.transcriptTimestamp}>
                     {formatTime(item.timestamp)}
                   </Text>
-                  <Text 
+                  <Text
                     style={[
                       styles.transcriptText,
-                      activeTranscriptId === item.id && styles.transcriptTextActive,
+                      activeTranscriptId === item.id &&
+                        styles.transcriptTextActive,
                     ]}
                   >
                     {item.text}
                   </Text>
                   {item.speaker && (
-                    <Text style={styles.transcriptSpeaker}>— {item.speaker}</Text>
+                    <Text style={styles.transcriptSpeaker}>
+                      — {item.speaker}
+                    </Text>
                   )}
                 </TouchableOpacity>
               ))}
@@ -307,7 +354,11 @@ export const AudioLearningScreen: React.FC<AudioLearningScreenProps> = ({
                   onPress={() => handleSeek(bookmark.timestamp)}
                 >
                   <View style={styles.bookmarkIcon}>
-                    <Ionicons name="bookmark" size={16} color={theme.colors.primary[600]} />
+                    <Ionicons
+                      name="bookmark"
+                      size={16}
+                      color={theme.colors.primary[600]}
+                    />
                   </View>
                   <View style={styles.bookmarkContent}>
                     <Text style={styles.bookmarkTime}>
@@ -477,7 +528,8 @@ const styles = StyleSheet.create({
   transcriptText: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.gray[700],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
     marginBottom: theme.spacing.xs,
   },
   transcriptTextActive: {
@@ -531,7 +583,8 @@ const styles = StyleSheet.create({
   bookmarkNote: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[600],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
   emptyBookmarks: {
     fontSize: theme.typography.fontSize.sm,
@@ -540,4 +593,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: theme.spacing.lg,
   },
-}); 
+});

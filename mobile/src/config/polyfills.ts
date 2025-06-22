@@ -15,19 +15,19 @@ if (typeof global !== 'undefined') {
   if (!global.WebSocket) {
     global.WebSocket = require('react-native/Libraries/WebSocket/WebSocket');
   }
-  
+
   // Ensure other globals needed by Supabase are available
   if (!global.btoa) {
     global.btoa = require('base-64').encode;
   }
-  
+
   if (!global.atob) {
     global.atob = require('base-64').decode;
   }
-  
+
   // Mock ws module to prevent import errors
   const mockWS = global.WebSocket;
   global.ws = mockWS;
 }
 
-console.log('✅ React Native polyfills loaded successfully'); 
+console.log('✅ React Native polyfills loaded successfully');

@@ -1,5 +1,11 @@
 import React, { Component, ReactNode } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
@@ -20,7 +26,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     };
   }
 
@@ -29,17 +35,17 @@ export class ErrorBoundary extends Component<Props, State> {
     return {
       hasError: true,
       error,
-      errorInfo: null
+      errorInfo: null,
     };
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
     // Log the error to an error reporting service
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     this.setState({
       error,
-      errorInfo
+      errorInfo,
     });
 
     // Call the optional onError callback
@@ -52,7 +58,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     });
   };
 
@@ -66,19 +72,30 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <View style={styles.container}>
           <View style={styles.errorContainer}>
-            <Ionicons name="warning-outline" size={64} color="#ff4444" style={styles.icon} />
-            
+            <Ionicons
+              name="warning-outline"
+              size={64}
+              color="#ff4444"
+              style={styles.icon}
+            />
+
             <Text style={styles.title}>Oops! Something went wrong</Text>
-            
+
             <Text style={styles.message}>
-              We encountered an unexpected error. Don't worry, your data is safe.
+              We encountered an unexpected error. Don't worry, your data is
+              safe.
             </Text>
 
-            <TouchableOpacity 
-              style={styles.retryButton} 
+            <TouchableOpacity
+              style={styles.retryButton}
               onPress={this.handleRetry}
             >
-              <Ionicons name="refresh" size={20} color="#fff" style={styles.buttonIcon} />
+              <Ionicons
+                name="refresh"
+                size={20}
+                color="#fff"
+                style={styles.buttonIcon}
+              />
               <Text style={styles.retryButtonText}>Try Again</Text>
             </TouchableOpacity>
 
@@ -110,9 +127,9 @@ interface UploadErrorBoundaryProps {
   onError?: (error: Error, errorInfo: any) => void;
 }
 
-export const UploadErrorBoundary: React.FC<UploadErrorBoundaryProps> = ({ 
-  children, 
-  onError 
+export const UploadErrorBoundary: React.FC<UploadErrorBoundaryProps> = ({
+  children,
+  onError,
 }) => {
   return (
     <ErrorBoundary
@@ -245,4 +262,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ErrorBoundary; 
+export default ErrorBoundary;

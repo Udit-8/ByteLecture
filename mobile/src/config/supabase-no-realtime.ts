@@ -6,7 +6,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import only the core parts we need, avoiding realtime
-import { SupabaseClient, createClient as _createClient } from '@supabase/supabase-js';
+import {
+  SupabaseClient,
+  createClient as _createClient,
+} from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -41,10 +44,12 @@ export const supabase: SupabaseClient = _createClient(
 // Override the realtime property to prevent accidental usage
 Object.defineProperty(supabase, 'realtime', {
   get() {
-    console.warn('Realtime is disabled in React Native build to avoid WebSocket issues');
+    console.warn(
+      'Realtime is disabled in React Native build to avoid WebSocket issues'
+    );
     return null;
   },
   configurable: false,
 });
 
-export default supabase; 
+export default supabase;

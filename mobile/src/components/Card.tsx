@@ -28,12 +28,8 @@ export const Card: React.FC<CardProps> = ({
   style,
 }) => {
   const Component = onPress ? TouchableOpacity : View;
-  
-  const cardStyle = [
-    styles.base,
-    styles[variant],
-    style,
-  ];
+
+  const cardStyle = [styles.base, styles[variant], style];
 
   return (
     <Component
@@ -42,19 +38,19 @@ export const Card: React.FC<CardProps> = ({
       activeOpacity={onPress ? 0.7 : 1}
     >
       {icon && <View style={styles.iconContainer}>{icon}</View>}
-      
+
       {title && (
         <Text style={styles.title} numberOfLines={2}>
           {title}
         </Text>
       )}
-      
+
       {description && (
         <Text style={styles.description} numberOfLines={3}>
           {description}
         </Text>
       )}
-      
+
       {children}
     </Component>
   );
@@ -76,7 +72,11 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
   onPress,
 }) => {
   return (
-    <TouchableOpacity style={styles.featureCard} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={styles.featureCard}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={[styles.featureIconContainer, { backgroundColor: color }]}>
         {icon}
       </View>
@@ -120,9 +120,10 @@ const styles = StyleSheet.create({
   description: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[600],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
-  
+
   // Feature card specific styles
   featureCard: {
     backgroundColor: theme.colors.white,
@@ -154,6 +155,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.xs,
     color: theme.colors.gray[600],
     textAlign: 'center',
-    lineHeight: theme.typography.lineHeight.normal * theme.typography.fontSize.xs,
+    lineHeight:
+      theme.typography.lineHeight.normal * theme.typography.fontSize.xs,
   },
-}); 
+});

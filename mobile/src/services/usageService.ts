@@ -17,33 +17,50 @@ export interface UsageResponse {
 }
 
 export interface ErrorLogData {
-  error_type: 'upload_error' | 'processing_error' | 'validation_error' | 'quota_exceeded' | 'server_error';
+  error_type:
+    | 'upload_error'
+    | 'processing_error'
+    | 'validation_error'
+    | 'quota_exceeded'
+    | 'server_error';
   error_message: string;
   error_details?: any;
 }
 
-export type ResourceType = 'pdf_upload' | 'quiz_generation' | 'flashcard_generation' | 'ai_processing' | 'youtube_processing';
+export type ResourceType =
+  | 'pdf_upload'
+  | 'quiz_generation'
+  | 'flashcard_generation'
+  | 'ai_processing'
+  | 'youtube_processing';
 
 class UsageService {
   /**
    * Check if user can perform AI processing (transcription)
    */
-  async checkAIProcessingQuota(): Promise<{ allowed: boolean; reason?: string; quota?: QuotaInfo }> {
+  async checkAIProcessingQuota(): Promise<{
+    allowed: boolean;
+    reason?: string;
+    quota?: QuotaInfo;
+  }> {
     try {
       // Get current user from Supabase auth
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
       if (authError || !user) {
         return {
           allowed: false,
-          reason: 'Authentication required to check quota'
+          reason: 'Authentication required to check quota',
         };
       }
 
       // Call the backend function to check quota
       const { data, error } = await supabase.rpc('check_user_quota', {
         p_user_id: user.id,
-        p_resource_type: 'ai_processing'
+        p_resource_type: 'ai_processing',
       });
 
       if (error) {
@@ -51,12 +68,12 @@ class UsageService {
       }
 
       const quota = data as QuotaInfo;
-      
+
       if (!quota.allowed) {
         return {
           allowed: false,
           reason: `Daily AI processing limit reached (${quota.current_usage}/${quota.daily_limit})`,
-          quota
+          quota,
         };
       }
 
@@ -65,7 +82,8 @@ class UsageService {
       console.error('Error checking AI processing quota:', error);
       return {
         allowed: false,
-        reason: error instanceof Error ? error.message : 'Failed to check quota'
+        reason:
+          error instanceof Error ? error.message : 'Failed to check quota',
       };
     }
   }
@@ -76,8 +94,11 @@ class UsageService {
   async recordAIProcessingUsage(): Promise<UsageResponse> {
     try {
       // Get current user from Supabase auth
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
       if (authError || !user) {
         throw new Error('Authentication required to record usage');
       }
@@ -85,7 +106,7 @@ class UsageService {
       const { data, error } = await supabase.rpc('increment_usage', {
         p_user_id: user.id,
         p_resource_type: 'ai_processing',
-        p_increment: 1
+        p_increment: 1,
       });
 
       if (error) {
@@ -97,7 +118,8 @@ class UsageService {
       console.error('Error recording AI processing usage:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to record usage'
+        error:
+          error instanceof Error ? error.message : 'Failed to record usage',
       };
     }
   }
@@ -108,7 +130,9 @@ class UsageService {
   async logError(errorData: ErrorLogData): Promise<void> {
     try {
       // Get current user from Supabase auth (optional for error logging)
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       const { error } = await supabase.rpc('log_error', {
         p_user_id: user?.id || null,
@@ -117,7 +141,7 @@ class UsageService {
         p_error_details: errorData.error_details || null,
         p_request_path: 'mobile/audio-recording',
         p_user_agent: 'ByteLecture Mobile App',
-        p_ip_address: null
+        p_ip_address: null,
       });
 
       if (error) {
@@ -131,11 +155,17 @@ class UsageService {
   /**
    * Get user's usage statistics
    */
-  async getUserUsageStats(resourceType?: ResourceType, days: number = 7): Promise<any[]> {
+  async getUserUsageStats(
+    resourceType?: ResourceType,
+    days: number = 7
+  ): Promise<any[]> {
     try {
       // Get current user from Supabase auth
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
       if (authError || !user) {
         console.error('Authentication required to get usage stats');
         return [];
@@ -145,7 +175,12 @@ class UsageService {
         .from('user_usage_summary')
         .select('*')
         .eq('user_id', user.id)
-        .gte('date', new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .gte(
+          'date',
+          new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split('T')[0]
+        )
         .order('date', { ascending: false });
 
       if (resourceType) {
@@ -169,7 +204,8 @@ class UsageService {
    * Format quota error message for user display
    */
   formatQuotaErrorMessage(quota: QuotaInfo): string {
-    const planName = quota.plan_type.charAt(0).toUpperCase() + quota.plan_type.slice(1);
+    const planName =
+      quota.plan_type.charAt(0).toUpperCase() + quota.plan_type.slice(1);
     return `${planName} plan limit reached: ${quota.current_usage}/${quota.daily_limit} daily AI processing requests used. ${quota.remaining} remaining.`;
   }
 
@@ -194,4 +230,4 @@ class UsageService {
   }
 }
 
-export const usageService = new UsageService(); 
+export const usageService = new UsageService();

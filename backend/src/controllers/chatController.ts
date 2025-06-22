@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { ChatService } from '../services/chatService';
-import {
+import { 
   SendMessageRequest,
   GetChatSessionsResponse,
   GetChatMessagesResponse,
@@ -50,8 +50,8 @@ export class ChatController {
       res.status(201).json(response);
     } catch (error) {
       console.error('Error creating chat session:', error);
-      res.status(500).json({
-        success: false,
+      res.status(500).json({ 
+        success: false, 
         error:
           error instanceof Error
             ? error.message
@@ -96,8 +96,8 @@ export class ChatController {
       res.json(response);
     } catch (error) {
       console.error('Error fetching chat sessions:', error);
-      res.status(500).json({
-        success: false,
+      res.status(500).json({ 
+        success: false, 
         error:
           error instanceof Error
             ? error.message
@@ -122,8 +122,8 @@ export class ChatController {
       const { content }: SendMessageRequest = req.body;
 
       if (!content || content.trim().length === 0) {
-        res.status(400).json({
-          success: false,
+        res.status(400).json({ 
+          success: false, 
           error: 'Message content is required',
         });
         return;
@@ -148,32 +148,32 @@ export class ChatController {
       res.json(response);
     } catch (error) {
       console.error('Error sending chat message:', error);
-
+      
       // Handle specific error types
       if (error instanceof Error) {
         if (error.message.includes('daily limit')) {
-          res.status(429).json({
-            success: false,
+          res.status(429).json({ 
+            success: false, 
             error: error.message,
             errorCode: 'USAGE_LIMIT_EXCEEDED',
           });
           return;
         }
-
+        
         if (
           error.message.includes('not found') ||
           error.message.includes('access')
         ) {
-          res.status(404).json({
-            success: false,
+          res.status(404).json({ 
+            success: false, 
             error: error.message,
           });
           return;
         }
       }
 
-      res.status(500).json({
-        success: false,
+      res.status(500).json({ 
+        success: false, 
         error:
           error instanceof Error ? error.message : 'Failed to send message',
       });
@@ -218,8 +218,8 @@ export class ChatController {
       res.json(response);
     } catch (error) {
       console.error('Error fetching chat messages:', error);
-      res.status(500).json({
-        success: false,
+      res.status(500).json({ 
+        success: false, 
         error:
           error instanceof Error
             ? error.message
@@ -244,8 +244,8 @@ export class ChatController {
       const { title } = req.body;
 
       if (!title || title.trim().length === 0) {
-        res.status(400).json({
-          success: false,
+        res.status(400).json({ 
+          success: false, 
           error: 'Session title is required',
         });
         return;
@@ -263,8 +263,8 @@ export class ChatController {
       });
     } catch (error) {
       console.error('Error updating chat session:', error);
-      res.status(500).json({
-        success: false,
+      res.status(500).json({ 
+        success: false, 
         error:
           error instanceof Error
             ? error.message
@@ -295,8 +295,8 @@ export class ChatController {
       });
     } catch (error) {
       console.error('Error deleting chat session:', error);
-      res.status(500).json({
-        success: false,
+      res.status(500).json({ 
+        success: false, 
         error:
           error instanceof Error
             ? error.message
@@ -324,8 +324,8 @@ export class ChatController {
         contentIds || (content_item_id ? [content_item_id] : []);
 
       if (!idsToProcess || idsToProcess.length === 0) {
-        res.status(400).json({
-          success: false,
+        res.status(400).json({ 
+          success: false, 
           error: 'Content item ID(s) are required',
         });
         return;
@@ -344,8 +344,8 @@ export class ChatController {
           const embeddingsCount =
             await this.chatService.generateContentEmbeddings(
               contentId,
-              force_regenerate || false
-            );
+        force_regenerate || false
+      );
 
           results.push({
             contentId,
@@ -392,8 +392,8 @@ export class ChatController {
       res.json(response);
     } catch (error) {
       console.error('Error generating embeddings:', error);
-      res.status(500).json({
-        success: false,
+      res.status(500).json({ 
+        success: false, 
         error:
           error instanceof Error
             ? error.message
@@ -429,11 +429,11 @@ export class ChatController {
       res.json(response);
     } catch (error) {
       console.error('Error fetching chat usage:', error);
-      res.status(500).json({
-        success: false,
+      res.status(500).json({ 
+        success: false, 
         error:
           error instanceof Error ? error.message : 'Failed to fetch chat usage',
       });
     }
   };
-}
+} 

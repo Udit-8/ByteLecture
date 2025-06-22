@@ -50,19 +50,21 @@ export const Input: React.FC<InputProps> = ({
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
-      
+
       <View style={inputContainerStyle}>
         {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
-        
+
         <TextInput
           style={styles.input}
-          secureTextEntry={showPasswordToggle ? !isPasswordVisible : secureTextEntry}
+          secureTextEntry={
+            showPasswordToggle ? !isPasswordVisible : secureTextEntry
+          }
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholderTextColor={theme.colors.gray[400]}
           {...textInputProps}
         />
-        
+
         {showPasswordToggle && (
           <TouchableOpacity
             style={styles.rightIcon}
@@ -73,12 +75,12 @@ export const Input: React.FC<InputProps> = ({
             </Text>
           </TouchableOpacity>
         )}
-        
+
         {rightIcon && !showPasswordToggle && (
           <View style={styles.rightIcon}>{rightIcon}</View>
         )}
       </View>
-      
+
       {error && <Text style={styles.errorText}>{error}</Text>}
       {hint && !error && <Text style={styles.hintText}>{hint}</Text>}
     </View>
@@ -137,4 +139,4 @@ const styles = StyleSheet.create({
     color: theme.colors.gray[500],
     marginTop: theme.spacing.xs,
   },
-}); 
+});

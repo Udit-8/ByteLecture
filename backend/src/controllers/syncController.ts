@@ -353,7 +353,7 @@ export class SyncController {
   }
 
   /**
-   * Get unresolved conflicts for user
+   * Get conflicts for the authenticated user
    */
   async getConflicts(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
@@ -363,27 +363,310 @@ export class SyncController {
         return;
       }
 
-      // Get unresolved conflicts from database
-      const { data: conflicts, error } = await supabaseAdmin
-        .from('sync_conflicts')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('resolved', false)
-        .order('created_at', { ascending: false });
+      const {
+        resolved,
+        severity,
+        table_names,
+        limit = 50,
+        offset = 0,
+      } = req.query;
 
-      if (error) {
-        throw new Error('Failed to get conflicts');
+      const options: any = {
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string),
+      };
+
+      if (resolved !== undefined) {
+        options.resolved = resolved === 'true';
       }
 
-      res.status(200).json({
+      if (severity) {
+        options.severity = (severity as string).split(',');
+      }
+
+      if (table_names) {
+        options.table_names = (table_names as string).split(',');
+      }
+
+      const result = await syncService.getUserConflicts(userId, options);
+
+      res.json({
         success: true,
-        data: conflicts || [],
+        data: result,
       });
     } catch (error) {
-      console.error('Error in getConflicts controller:', error);
+      console.error('❌ Error in getConflicts:', error);
       res.status(500).json({
         error: 'Failed to get conflicts',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  /**
+   * Batch resolve multiple conflicts
+   */
+  async batchResolveConflicts(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
+      const {
+        conflict_ids,
+        resolution_strategy,
+        save_as_preference = false,
+      } = req.body;
+
+      if (
+        !conflict_ids ||
+        !Array.isArray(conflict_ids) ||
+        conflict_ids.length === 0
+      ) {
+        res.status(400).json({ error: 'conflict_ids array is required' });
+        return;
+      }
+
+      if (!resolution_strategy) {
+        res.status(400).json({ error: 'resolution_strategy is required' });
+        return;
+      }
+
+      const result = await syncService.batchResolveConflicts(
+        userId,
+        conflict_ids,
+        resolution_strategy,
+        save_as_preference
+      );
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error('❌ Error in batchResolveConflicts:', error);
+      res.status(500).json({
+        error: 'Failed to batch resolve conflicts',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  /**
+   * Preview conflict resolution without applying changes
+   */
+  async previewConflictResolution(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
+      const { conflict_id } = req.params;
+      const { resolution_strategy, field_resolutions } = req.body;
+
+      if (!resolution_strategy) {
+        res.status(400).json({ error: 'resolution_strategy is required' });
+        return;
+      }
+
+      const preview = await syncService.previewConflictResolution(
+        userId,
+        conflict_id,
+        resolution_strategy,
+        field_resolutions
+      );
+
+      res.json({
+        success: true,
+        data: preview,
+      });
+    } catch (error) {
+      console.error('❌ Error in previewConflictResolution:', error);
+      res.status(500).json({
+        error: 'Failed to preview conflict resolution',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  /**
+   * Auto-resolve all eligible conflicts for the user
+   */
+  async autoResolveConflicts(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
+      const resolvedCount = await syncService.autoResolveUserConflicts(userId);
+
+      res.json({
+        success: true,
+        data: {
+          resolved_count: resolvedCount,
+          message: `Auto-resolved ${resolvedCount} conflicts`,
+        },
+      });
+    } catch (error) {
+      console.error('❌ Error in autoResolveConflicts:', error);
+      res.status(500).json({
+        error: 'Failed to auto-resolve conflicts',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  /**
+   * Get conflict resolution preferences for the user
+   */
+  async getConflictPreferences(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
+      // Get preferences from the conflict resolution service
+      const { data: preferences, error } = await supabaseAdmin
+        .from('conflict_resolution_preferences')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      res.json({
+        success: true,
+        data: preferences || {
+          user_id: userId,
+          default_strategy: 'last_write_wins',
+          table_preferences: {},
+          field_preferences: {},
+          auto_resolve_low_severity: true,
+          notification_preferences: {
+            notify_on_conflict: true,
+            notify_on_auto_resolution: false,
+            notification_methods: ['in_app'],
+            batch_notifications: false,
+            batch_interval_minutes: 60,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('❌ Error in getConflictPreferences:', error);
+      res.status(500).json({
+        error: 'Failed to get conflict preferences',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  /**
+   * Update conflict resolution preferences for the user
+   */
+  async updateConflictPreferences(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ error: 'User not authenticated' });
+        return;
+      }
+
+      const {
+        default_strategy,
+        table_preferences,
+        field_preferences,
+        auto_resolve_low_severity,
+        notification_preferences,
+      } = req.body;
+
+      // Check if preferences exist
+      const { data: existing } = await supabaseAdmin
+        .from('conflict_resolution_preferences')
+        .select('user_id')
+        .eq('user_id', userId)
+        .single();
+
+      const updateData = {
+        user_id: userId,
+        default_strategy,
+        table_preferences: table_preferences || {},
+        field_preferences: field_preferences || {},
+        auto_resolve_low_severity: auto_resolve_low_severity ?? true,
+        notification_preferences: notification_preferences || {
+          notify_on_conflict: true,
+          notify_on_auto_resolution: false,
+          notification_methods: ['in_app'],
+          batch_notifications: false,
+          batch_interval_minutes: 60,
+        },
+        updated_at: new Date().toISOString(),
+      };
+
+      if (existing) {
+        // Update existing preferences
+        const { data, error } = await supabaseAdmin
+          .from('conflict_resolution_preferences')
+          .update(updateData)
+          .eq('user_id', userId)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        res.json({
+          success: true,
+          data,
+          message: 'Conflict preferences updated successfully',
+        });
+      } else {
+        // Create new preferences
+        const { data, error } = await supabaseAdmin
+          .from('conflict_resolution_preferences')
+          .insert({
+            ...updateData,
+            created_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        res.json({
+          success: true,
+          data,
+          message: 'Conflict preferences created successfully',
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error in updateConflictPreferences:', error);
+      res.status(500).json({
+        error: 'Failed to update conflict preferences',
+        details: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }

@@ -292,12 +292,33 @@ export const AudioRecordingScreen: React.FC<AudioRecordingScreenProps> = ({
       }
 
       console.log('✅ Authentication verified, checking quota...');
-      const quotaCheck = await audioAPI.getQuotaInfo();
-      if (quotaCheck.success && quotaCheck.quota) {
-        setQuotaInfo(quotaCheck.quota);
-        console.log('✅ Quota loaded successfully');
-      } else {
-        console.log('❌ Quota check failed:', quotaCheck.error);
+      
+      // Use permission service for unified quota checking
+      try {
+        const permissionResult = await permissionService.checkFeatureUsage('audio_transcription');
+        if (permissionResult.limit !== undefined) {
+                     // Convert permission result to legacy quota format for backward compatibility
+           const legacyQuota = {
+             allowed: permissionResult.allowed,
+             current_usage: permissionResult.current_usage || 0,
+             daily_limit: permissionResult.limit,
+             remaining: permissionResult.remaining || 0,
+             plan_type: permissionResult.plan_type || 'free',
+           };
+          setQuotaInfo(legacyQuota);
+          console.log('✅ Permission-based quota loaded successfully');
+        }
+      } catch (permissionError) {
+        console.error('Permission service quota check failed:', permissionError);
+        
+        // Fallback to legacy quota check
+        const quotaCheck = await audioAPI.getQuotaInfo();
+        if (quotaCheck.success && quotaCheck.quota) {
+          setQuotaInfo(quotaCheck.quota);
+          console.log('✅ Legacy quota loaded successfully');
+        } else {
+          console.log('❌ Both permission and legacy quota checks failed:', quotaCheck.error);
+        }
       }
     } catch (error) {
       console.error('Error checking user quota:', error);

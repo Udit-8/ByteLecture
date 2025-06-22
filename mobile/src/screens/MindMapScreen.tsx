@@ -23,8 +23,13 @@ import {
   CreateMindMapRequest,
   MindMapStyle,
 } from '../services/mindMapAPI';
+import { permissionService } from '../services';
 
-export const MindMapScreen: React.FC = () => {
+interface MindMapScreenProps {
+  navigation: any;
+}
+
+export const MindMapScreen: React.FC<MindMapScreenProps> = ({ navigation }) => {
   const {
     mindMaps,
     currentMindMap,
@@ -63,6 +68,30 @@ export const MindMapScreen: React.FC = () => {
     if (!selectedContentId) {
       Alert.alert('Error', 'Please select content to generate a mind map from');
       return;
+    }
+
+    // Check permissions before generating mind map
+    try {
+      const permissionResult = await permissionService.checkFeatureUsage('mind_map_generation');
+      
+      if (!permissionResult.allowed) {
+        const alertTitle = 'Generation Limit Reached';
+        const alertMessage = permissionResult.upgrade_message || 
+          'You have reached your daily mind map generation limit. Please try again tomorrow or upgrade your plan for unlimited mind map generation.';
+        
+        Alert.alert(alertTitle, alertMessage, [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Upgrade Plan',
+            style: 'default',
+            onPress: () => navigation.navigate('Subscription', { from: 'mindmap-quota' }),
+          },
+        ]);
+        
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking mind map permissions:', error);
     }
 
     const request: CreateMindMapRequest = {

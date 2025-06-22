@@ -17,6 +17,7 @@ import { theme } from '../constants/theme';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useChat } from '../hooks/useChat';
 import { ChatMessage, ContextSource } from '../services/chatAPI';
+import { permissionService } from '../services';
 
 interface AITutorScreenProps {
   navigation: any;
@@ -111,7 +112,31 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({
   const handleSendMessage = async () => {
     if (!inputText.trim() || !currentSession) return;
 
-    // Check usage limit
+    // Check permissions before sending message
+    try {
+      const permissionResult = await permissionService.checkFeatureUsage('ai_tutor_questions');
+      
+      if (!permissionResult.allowed) {
+        const alertTitle = 'Daily Limit Reached';
+        const alertMessage = permissionResult.upgrade_message || 
+          `You've used all ${permissionResult.current_usage}/${permissionResult.limit} daily questions. Please upgrade your plan or try again tomorrow.`;
+        
+        Alert.alert(alertTitle, alertMessage, [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Upgrade Plan',
+            style: 'default',
+            onPress: () => navigation.navigate('Subscription' as any, { from: 'ai-tutor-quota' }),
+          },
+        ]);
+        
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking permissions:', error);
+    }
+
+    // Legacy check for backward compatibility
     if (usage && usage.remaining <= 0) {
       Alert.alert(
         'Daily Limit Reached',

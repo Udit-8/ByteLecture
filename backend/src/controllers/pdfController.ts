@@ -50,7 +50,7 @@ export class PDFController {
       }
 
       // Check quota before processing
-      const quotaCheck = await usageTrackingService.canUploadPDF(userId);
+      const quotaCheck = await usageTrackingService.canProcessPDF(userId);
       if (!quotaCheck.allowed) {
         await usageTrackingService.logError({
           user_id: userId,
@@ -96,7 +96,7 @@ export class PDFController {
       }
 
       // Record PDF processing usage
-      const usageResult = await usageTrackingService.recordPDFUpload(userId);
+      const usageResult = await usageTrackingService.recordPDFProcessing(userId);
       if (!usageResult.success) {
         res.status(429).json({
           success: false,
@@ -112,8 +112,7 @@ export class PDFController {
       );
 
       if (result.success) {
-        // Log AI processing usage if applicable
-        await usageTrackingService.incrementUsage(userId, 'ai_processing');
+        // AI processing usage is already recorded by recordPDFProcessing above
 
         // Create content item for Recent Notes integration
         try {

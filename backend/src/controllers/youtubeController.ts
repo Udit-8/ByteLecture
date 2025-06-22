@@ -170,30 +170,27 @@ export const processYouTubeVideo = async (
     }
 
     // Check user quota
-    const quotaResult = await usageTrackingService.checkUserQuota(
-      userId,
-      'youtube_processing'
-    );
-    if (!quotaResult.allowed) {
+    const quotaCheck = await usageTrackingService.canProcessYouTube(userId);
+    if (!quotaCheck.allowed) {
       await usageTrackingService.logError({
         user_id: userId,
         error_type: 'quota_exceeded',
-        error_message: 'YouTube processing quota exceeded',
+        error_message: quotaCheck.reason || 'YouTube processing quota exceeded',
         error_details: {
           videoId,
           url,
-          quotaLimit: quotaResult.daily_limit,
-          currentUsage: quotaResult.current_usage,
+          quota: quotaCheck.quota,
         },
       });
 
       return res.status(429).json({
         success: false,
         error: 'YouTube processing quota exceeded',
-        quotaInfo: {
-          limit: quotaResult.daily_limit,
-          currentUsage: quotaResult.current_usage,
-          remaining: quotaResult.remaining,
+        message: quotaCheck.reason,
+        quotaInfo: quotaCheck.quota && {
+          limit: quotaCheck.quota.daily_limit,
+          currentUsage: quotaCheck.quota.current_usage,
+          remaining: quotaCheck.quota.remaining,
         },
       });
     }
@@ -218,12 +215,8 @@ export const processYouTubeVideo = async (
         console.warn(`Empty transcript for video: ${videoId}`);
       }
 
-      // Track usage
-      await usageTrackingService.incrementUsage(
-        userId,
-        'youtube_processing',
-        1
-      );
+      // Record YouTube processing usage
+      await usageTrackingService.recordYouTubeProcessing(userId);
 
       // Store the processed video data in database
       const { data: videoRecord, error: dbError } = await supabaseAdmin

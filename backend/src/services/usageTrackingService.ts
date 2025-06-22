@@ -49,11 +49,19 @@ export interface UsageStats {
 }
 
 export type ResourceType =
-  | 'pdf_upload'
-  | 'quiz_generation'
+  | 'pdf_processing'
+  | 'youtube_processing'
+  | 'audio_transcription'
   | 'flashcard_generation'
-  | 'ai_processing'
-  | 'youtube_processing';
+  | 'quiz_generation'
+  | 'ai_tutor_questions'
+  | 'mind_map_generation'
+  | 'multi_device_sync'
+  | 'lecture_recording'
+  | 'full_audio_summary'
+  // Legacy types for backward compatibility
+  | 'pdf_upload'
+  | 'ai_processing';
 
 class UsageTrackingService {
   /**
@@ -402,12 +410,18 @@ class UsageTrackingService {
       data?.forEach((item) => {
         // Map database resource types to frontend names
         const resourceMap: Record<string, string> = {
-          pdf_upload: 'pdfProcessing',
-          quiz_generation: 'quizGeneration',
-          flashcard_generation: 'flashcardGeneration',
-          ai_processing: 'aiTutorQuestions',
-          audio_transcription: 'audioTranscription',
+          pdf_processing: 'pdfProcessing',
+          pdf_upload: 'pdfProcessing', // Legacy mapping
           youtube_processing: 'youtubeProcessing',
+          audio_transcription: 'audioTranscription',
+          flashcard_generation: 'flashcardGeneration',
+          quiz_generation: 'quizGeneration',
+          ai_tutor_questions: 'aiTutorQuestions',
+          ai_processing: 'aiTutorQuestions', // Legacy mapping
+          mind_map_generation: 'mindMapGeneration',
+          multi_device_sync: 'multiDeviceSync',
+          lecture_recording: 'lectureRecording',
+          full_audio_summary: 'fullAudioSummary',
         };
 
         const mappedKey = resourceMap[item.resource_type] || item.resource_type;
@@ -418,6 +432,243 @@ class UsageTrackingService {
     } catch (error) {
       console.error('UsageTrackingService.getUserUsage error:', error);
       return {};
+    }
+  }
+
+  /**
+   * Convenience method for PDF processing
+   */
+  async canProcessPDF(
+    userId: string
+  ): Promise<{ allowed: boolean; reason?: string; quota?: QuotaResult }> {
+    try {
+      const quota = await this.checkUserQuota(userId, 'pdf_processing');
+
+      if (!quota.allowed) {
+        return {
+          allowed: false,
+          reason: `Daily PDF processing limit reached (${quota.current_usage}/${quota.daily_limit})`,
+          quota,
+        };
+      }
+
+      return { allowed: true, quota };
+    } catch (error) {
+      console.error('UsageTrackingService.canProcessPDF error:', error);
+      return {
+        allowed: false,
+        reason: 'Error checking PDF processing quota',
+      };
+    }
+  }
+
+  /**
+   * Convenience method for YouTube processing
+   */
+  async canProcessYouTube(
+    userId: string
+  ): Promise<{ allowed: boolean; reason?: string; quota?: QuotaResult }> {
+    try {
+      const quota = await this.checkUserQuota(userId, 'youtube_processing');
+
+      if (!quota.allowed) {
+        return {
+          allowed: false,
+          reason: `Daily YouTube processing limit reached (${quota.current_usage}/${quota.daily_limit})`,
+          quota,
+        };
+      }
+
+      return { allowed: true, quota };
+    } catch (error) {
+      console.error('UsageTrackingService.canProcessYouTube error:', error);
+      return {
+        allowed: false,
+        reason: 'Error checking YouTube processing quota',
+      };
+    }
+  }
+
+  /**
+   * Convenience method for flashcard generation
+   */
+  async canGenerateFlashcards(
+    userId: string
+  ): Promise<{ allowed: boolean; reason?: string; quota?: QuotaResult }> {
+    try {
+      const quota = await this.checkUserQuota(userId, 'flashcard_generation');
+
+      if (!quota.allowed) {
+        return {
+          allowed: false,
+          reason: `Daily flashcard generation limit reached (${quota.current_usage}/${quota.daily_limit})`,
+          quota,
+        };
+      }
+
+      return { allowed: true, quota };
+    } catch (error) {
+      console.error('UsageTrackingService.canGenerateFlashcards error:', error);
+      return {
+        allowed: false,
+        reason: 'Error checking flashcard generation quota',
+      };
+    }
+  }
+
+  /**
+   * Convenience method for quiz generation
+   */
+  async canGenerateQuiz(
+    userId: string
+  ): Promise<{ allowed: boolean; reason?: string; quota?: QuotaResult }> {
+    try {
+      const quota = await this.checkUserQuota(userId, 'quiz_generation');
+
+      if (!quota.allowed) {
+        return {
+          allowed: false,
+          reason: `Daily quiz generation limit reached (${quota.current_usage}/${quota.daily_limit})`,
+          quota,
+        };
+      }
+
+      return { allowed: true, quota };
+    } catch (error) {
+      console.error('UsageTrackingService.canGenerateQuiz error:', error);
+      return {
+        allowed: false,
+        reason: 'Error checking quiz generation quota',
+      };
+    }
+  }
+
+  /**
+   * Convenience method for AI tutor questions
+   */
+  async canAskAITutor(
+    userId: string
+  ): Promise<{ allowed: boolean; reason?: string; quota?: QuotaResult }> {
+    try {
+      const quota = await this.checkUserQuota(userId, 'ai_tutor_questions');
+
+      if (!quota.allowed) {
+        return {
+          allowed: false,
+          reason: `Daily AI tutor questions limit reached (${quota.current_usage}/${quota.daily_limit})`,
+          quota,
+        };
+      }
+
+      return { allowed: true, quota };
+    } catch (error) {
+      console.error('UsageTrackingService.canAskAITutor error:', error);
+      return {
+        allowed: false,
+        reason: 'Error checking AI tutor quota',
+      };
+    }
+  }
+
+  /**
+   * Convenience method for mind map generation
+   */
+  async canGenerateMindMap(
+    userId: string
+  ): Promise<{ allowed: boolean; reason?: string; quota?: QuotaResult }> {
+    try {
+      const quota = await this.checkUserQuota(userId, 'mind_map_generation');
+
+      if (!quota.allowed) {
+        return {
+          allowed: false,
+          reason: `Daily mind map generation limit reached (${quota.current_usage}/${quota.daily_limit})`,
+          quota,
+        };
+      }
+
+      return { allowed: true, quota };
+    } catch (error) {
+      console.error('UsageTrackingService.canGenerateMindMap error:', error);
+      return {
+        allowed: false,
+        reason: 'Error checking mind map generation quota',
+      };
+    }
+  }
+
+  /**
+   * Record usage for specific resource types
+   */
+  async recordPDFProcessing(userId: string): Promise<{ success: boolean; error?: string }> {
+    return this.recordResourceUsage(userId, 'pdf_processing');
+  }
+
+  async recordYouTubeProcessing(userId: string): Promise<{ success: boolean; error?: string }> {
+    return this.recordResourceUsage(userId, 'youtube_processing');
+  }
+
+  async recordFlashcardGeneration(userId: string): Promise<{ success: boolean; error?: string }> {
+    return this.recordResourceUsage(userId, 'flashcard_generation');
+  }
+
+  async recordQuizGeneration(userId: string): Promise<{ success: boolean; error?: string }> {
+    return this.recordResourceUsage(userId, 'quiz_generation');
+  }
+
+  async recordAITutorQuestion(userId: string): Promise<{ success: boolean; error?: string }> {
+    return this.recordResourceUsage(userId, 'ai_tutor_questions');
+  }
+
+  async recordMindMapGeneration(userId: string): Promise<{ success: boolean; error?: string }> {
+    return this.recordResourceUsage(userId, 'mind_map_generation');
+  }
+
+  async recordAudioTranscription(userId: string): Promise<{ success: boolean; error?: string }> {
+    return this.recordResourceUsage(userId, 'audio_transcription');
+  }
+
+  /**
+   * Generic method to record resource usage
+   */
+  private async recordResourceUsage(
+    userId: string,
+    resourceType: ResourceType
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const result = await this.incrementUsage(userId, resourceType);
+
+      if (!result.success) {
+        await this.logError({
+          user_id: userId,
+          error_type: 'quota_exceeded',
+          error_message: result.message || `${resourceType} quota exceeded`,
+          error_details: { quota_info: result.quota_info },
+        });
+
+        return {
+          success: false,
+          error: result.message || 'Usage quota exceeded',
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error(`UsageTrackingService.record${resourceType} error:`, error);
+
+      await this.logError({
+        user_id: userId,
+        error_type: 'server_error',
+        error_message: `Failed to record ${resourceType} usage`,
+        error_details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+
+      return {
+        success: false,
+        error: 'Failed to record usage',
+      };
     }
   }
 }

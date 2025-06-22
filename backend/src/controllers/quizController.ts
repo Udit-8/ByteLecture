@@ -118,8 +118,8 @@ export class QuizController {
         contentItemId
       );
 
-      // Increment usage counter
-      await usageTrackingService.incrementUsage(userId, 'quiz_generation');
+      // Record quiz generation usage
+      await usageTrackingService.recordQuizGeneration(userId);
       console.log('📊 Usage incremented for quiz generation');
 
       res.json({
@@ -503,8 +503,8 @@ export class QuizController {
         originalSet.content_item_id
       );
 
-      // Increment usage counter
-      await usageTrackingService.incrementUsage(userId, 'quiz_generation');
+      // Record quiz generation usage
+      await usageTrackingService.recordQuizGeneration(userId);
       console.log('📊 Usage incremented for quiz retry');
 
       res.json({

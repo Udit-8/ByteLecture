@@ -258,6 +258,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               <Text style={styles.statLabel}>Quizzes</Text>
             </View>
           </View>
+          <Button
+            title="View Usage Details"
+            onPress={() => navigation.navigate('UsageOverview')}
+            variant="secondary"
+            style={styles.usageButton}
+          />
         </Card>
       </ScrollView>
     </SafeAreaView>
@@ -395,5 +401,9 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[600],
     fontWeight: theme.typography.fontWeight.medium,
+  },
+  usageButton: {
+    backgroundColor: theme.colors.primary[600],
+    marginTop: theme.spacing.base,
   },
 });

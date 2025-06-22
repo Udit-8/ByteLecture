@@ -16,6 +16,7 @@ import { AudioRecordingScreen } from '../screens/AudioRecordingScreen';
 import { AuthDebugScreen } from '../screens/AuthDebugScreen';
 import { QuizPerformanceScreen } from '../screens/QuizPerformanceScreen';
 import { SyncSettingsScreen } from '../screens/SyncSettingsScreen';
+import { UsageOverviewScreen } from '../screens/UsageOverviewScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import { BottomTabNavigator } from './BottomTabNavigator';
 
@@ -58,6 +59,10 @@ export const AppNavigator: React.FC = () => {
               <Stack.Screen
                 name="SyncSettings"
                 component={SyncSettingsScreen}
+              />
+              <Stack.Screen
+                name="UsageOverview"
+                component={UsageOverviewScreen}
               />
               <Stack.Screen
                 name="Subscription"

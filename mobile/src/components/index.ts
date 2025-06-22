@@ -9,3 +9,5 @@ export { PDFUpload } from './PDFUpload';
 export type { PDFFile, UploadResult } from './PDFUpload';
 export { PremiumUpsellModal } from './PremiumUpsellModal';
 export type { FeatureType } from './PremiumUpsellModal';
+export { UsageCounter } from './UsageCounter';
+export type { UsageCounterProps } from './UsageCounter';

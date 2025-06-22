@@ -52,7 +52,9 @@ export class ContentService {
   /**
    * Create a new content item
    */
-  async createContentItem(data: CreateContentItemRequest): Promise<ContentItem> {
+  async createContentItem(
+    data: CreateContentItemRequest
+  ): Promise<ContentItem> {
     try {
       const { data: contentItem, error } = await this.supabase
         .from('content_items')
@@ -146,7 +148,10 @@ export class ContentService {
   /**
    * Get a specific content item by ID
    */
-  async getContentItem(id: string, userId: string): Promise<ContentItem | null> {
+  async getContentItem(
+    id: string,
+    userId: string
+  ): Promise<ContentItem | null> {
     try {
       const { data: item, error } = await this.supabase
         .from('content_items')
@@ -235,13 +240,16 @@ export class ContentService {
       }
 
       const totalItems = items?.length || 0;
-      const processedItems = items?.filter(item => item.processed).length || 0;
+      const processedItems =
+        items?.filter((item) => item.processed).length || 0;
       const pendingItems = totalItems - processedItems;
-      const processingRate = totalItems > 0 ? (processedItems / totalItems) * 100 : 0;
+      const processingRate =
+        totalItems > 0 ? (processedItems / totalItems) * 100 : 0;
 
       const contentTypes: Record<string, number> = {};
-      items?.forEach(item => {
-        contentTypes[item.content_type] = (contentTypes[item.content_type] || 0) + 1;
+      items?.forEach((item) => {
+        contentTypes[item.content_type] =
+          (contentTypes[item.content_type] || 0) + 1;
       });
 
       return {
@@ -260,7 +268,11 @@ export class ContentService {
   /**
    * Mark content item as processed
    */
-  async markAsProcessed(id: string, userId: string, summary?: string): Promise<ContentItem> {
+  async markAsProcessed(
+    id: string,
+    userId: string,
+    summary?: string
+  ): Promise<ContentItem> {
     return this.updateContentItem(id, userId, {
       processed: true,
       summary,
@@ -310,7 +322,10 @@ export class ContentService {
   /**
    * Get recent content items for a user
    */
-  async getRecentItems(userId: string, limit: number = 10): Promise<ContentItem[]> {
+  async getRecentItems(
+    userId: string,
+    limit: number = 10
+  ): Promise<ContentItem[]> {
     try {
       const { data: items, error } = await this.supabase
         .from('content_items')
@@ -329,4 +344,4 @@ export class ContentService {
       throw error;
     }
   }
-} 
+}

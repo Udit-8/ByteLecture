@@ -1,12 +1,12 @@
 import express from 'express';
-import { 
-  validateYouTubeVideo, 
-  getVideoMetadata, 
-  processYouTubeVideo, 
-  getUserVideos, 
+import {
+  validateYouTubeVideo,
+  getVideoMetadata,
+  processYouTubeVideo,
+  getUserVideos,
   getProcessedVideo,
   getCacheStats,
-  clearVideoCache
+  clearVideoCache,
 } from '../controllers/youtubeController';
 import { authenticateToken } from '../middleware/auth';
 
@@ -57,4 +57,4 @@ router.get('/cache/stats', getCacheStats);
  */
 router.delete('/cache/:videoId', clearVideoCache);
 
-export default router; 
+export default router;

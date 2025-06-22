@@ -5,7 +5,13 @@ import { OpenAIService } from './openAIService';
 export interface QuizGenerationOptions {
   numberOfQuestions?: number;
   difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
-  focusArea?: 'concepts' | 'applications' | 'analysis' | 'recall' | 'synthesis' | 'general';
+  focusArea?:
+    | 'concepts'
+    | 'applications'
+    | 'analysis'
+    | 'recall'
+    | 'synthesis'
+    | 'general';
   questionTypes?: ('multiple_choice' | 'true_false' | 'fill_blank')[];
   contentType?: 'pdf' | 'youtube' | 'lecture_recording' | 'text';
   maxTokens?: number;
@@ -103,46 +109,64 @@ export class QuizService {
   /**
    * Generate AI prompt for quiz/MCQ generation
    */
-  private generateQuizPrompt(content: string, options: QuizGenerationOptions): string {
+  private generateQuizPrompt(
+    content: string,
+    options: QuizGenerationOptions
+  ): string {
     const {
       numberOfQuestions = 10,
       difficulty = 'mixed',
       focusArea = 'general',
       questionTypes = ['multiple_choice'],
-      contentType = 'text'
+      contentType = 'text',
     } = options;
 
     const contentTypeContext = {
       pdf: 'This content is from a PDF document, likely academic or professional material.',
       youtube: 'This content is from a YouTube video transcript.',
-      lecture_recording: 'This content is from an audio lecture recording transcript.',
-      text: 'This is general text content.'
+      lecture_recording:
+        'This content is from an audio lecture recording transcript.',
+      text: 'This is general text content.',
     };
 
     const difficultyInstructions = {
       easy: 'Create straightforward questions suitable for beginners. Focus on basic recall and simple comprehension. Use clear, direct language.',
-      medium: 'Create moderately challenging questions that require understanding and basic application of concepts. Mix recall with analytical thinking.',
+      medium:
+        'Create moderately challenging questions that require understanding and basic application of concepts. Mix recall with analytical thinking.',
       hard: 'Create challenging questions that require deep understanding, critical analysis, and complex application. Include scenario-based questions.',
-      mixed: 'Create a balanced mix: 20% easy (basic recall), 60% medium (understanding & application), 20% hard (analysis & synthesis).'
+      mixed:
+        'Create a balanced mix: 20% easy (basic recall), 60% medium (understanding & application), 20% hard (analysis & synthesis).',
     };
 
     const focusInstructions = {
-      concepts: 'Focus on key concepts, theories, and fundamental ideas. Test understanding of core principles.',
-      applications: 'Focus on practical applications and real-world scenarios. Test ability to apply knowledge.',
-      analysis: 'Focus on analytical thinking, comparison, and evaluation. Test higher-order thinking skills.',
-      recall: 'Focus on factual information, definitions, and specific details. Test memory and recognition.',
-      synthesis: 'Focus on combining ideas, creating connections, and drawing conclusions. Test integrative thinking.',
-      general: 'Create a balanced mix covering various cognitive levels: recall, understanding, application, and analysis.'
+      concepts:
+        'Focus on key concepts, theories, and fundamental ideas. Test understanding of core principles.',
+      applications:
+        'Focus on practical applications and real-world scenarios. Test ability to apply knowledge.',
+      analysis:
+        'Focus on analytical thinking, comparison, and evaluation. Test higher-order thinking skills.',
+      recall:
+        'Focus on factual information, definitions, and specific details. Test memory and recognition.',
+      synthesis:
+        'Focus on combining ideas, creating connections, and drawing conclusions. Test integrative thinking.',
+      general:
+        'Create a balanced mix covering various cognitive levels: recall, understanding, application, and analysis.',
     };
 
-    const questionTypeInstructions = questionTypes.map(type => {
-      switch (type) {
-        case 'multiple_choice': return '- Multiple Choice: Provide 4 options (A, B, C, D) with only one correct answer';
-        case 'true_false': return '- True/False: Simple binary choice questions with clear explanations';
-        case 'fill_blank': return '- Fill in the Blank: Questions with missing key terms or concepts';
-        default: return '';
-      }
-    }).join('\n');
+    const questionTypeInstructions = questionTypes
+      .map((type) => {
+        switch (type) {
+          case 'multiple_choice':
+            return '- Multiple Choice: Provide 4 options (A, B, C, D) with only one correct answer';
+          case 'true_false':
+            return '- True/False: Simple binary choice questions with clear explanations';
+          case 'fill_blank':
+            return '- Fill in the Blank: Questions with missing key terms or concepts';
+          default:
+            return '';
+        }
+      })
+      .join('\n');
 
     return `You are an expert educational assessment creator specializing in generating high-quality multiple-choice questions (MCQs) for effective learning evaluation.
 
@@ -211,7 +235,9 @@ Generate the quiz questions now:`;
   /**
    * Validate generated quiz questions
    */
-  private validateQuizQuestions(questions: QuizQuestion[]): QuizValidationResult {
+  private validateQuizQuestions(
+    questions: QuizQuestion[]
+  ): QuizValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -228,35 +254,51 @@ Generate the quiz questions now:`;
         }
         question.options.forEach((option, optIndex) => {
           if (!option?.trim()) {
-            errors.push(`Question ${index + 1}, Option ${optIndex + 1}: Empty option`);
+            errors.push(
+              `Question ${index + 1}, Option ${optIndex + 1}: Empty option`
+            );
           }
         });
       }
-      if (typeof question.correctAnswer !== 'number' || question.correctAnswer < 0 || question.correctAnswer >= question.options?.length) {
+      if (
+        typeof question.correctAnswer !== 'number' ||
+        question.correctAnswer < 0 ||
+        question.correctAnswer >= question.options?.length
+      ) {
         errors.push(`Question ${index + 1}: Invalid correct answer index`);
       }
       if (!question.explanation?.trim()) {
         errors.push(`Question ${index + 1}: Missing explanation`);
       }
-      if (!question.difficulty_level || question.difficulty_level < 1 || question.difficulty_level > 5) {
-        errors.push(`Question ${index + 1}: Invalid difficulty level (must be 1-5)`);
+      if (
+        !question.difficulty_level ||
+        question.difficulty_level < 1 ||
+        question.difficulty_level > 5
+      ) {
+        errors.push(
+          `Question ${index + 1}: Invalid difficulty level (must be 1-5)`
+        );
       }
 
       // Check quality guidelines
       if (question.question && question.question.length < 15) {
-        warnings.push(`Question ${index + 1}: Question stem might be too short`);
+        warnings.push(
+          `Question ${index + 1}: Question stem might be too short`
+        );
       }
       if (question.explanation && question.explanation.length < 30) {
         warnings.push(`Question ${index + 1}: Explanation might be too brief`);
       }
-      
+
       // Check for common MCQ issues
       if (question.options) {
-        const optionLengths = question.options.map(opt => opt.length);
+        const optionLengths = question.options.map((opt) => opt.length);
         const maxLength = Math.max(...optionLengths);
         const minLength = Math.min(...optionLengths);
         if (maxLength > minLength * 2) {
-          warnings.push(`Question ${index + 1}: Option lengths vary significantly`);
+          warnings.push(
+            `Question ${index + 1}: Option lengths vary significantly`
+          );
         }
       }
     });
@@ -264,7 +306,7 @@ Generate the quiz questions now:`;
     return {
       isValid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 
@@ -281,7 +323,7 @@ Generate the quiz questions now:`;
     try {
       // Generate the prompt
       const prompt = this.generateQuizPrompt(content, options);
-      
+
       // Estimate tokens and adjust if necessary
       const estimatedTokens = this.openaiService.estimateTokens(prompt);
       console.log(`📊 Estimated prompt tokens: ${estimatedTokens}`);
@@ -304,24 +346,38 @@ Generate the quiz questions now:`;
       const tokensUsed = response.usage?.total_tokens || 0;
 
       // Parse the JSON response
-      let parsedResponse: { title: string; description?: string; questions: QuizQuestion[] };
+      let parsedResponse: {
+        title: string;
+        description?: string;
+        questions: QuizQuestion[];
+      };
       try {
         parsedResponse = JSON.parse(rawContent);
       } catch (parseError) {
-        const errorMessage = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
+        const errorMessage =
+          parseError instanceof Error
+            ? parseError.message
+            : 'Unknown parsing error';
         throw new Error(`Failed to parse AI response as JSON: ${errorMessage}`);
       }
 
       // Validate the response structure
-      if (!parsedResponse.questions || !Array.isArray(parsedResponse.questions)) {
-        throw new Error('Invalid response format: missing or invalid questions array');
+      if (
+        !parsedResponse.questions ||
+        !Array.isArray(parsedResponse.questions)
+      ) {
+        throw new Error(
+          'Invalid response format: missing or invalid questions array'
+        );
       }
 
       // Validate question quality
       const validation = this.validateQuizQuestions(parsedResponse.questions);
       if (!validation.isValid) {
         console.warn('⚠️ Quiz validation errors:', validation.errors);
-        throw new Error(`Generated quiz failed validation: ${validation.errors.join('; ')}`);
+        throw new Error(
+          `Generated quiz failed validation: ${validation.errors.join('; ')}`
+        );
       }
 
       if (validation.warnings.length > 0) {
@@ -329,14 +385,20 @@ Generate the quiz questions now:`;
       }
 
       // Calculate metadata
-      const averageDifficulty = parsedResponse.questions.reduce(
-        (sum, question) => sum + question.difficulty_level, 0
-      ) / parsedResponse.questions.length;
+      const averageDifficulty =
+        parsedResponse.questions.reduce(
+          (sum, question) => sum + question.difficulty_level,
+          0
+        ) / parsedResponse.questions.length;
 
-      const questionTypes = [...new Set(parsedResponse.questions.map(q => q.question_type))];
+      const questionTypes = [
+        ...new Set(parsedResponse.questions.map((q) => q.question_type)),
+      ];
 
       // Estimate duration (1.5 minutes per question on average)
-      const estimatedDuration = Math.ceil(parsedResponse.questions.length * 1.5);
+      const estimatedDuration = Math.ceil(
+        parsedResponse.questions.length * 1.5
+      );
 
       const quizSet: QuizSet = {
         title: parsedResponse.title,
@@ -363,7 +425,6 @@ Generate the quiz questions now:`;
         tokensUsed,
         processingTime,
       };
-
     } catch (error: any) {
       console.error(`❌ Quiz generation failed:`, error.message);
       return {
@@ -405,7 +466,7 @@ Generate the quiz questions now:`;
       }
 
       // Insert individual questions
-      const questionsToInsert = quizSet.questions.map(question => ({
+      const questionsToInsert = quizSet.questions.map((question) => ({
         quiz_set_id: setData.id,
         question: question.question,
         options: question.options,
@@ -424,12 +485,13 @@ Generate the quiz questions now:`;
       if (questionsError) {
         // Rollback - delete the quiz set
         await supabaseAdmin.from('quiz_sets').delete().eq('id', setData.id);
-        throw new Error(`Failed to save quiz questions: ${questionsError.message}`);
+        throw new Error(
+          `Failed to save quiz questions: ${questionsError.message}`
+        );
       }
 
       console.log(`✅ Quiz set saved with ID: ${setData.id}`);
       return setData;
-
     } catch (error: any) {
       console.error(`❌ Failed to save quiz set:`, error.message);
       throw error;
@@ -461,7 +523,9 @@ Generate the quiz questions now:`;
   /**
    * Get questions for a specific quiz set
    */
-  public async getQuizQuestions(setId: string): Promise<DatabaseQuizQuestion[]> {
+  public async getQuizQuestions(
+    setId: string
+  ): Promise<DatabaseQuizQuestion[]> {
     try {
       const { data, error } = await supabaseAdmin
         .from('quiz_questions')
@@ -504,7 +568,9 @@ Generate the quiz questions now:`;
         .eq('quiz_set_id', setId);
 
       if (questionsError) {
-        throw new Error(`Failed to delete quiz questions: ${questionsError.message}`);
+        throw new Error(
+          `Failed to delete quiz questions: ${questionsError.message}`
+        );
       }
 
       // Delete quiz set
@@ -518,7 +584,6 @@ Generate the quiz questions now:`;
       }
 
       console.log(`✅ Quiz set ${setId} deleted successfully`);
-
     } catch (error: any) {
       console.error(`❌ Failed to delete quiz set:`, error.message);
       throw error;
@@ -556,4 +621,4 @@ Generate the quiz questions now:`;
   }
 }
 
-export default QuizService; 
+export default QuizService;

@@ -1,9 +1,12 @@
 import { supabaseAdmin } from '../config/supabase';
 import { OpenAIService } from './openAIService';
-import { ContentService } from './contentService';
+// import { ContentService } from './contentService'; // Currently unused
 import { usageTrackingService } from './usageTrackingService';
-import puppeteer from 'puppeteer';
-import { createCanvas, CanvasRenderingContext2D as NodeCanvasRenderingContext2D } from 'canvas';
+// import puppeteer from 'puppeteer'; // Currently unused
+import {
+  createCanvas,
+  CanvasRenderingContext2D as NodeCanvasRenderingContext2D,
+} from 'canvas';
 import {
   MindMap,
   MindMapNode,
@@ -13,7 +16,7 @@ import {
   UpdateMindMapRequest,
   MindMapGenerationOptions,
   MindMapAnalysisResult,
-  MindMapExportOptions
+  MindMapExportOptions,
 } from '../types/mindmap';
 
 // Create service instances
@@ -21,10 +24,10 @@ const openAIService = new OpenAIService({
   apiKey: process.env.OPENAI_API_KEY || '',
   model: 'gpt-3.5-turbo',
   maxTokens: 4000,
-  temperature: 0.7
+  temperature: 0.7,
 });
 
-const contentService = new ContentService();
+// const contentService = new ContentService(); // Currently unused
 
 class MindMapService {
   /**
@@ -36,19 +39,25 @@ class MindMapService {
     options: MindMapGenerationOptions = {}
   ): Promise<MindMap> {
     const startTime = Date.now();
-    
+
     try {
-      console.log('🧠 Starting mind map generation for content:', request.content_item_id);
+      console.log(
+        '🧠 Starting mind map generation for content:',
+        request.content_item_id
+      );
 
       // 1. Get content from the content item
-      const content = await this.getContentForMindMap(request.content_item_id, userId);
+      const content = await this.getContentForMindMap(
+        request.content_item_id,
+        userId
+      );
       if (!content) {
         throw new Error('Content not found or no text available');
       }
 
       // 2. Check usage limits (premium gating)
       const maxNodes = await this.getMaxNodesForUser(userId, options.max_nodes);
-      
+
       // 3. Analyze content and generate mind map structure
       const analysisResult = await this.analyzeContentForMindMap(
         content,
@@ -61,7 +70,7 @@ class MindMapService {
         root: analysisResult.suggested_structure,
         total_nodes: this.countNodes(analysisResult.suggested_structure),
         max_depth: this.calculateMaxDepth(analysisResult.suggested_structure),
-        style: request.style || options.style || 'hierarchical'
+        style: request.style || options.style || 'hierarchical',
       };
 
       // 5. Save to database
@@ -74,7 +83,7 @@ class MindMapService {
         max_depth: mindMapData.max_depth,
         ai_model: 'gpt-3.5-turbo',
         tokens_used: analysisResult.complexity_score * 100, // Estimate
-        processing_time_ms: Date.now() - startTime
+        processing_time_ms: Date.now() - startTime,
       });
 
       // 6. Track usage (using incrementUsage method)
@@ -82,7 +91,6 @@ class MindMapService {
 
       console.log('✅ Mind map generated successfully:', mindMap.id);
       return mindMap;
-
     } catch (error) {
       console.error('❌ Error generating mind map:', error);
       throw error;
@@ -92,7 +100,10 @@ class MindMapService {
   /**
    * Get content text for mind map generation
    */
-  private async getContentForMindMap(contentItemId: string, userId: string): Promise<{
+  private async getContentForMindMap(
+    contentItemId: string,
+    userId: string
+  ): Promise<{
     title: string;
     text: string;
   } | null> {
@@ -112,7 +123,7 @@ class MindMapService {
 
       // Get text based on content type
       switch (contentItem.content_type) {
-        case 'pdf':
+        case 'pdf': {
           const { data: pdfData } = await supabaseAdmin
             .from('processed_documents')
             .select('cleaned_text, extracted_text')
@@ -121,8 +132,9 @@ class MindMapService {
             .single();
           text = pdfData?.cleaned_text || pdfData?.extracted_text || '';
           break;
+        }
 
-        case 'youtube':
+        case 'youtube': {
           const { data: videoData } = await supabaseAdmin
             .from('processed_videos')
             .select('transcript')
@@ -131,8 +143,9 @@ class MindMapService {
             .single();
           text = videoData?.transcript || '';
           break;
+        }
 
-        case 'audio':
+        case 'audio': {
           const { data: audioData } = await supabaseAdmin
             .from('transcriptions')
             .select('text')
@@ -140,9 +153,12 @@ class MindMapService {
             .single();
           text = audioData?.text || '';
           break;
+        }
 
         default:
-          throw new Error(`Unsupported content type: ${contentItem.content_type}`);
+          throw new Error(
+            `Unsupported content type: ${contentItem.content_type}`
+          );
       }
 
       if (!text) {
@@ -151,9 +167,8 @@ class MindMapService {
 
       return {
         title: contentItem.title,
-        text: text.substring(0, 10000) // Limit for OpenAI processing
+        text: text.substring(0, 10000), // Limit for OpenAI processing
       };
-
     } catch (error) {
       console.error('Error getting content for mind map:', error);
       return null;
@@ -215,17 +230,23 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
 
     try {
       const response = await openAIService.generateChatCompletion([
-        { role: 'system', content: 'You are an expert educational content analyzer that creates structured mind maps for learning.' },
-        { role: 'user', content: prompt }
+        {
+          role: 'system',
+          content:
+            'You are an expert educational content analyzer that creates structured mind maps for learning.',
+        },
+        { role: 'user', content: prompt },
       ]);
 
       const result = JSON.parse(response.content) as MindMapAnalysisResult;
-      
-      // Ensure we don't exceed max nodes
-      result.suggested_structure = this.limitNodes(result.suggested_structure, maxNodes);
-      
-      return result;
 
+      // Ensure we don't exceed max nodes
+      result.suggested_structure = this.limitNodes(
+        result.suggested_structure,
+        maxNodes
+      );
+
+      return result;
     } catch (error) {
       console.error('Error analyzing content for mind map:', error);
       throw new Error('Failed to analyze content for mind map generation');
@@ -235,7 +256,10 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
   /**
    * Get maximum nodes allowed for user (premium gating)
    */
-  private async getMaxNodesForUser(userId: string, requestedMax?: number): Promise<number> {
+  private async getMaxNodesForUser(
+    userId: string,
+    requestedMax?: number
+  ): Promise<number> {
     // Check if user has premium subscription
     const { data: subscription } = await supabaseAdmin
       .from('user_subscriptions')
@@ -262,7 +286,7 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
       }
 
       nodeCount++;
-      
+
       if (currentNode.children) {
         const limitedChildren: MindMapNode[] = [];
         for (const child of currentNode.children) {
@@ -304,19 +328,22 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
     for (const child of node.children) {
       maxDepth = Math.max(maxDepth, this.calculateMaxDepth(child));
     }
-    
+
     return maxDepth;
   }
 
   /**
    * Save mind map to database
    */
-  private async saveMindMap(userId: string, mindMapData: Partial<MindMap>): Promise<MindMap> {
+  private async saveMindMap(
+    userId: string,
+    mindMapData: Partial<MindMap>
+  ): Promise<MindMap> {
     const { data, error } = await supabaseAdmin
       .from('mind_maps')
       .insert({
         user_id: userId,
-        ...mindMapData
+        ...mindMapData,
       })
       .select()
       .single();
@@ -335,13 +362,15 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
   async getUserMindMaps(userId: string): Promise<MindMap[]> {
     const { data, error } = await supabaseAdmin
       .from('mind_maps')
-      .select(`
+      .select(
+        `
         *,
         content_items (
           title,
           content_type
         )
-      `)
+      `
+      )
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
@@ -359,13 +388,15 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
   async getMindMap(userId: string, mindMapId: string): Promise<MindMap | null> {
     const { data, error } = await supabaseAdmin
       .from('mind_maps')
-      .select(`
+      .select(
+        `
         *,
         content_items (
           title,
           content_type
         )
-      `)
+      `
+      )
       .eq('id', mindMapId)
       .eq('user_id', userId)
       .single();
@@ -431,28 +462,33 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
       throw new Error('Mind map not found');
     }
 
-    const baseFilename = mindMap.title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+    const baseFilename = mindMap.title
+      .replace(/[^a-zA-Z0-9]/g, '-')
+      .toLowerCase();
 
     switch (options.format) {
-      case 'json':
+      case 'json': {
         return {
           data: JSON.stringify(mindMap.mind_map_data, null, 2),
-          filename: `${baseFilename}.json`
+          filename: `${baseFilename}.json`,
         };
+      }
 
-      case 'svg':
+      case 'svg': {
         const svgData = await this.generateSVGExport(mindMap, options);
         return {
           data: svgData,
-          filename: `${baseFilename}.svg`
+          filename: `${baseFilename}.svg`,
         };
+      }
 
-      case 'png':
+      case 'png': {
         const pngData = await this.generatePNGExport(mindMap, options);
         return {
           data: pngData,
-          filename: `${baseFilename}.png`
+          filename: `${baseFilename}.png`,
         };
+      }
 
       default:
         throw new Error(`Export format ${options.format} not supported`);
@@ -462,32 +498,41 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
   /**
    * Generate SVG export of mind map
    */
-  private async generateSVGExport(mindMap: MindMap, options: MindMapExportOptions): Promise<string> {
+  private async generateSVGExport(
+    mindMap: MindMap,
+    options: MindMapExportOptions
+  ): Promise<string> {
     const { mind_map_data } = mindMap;
     const theme = options.style_options?.theme || 'light';
     const fontSize = options.style_options?.font_size || 14;
-    
+
     // Calculate layout positions
-    const layout = this.calculateLayout(mind_map_data.root, mind_map_data.style);
-    
+    const layout = this.calculateLayout(
+      mind_map_data.root,
+      mind_map_data.style
+    );
+
     // SVG dimensions
     const width = layout.width + 100;
     const height = layout.height + 100;
-    
+
     // Color scheme based on theme
-    const colors = theme === 'dark' ? {
-      background: '#1a1a1a',
-      text: '#ffffff',
-      node: '#333333',
-      border: '#555555',
-      line: '#666666'
-    } : {
-      background: '#ffffff',
-      text: '#000000',
-      node: '#f0f0f0',
-      border: '#cccccc',
-      line: '#999999'
-    };
+    const colors =
+      theme === 'dark'
+        ? {
+            background: '#1a1a1a',
+            text: '#ffffff',
+            node: '#333333',
+            border: '#555555',
+            line: '#666666',
+          }
+        : {
+            background: '#ffffff',
+            text: '#000000',
+            node: '#f0f0f0',
+            border: '#cccccc',
+            line: '#999999',
+          };
 
     let svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
@@ -496,9 +541,14 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
 
     // Generate connections first (so they appear behind nodes)
     svg += this.generateSVGConnections(layout.nodes, colors.line);
-    
+
     // Generate nodes
-    svg += this.generateSVGNodes(layout.nodes, colors, fontSize, options.include_notes);
+    svg += this.generateSVGNodes(
+      layout.nodes,
+      colors,
+      fontSize,
+      options.include_notes
+    );
 
     svg += `
   </g>
@@ -510,35 +560,44 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
   /**
    * Generate PNG export of mind map using Canvas
    */
-  private async generatePNGExport(mindMap: MindMap, options: MindMapExportOptions): Promise<string> {
+  private async generatePNGExport(
+    mindMap: MindMap,
+    options: MindMapExportOptions
+  ): Promise<string> {
     const { mind_map_data } = mindMap;
     const theme = options.style_options?.theme || 'light';
     const fontSize = options.style_options?.font_size || 14;
-    
+
     // Calculate layout positions
-    const layout = this.calculateLayout(mind_map_data.root, mind_map_data.style);
-    
+    const layout = this.calculateLayout(
+      mind_map_data.root,
+      mind_map_data.style
+    );
+
     // Canvas dimensions
     const width = layout.width + 100;
     const height = layout.height + 100;
-    
+
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
-    
+
     // Color scheme based on theme
-    const colors = theme === 'dark' ? {
-      background: '#1a1a1a',
-      text: '#ffffff',
-      node: '#333333',
-      border: '#555555',
-      line: '#666666'
-    } : {
-      background: '#ffffff',
-      text: '#000000',
-      node: '#f0f0f0',
-      border: '#cccccc',
-      line: '#999999'
-    };
+    const colors =
+      theme === 'dark'
+        ? {
+            background: '#1a1a1a',
+            text: '#ffffff',
+            node: '#333333',
+            border: '#555555',
+            line: '#666666',
+          }
+        : {
+            background: '#ffffff',
+            text: '#000000',
+            node: '#f0f0f0',
+            border: '#cccccc',
+            line: '#999999',
+          };
 
     // Fill background
     ctx.fillStyle = colors.background;
@@ -549,9 +608,15 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
 
     // Draw connections first
     this.drawCanvasConnections(ctx, layout.nodes, colors.line);
-    
+
     // Draw nodes
-    this.drawCanvasNodes(ctx, layout.nodes, colors, fontSize, options.include_notes);
+    this.drawCanvasNodes(
+      ctx,
+      layout.nodes,
+      colors,
+      fontSize,
+      options.include_notes
+    );
 
     // Convert to base64 PNG
     return canvas.toBuffer('image/png').toString('base64');
@@ -560,7 +625,10 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
   /**
    * Calculate layout positions for nodes
    */
-  private calculateLayout(root: MindMapNode, style: MindMapStyle): {
+  private calculateLayout(
+    root: MindMapNode,
+    style: MindMapStyle
+  ): {
     nodes: Array<{ node: MindMapNode; x: number; y: number }>;
     width: number;
     height: number;
@@ -573,19 +641,27 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
       // Hierarchical layout (tree-like)
       const levelWidth = 200;
       const nodeHeight = 80;
-      
-      const positionNode = (node: MindMapNode, x: number, y: number, level: number) => {
+
+      const positionNode = (
+        node: MindMapNode,
+        x: number,
+        y: number,
+        level: number
+      ) => {
         nodes.push({ node, x, y });
         maxX = Math.max(maxX, x + 150);
         maxY = Math.max(maxY, y + 50);
 
         if (node.children) {
-          const childSpacing = Math.max(nodeHeight, 400 / Math.max(node.children.length, 1));
+          const childSpacing = Math.max(
+            nodeHeight,
+            400 / Math.max(node.children.length, 1)
+          );
           const startY = y - ((node.children.length - 1) * childSpacing) / 2;
-          
+
           node.children.forEach((child, index) => {
             const childX = x + levelWidth;
-            const childY = startY + (index * childSpacing);
+            const childY = startY + index * childSpacing;
             positionNode(child, childX, childY, level + 1);
           });
         }
@@ -596,8 +672,14 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
       // Radial layout (circular)
       const centerX = 300;
       const centerY = 300;
-      
-      const positionNode = (node: MindMapNode, x: number, y: number, level: number, parentAngle?: number) => {
+
+      const positionNode = (
+        node: MindMapNode,
+        x: number,
+        y: number,
+        level: number,
+        parentAngle?: number
+      ) => {
         nodes.push({ node, x, y });
         maxX = Math.max(maxX, x + 150);
         maxY = Math.max(maxY, y + 50);
@@ -605,10 +687,11 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
         if (node.children) {
           const radius = (level + 1) * 120;
           const angleStep = (2 * Math.PI) / node.children.length;
-          const startAngle = parentAngle !== undefined ? parentAngle - Math.PI/4 : 0;
-          
+          const startAngle =
+            parentAngle !== undefined ? parentAngle - Math.PI / 4 : 0;
+
           node.children.forEach((child, index) => {
-            const angle = startAngle + (index * angleStep);
+            const angle = startAngle + index * angleStep;
             const childX = centerX + Math.cos(angle) * radius;
             const childY = centerY + Math.sin(angle) * radius;
             positionNode(child, childX, childY, level + 1, angle);
@@ -623,8 +706,13 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
       // Flowchart layout (similar to hierarchical but more compact)
       const levelWidth = 180;
       const nodeHeight = 60;
-      
-      const positionNode = (node: MindMapNode, x: number, y: number, level: number) => {
+
+      const positionNode = (
+        node: MindMapNode,
+        x: number,
+        y: number,
+        level: number
+      ) => {
         nodes.push({ node, x, y });
         maxX = Math.max(maxX, x + 150);
         maxY = Math.max(maxY, y + 50);
@@ -632,10 +720,10 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
         if (node.children) {
           const childSpacing = nodeHeight;
           const startY = y - ((node.children.length - 1) * childSpacing) / 2;
-          
+
           node.children.forEach((child, index) => {
             const childX = x + levelWidth;
-            const childY = startY + (index * childSpacing);
+            const childY = startY + index * childSpacing;
             positionNode(child, childX, childY, level + 1);
           });
         }
@@ -650,13 +738,16 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
   /**
    * Generate SVG connections between nodes
    */
-  private generateSVGConnections(nodes: Array<{ node: MindMapNode; x: number; y: number }>, lineColor: string): string {
+  private generateSVGConnections(
+    nodes: Array<{ node: MindMapNode; x: number; y: number }>,
+    lineColor: string
+  ): string {
     let svg = '';
-    const nodeMap = new Map(nodes.map(n => [n.node.id, n]));
+    const nodeMap = new Map(nodes.map((n) => [n.node.id, n]));
 
     nodes.forEach(({ node, x, y }) => {
       if (node.children) {
-        node.children.forEach(child => {
+        node.children.forEach((child) => {
           const childPos = nodeMap.get(child.id);
           if (childPos) {
             svg += `<line x1="${x + 75}" y1="${y + 25}" x2="${childPos.x + 75}" y2="${childPos.y + 25}" stroke="${lineColor}" stroke-width="2"/>`;
@@ -682,16 +773,16 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
     nodes.forEach(({ node, x, y }) => {
       const nodeWidth = 150;
       const nodeHeight = 50;
-      
+
       // Node background
       svg += `<rect x="${x}" y="${y}" width="${nodeWidth}" height="${nodeHeight}" fill="${colors.node}" stroke="${colors.border}" stroke-width="1" rx="5"/>`;
-      
+
       // Node title
-      svg += `<text x="${x + nodeWidth/2}" y="${y + nodeHeight/2}" text-anchor="middle" dominant-baseline="central" fill="${colors.text}" font-size="${fontSize}" font-family="Arial, sans-serif">${this.truncateText(node.title, 20)}</text>`;
-      
+      svg += `<text x="${x + nodeWidth / 2}" y="${y + nodeHeight / 2}" text-anchor="middle" dominant-baseline="central" fill="${colors.text}" font-size="${fontSize}" font-family="Arial, sans-serif">${this.truncateText(node.title, 20)}</text>`;
+
       // Node notes (if enabled and available)
       if (includeNotes && node.user_notes) {
-        svg += `<text x="${x + nodeWidth/2}" y="${y + nodeHeight + 15}" text-anchor="middle" fill="${colors.text}" font-size="${fontSize - 2}" font-family="Arial, sans-serif" opacity="0.7">${this.truncateText(node.user_notes, 25)}</text>`;
+        svg += `<text x="${x + nodeWidth / 2}" y="${y + nodeHeight + 15}" text-anchor="middle" fill="${colors.text}" font-size="${fontSize - 2}" font-family="Arial, sans-serif" opacity="0.7">${this.truncateText(node.user_notes, 25)}</text>`;
       }
     });
 
@@ -706,14 +797,14 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
     nodes: Array<{ node: MindMapNode; x: number; y: number }>,
     lineColor: string
   ): void {
-    const nodeMap = new Map(nodes.map(n => [n.node.id, n]));
+    const nodeMap = new Map(nodes.map((n) => [n.node.id, n]));
 
     ctx.strokeStyle = lineColor;
     ctx.lineWidth = 2;
 
     nodes.forEach(({ node, x, y }) => {
       if (node.children) {
-        node.children.forEach(child => {
+        node.children.forEach((child) => {
           const childPos = nodeMap.get(child.id);
           if (childPos) {
             ctx.beginPath();
@@ -744,25 +835,33 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
       ctx.fillStyle = colors.node;
       ctx.strokeStyle = colors.border;
       ctx.lineWidth = 1;
-      
+
       // Rounded rectangle
       ctx.beginPath();
       ctx.roundRect(x, y, nodeWidth, nodeHeight, 5);
       ctx.fill();
       ctx.stroke();
-      
+
       // Node title
       ctx.fillStyle = colors.text;
       ctx.font = `${fontSize}px Arial, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(this.truncateText(node.title, 20), x + nodeWidth/2, y + nodeHeight/2);
-      
+      ctx.fillText(
+        this.truncateText(node.title, 20),
+        x + nodeWidth / 2,
+        y + nodeHeight / 2
+      );
+
       // Node notes (if enabled and available)
       if (includeNotes && node.user_notes) {
         ctx.font = `${fontSize - 2}px Arial, sans-serif`;
         ctx.globalAlpha = 0.7;
-        ctx.fillText(this.truncateText(node.user_notes, 25), x + nodeWidth/2, y + nodeHeight + 15);
+        ctx.fillText(
+          this.truncateText(node.user_notes, 25),
+          x + nodeWidth / 2,
+          y + nodeHeight + 15
+        );
         ctx.globalAlpha = 1;
       }
     });
@@ -778,4 +877,4 @@ Make the mind map educational, well-organized, and focused on learning outcomes.
 }
 
 const mindMapService = new MindMapService();
-export { mindMapService }; 
+export { mindMapService };

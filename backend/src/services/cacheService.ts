@@ -38,7 +38,7 @@ class CacheService {
    */
   async getVideoMetadata(videoId: string): Promise<VideoMetadata | null> {
     const cacheKey = `metadata:${videoId}`;
-    
+
     // Check in-memory cache first
     const cached = this.cache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
@@ -49,7 +49,9 @@ class CacheService {
     try {
       const { data, error } = await supabase
         .from('processed_videos')
-        .select('title, description, channel_title, duration, thumbnail_url, metadata')
+        .select(
+          'title, description, channel_title, duration, thumbnail_url, metadata'
+        )
         .eq('video_id', videoId)
         .single();
 
@@ -79,9 +81,12 @@ class CacheService {
   /**
    * Get cached processed video (full data including transcript)
    */
-  async getProcessedVideo(videoId: string, userId: string): Promise<any | null> {
+  async getProcessedVideo(
+    videoId: string,
+    userId: string
+  ): Promise<any | null> {
     const cacheKey = `processed:${videoId}:${userId}`;
-    
+
     // Check in-memory cache first
     const cached = this.cache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
@@ -130,7 +135,7 @@ class CacheService {
    */
   async isVideoProcessed(videoId: string): Promise<boolean> {
     const cacheKey = `exists:${videoId}`;
-    
+
     // Check in-memory cache first
     const cached = this.cache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
@@ -146,7 +151,7 @@ class CacheService {
         .limit(1);
 
       const exists = !error && data && data.length > 0;
-      
+
       // Cache the result for 1 hour
       this.setCache(cacheKey, exists, 60 * 60 * 1000);
       return exists;
@@ -163,7 +168,7 @@ class CacheService {
     // Remove metadata cache
     this.cache.delete(`metadata:${videoId}`);
     this.cache.delete(`exists:${videoId}`);
-    
+
     // Remove processed video cache for specific user
     if (userId) {
       this.cache.delete(`processed:${videoId}:${userId}`);
@@ -190,19 +195,23 @@ class CacheService {
   getStats(): { size: number; entries: string[] } {
     return {
       size: this.cache.size,
-      entries: Array.from(this.cache.keys())
+      entries: Array.from(this.cache.keys()),
     };
   }
 
   /**
    * Private method to set cache entry
    */
-  private setCache(key: string, data: any, ttl: number = this.DEFAULT_TTL): void {
+  private setCache(
+    key: string,
+    data: any,
+    ttl: number = this.DEFAULT_TTL
+  ): void {
     const entry: CacheEntry = {
       videoId: key,
       data,
       timestamp: Date.now(),
-      expiresAt: Date.now() + ttl
+      expiresAt: Date.now() + ttl,
     };
     this.cache.set(key, entry);
   }
@@ -222,4 +231,4 @@ class CacheService {
 
 // Export singleton instance
 export const cacheService = new CacheService();
-export default cacheService; 
+export default cacheService;

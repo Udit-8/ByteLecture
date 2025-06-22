@@ -20,9 +20,9 @@ export const authenticateToken = async (
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
     if (!token) {
-      res.status(401).json({ 
-        error: 'Access denied', 
-        message: 'No token provided' 
+      res.status(401).json({
+        error: 'Access denied',
+        message: 'No token provided',
       });
       return;
     }
@@ -31,9 +31,9 @@ export const authenticateToken = async (
     const verification = await authService.verifyToken(token);
 
     if (!verification.valid || !verification.userId) {
-      res.status(403).json({ 
-        error: 'Invalid token', 
-        message: 'Token is not valid' 
+      res.status(403).json({
+        error: 'Invalid token',
+        message: 'Token is not valid',
       });
       return;
     }
@@ -42,9 +42,9 @@ export const authenticateToken = async (
     const userResponse = await authService.getProfile(verification.userId);
 
     if (userResponse.error || !userResponse.user) {
-      res.status(403).json({ 
-        error: 'User not found', 
-        message: 'User associated with token not found' 
+      res.status(403).json({
+        error: 'User not found',
+        message: 'User associated with token not found',
       });
       return;
     }
@@ -59,20 +59,26 @@ export const authenticateToken = async (
     next();
   } catch (error) {
     console.error('Authentication middleware error:', error);
-    res.status(500).json({ 
-      error: 'Authentication error', 
-      message: 'Internal server error during authentication' 
+    res.status(500).json({
+      error: 'Authentication error',
+      message: 'Internal server error during authentication',
     });
   }
 };
 
 // Middleware to check if user has required plan
-export const requirePlan = (requiredPlan: 'free' | 'premium' | 'enterprise') => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+export const requirePlan = (
+  requiredPlan: 'free' | 'premium' | 'enterprise'
+) => {
+  return (
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): void => {
     if (!req.user) {
-      res.status(401).json({ 
-        error: 'Unauthorized', 
-        message: 'User not authenticated' 
+      res.status(401).json({
+        error: 'Unauthorized',
+        message: 'User not authenticated',
       });
       return;
     }
@@ -82,9 +88,9 @@ export const requirePlan = (requiredPlan: 'free' | 'premium' | 'enterprise') => 
     const requiredPlanLevel = planHierarchy[requiredPlan];
 
     if (userPlanLevel < requiredPlanLevel) {
-      res.status(403).json({ 
-        error: 'Insufficient plan', 
-        message: `This feature requires ${requiredPlan} plan or higher` 
+      res.status(403).json({
+        error: 'Insufficient plan',
+        message: `This feature requires ${requiredPlan} plan or higher`,
       });
       return;
     }
@@ -132,4 +138,4 @@ export const optionalAuth = async (
   }
 };
 
-export default { authenticateToken, requirePlan, optionalAuth }; 
+export default { authenticateToken, requirePlan, optionalAuth };

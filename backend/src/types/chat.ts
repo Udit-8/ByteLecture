@@ -162,4 +162,4 @@ export interface ChatPromptContext {
   similar_content: SimilaritySearchResult[];
   conversation_history: ChatMessage[];
   user_plan: 'free' | 'premium' | 'enterprise';
-} 
+}

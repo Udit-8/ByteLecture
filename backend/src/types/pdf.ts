@@ -48,9 +48,20 @@ export interface PDFSection {
   type: SectionType;
 }
 
-export type SectionType = 'header' | 'paragraph' | 'list' | 'table' | 'footer' | 'title' | 'subtitle';
+export type SectionType =
+  | 'header'
+  | 'paragraph'
+  | 'list'
+  | 'table'
+  | 'footer'
+  | 'title'
+  | 'subtitle';
 
-export type ProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type ProcessingStatus =
+  | 'pending'
+  | 'processing'
+  | 'completed'
+  | 'failed';
 
 export interface PDFProcessingOptions {
   extractImages?: boolean;
@@ -85,4 +96,4 @@ export interface PDFUploadNotification {
     last_accessed_at: string;
     metadata: Record<string, any>;
   };
-} 
+}

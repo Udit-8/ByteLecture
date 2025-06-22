@@ -18,7 +18,11 @@ router.post('/transcribe', authenticateToken, audioController.transcribeAudio);
  * @access Private (requires authentication)
  * @query { limit?: number, offset?: number }
  */
-router.get('/history', authenticateToken, audioController.getTranscriptionHistory);
+router.get(
+  '/history',
+  authenticateToken,
+  audioController.getTranscriptionHistory
+);
 
 /**
  * @route GET /api/audio/quota
@@ -34,4 +38,4 @@ router.get('/quota', authenticateToken, audioController.getQuotaInfo);
  */
 router.get('/health', audioController.healthCheck);
 
-export default router; 
+export default router;

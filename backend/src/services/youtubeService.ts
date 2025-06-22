@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import fetch from 'node-fetch';
+// import fetch from 'node-fetch'; // Currently unused
 import { YoutubeTranscript } from 'youtube-transcript';
 import cacheService from './cacheService';
 
@@ -41,11 +41,13 @@ export interface YouTubeProcessingResult {
 
 class YouTubeService {
   private apiKey: string;
-  
+
   constructor() {
     this.apiKey = process.env.YOUTUBE_API_KEY || '';
     if (!this.apiKey) {
-      console.warn('YouTube API key not configured. YouTube features will be limited.');
+      console.warn(
+        'YouTube API key not configured. YouTube features will be limited.'
+      );
     }
   }
 
@@ -135,7 +137,8 @@ class YouTubeService {
         videoId: videoId,
       });
 
-      const hasCaptions = captionsResponse.data.items && captionsResponse.data.items.length > 0;
+      const hasCaptions =
+        captionsResponse.data.items && captionsResponse.data.items.length > 0;
 
       const videoInfo: YouTubeVideoInfo = {
         videoId,
@@ -164,7 +167,10 @@ class YouTubeService {
         description: videoInfo.description,
         channelTitle: videoInfo.channelTitle,
         duration: videoInfo.duration,
-        thumbnailUrl: videoInfo.thumbnails.high || videoInfo.thumbnails.medium || videoInfo.thumbnails.default,
+        thumbnailUrl:
+          videoInfo.thumbnails.high ||
+          videoInfo.thumbnails.medium ||
+          videoInfo.thumbnails.default,
         publishedAt: videoInfo.publishedAt,
         viewCount: parseInt(videoInfo.viewCount) || 0,
         likeCount: 0, // Not available in this API call
@@ -173,7 +179,9 @@ class YouTubeService {
       return videoInfo;
     } catch (error) {
       console.error('Error fetching video info:', error);
-      throw new Error(`Failed to fetch video information: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to fetch video information: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -183,65 +191,92 @@ class YouTubeService {
   async getVideoTranscript(videoId: string): Promise<YouTubeTranscript[]> {
     try {
       console.log(`Fetching transcript for video: ${videoId}`);
-      
+
       // Use youtube-transcript library to get transcript
       const transcriptData = await YoutubeTranscript.fetchTranscript(videoId);
-      
-      console.log(`Raw transcript data received:`, typeof transcriptData, Array.isArray(transcriptData), transcriptData?.length);
-      
+
+      console.log(
+        `Raw transcript data received:`,
+        typeof transcriptData,
+        Array.isArray(transcriptData),
+        transcriptData?.length
+      );
+
       if (!transcriptData || transcriptData.length === 0) {
         console.warn(`No transcript found for video: ${videoId}`);
-        return [{
-          text: '[No transcript available for this video]',
-          start: 0,
-          duration: 0,
-        }];
+        return [
+          {
+            text: '[No transcript available for this video]',
+            start: 0,
+            duration: 0,
+          },
+        ];
       }
 
-      console.log(`Successfully fetched transcript with ${transcriptData.length} segments for video: ${videoId}`);
+      console.log(
+        `Successfully fetched transcript with ${transcriptData.length} segments for video: ${videoId}`
+      );
       console.log(`First transcript item:`, transcriptData[0]);
-      
+
       const mappedTranscript = transcriptData.map((item: any) => ({
         text: item.text || '',
         start: parseFloat(item.offset) || 0,
         duration: parseFloat(item.duration) || 0,
       }));
-      
+
       console.log(`Mapped transcript first item:`, mappedTranscript[0]);
       console.log(`Total mapped transcript segments:`, mappedTranscript.length);
-      
+
       return mappedTranscript;
     } catch (error) {
       console.error('Error fetching transcript (detailed):', error);
       console.error('Error type:', typeof error);
-      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error type');
-      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack available');
-      
+      console.error(
+        'Error message:',
+        error instanceof Error ? error.message : 'Unknown error type'
+      );
+      console.error(
+        'Error stack:',
+        error instanceof Error ? error.stack : 'No stack available'
+      );
+
       // Check if it's a specific error we can handle
       if (error instanceof Error) {
-        if (error.message.includes('disabled') || error.message.includes('unavailable')) {
-          return [{
-            text: '[Transcript is disabled or unavailable for this video]',
-            start: 0,
-            duration: 0,
-          }];
+        if (
+          error.message.includes('disabled') ||
+          error.message.includes('unavailable')
+        ) {
+          return [
+            {
+              text: '[Transcript is disabled or unavailable for this video]',
+              start: 0,
+              duration: 0,
+            },
+          ];
         }
-        
-        if (error.message.includes('private') || error.message.includes('restricted')) {
-          return [{
-            text: '[Video is private or restricted - transcript not accessible]',
-            start: 0,
-            duration: 0,
-          }];
+
+        if (
+          error.message.includes('private') ||
+          error.message.includes('restricted')
+        ) {
+          return [
+            {
+              text: '[Video is private or restricted - transcript not accessible]',
+              start: 0,
+              duration: 0,
+            },
+          ];
         }
       }
-      
+
       // Fallback: return error message
-      return [{
-        text: `[Transcript not available: ${error instanceof Error ? error.message : 'Unknown error'}]`,
-        start: 0,
-        duration: 0,
-      }];
+      return [
+        {
+          text: `[Transcript not available: ${error instanceof Error ? error.message : 'Unknown error'}]`,
+          start: 0,
+          duration: 0,
+        },
+      ];
     }
   }
 
@@ -250,32 +285,38 @@ class YouTubeService {
    */
   async processVideo(videoIdOrUrl: string): Promise<YouTubeProcessingResult> {
     const videoId = this.extractVideoId(videoIdOrUrl);
-    
+
     if (!videoId) {
       throw new Error('Invalid YouTube URL or video ID');
     }
 
     try {
       console.log(`Starting processVideo for: ${videoId}`);
-      
+
       // Fetch video info and transcript in parallel
       const [videoInfo, transcript] = await Promise.all([
         this.getVideoInfo(videoId),
         this.getVideoTranscript(videoId),
       ]);
 
-      console.log(`processVideo - Received transcript with ${transcript.length} segments`);
+      console.log(
+        `processVideo - Received transcript with ${transcript.length} segments`
+      );
       console.log(`processVideo - First transcript segment:`, transcript[0]);
 
       // Combine transcript into full text
       const fullTranscriptText = transcript
-        .map(item => item.text)
+        .map((item) => item.text)
         .join(' ')
         .replace(/\s+/g, ' ')
         .trim();
 
-      console.log(`processVideo - Combined transcript length: ${fullTranscriptText.length} characters`);
-      console.log(`processVideo - First 200 chars of combined transcript: "${fullTranscriptText.substring(0, 200)}"`);
+      console.log(
+        `processVideo - Combined transcript length: ${fullTranscriptText.length} characters`
+      );
+      console.log(
+        `processVideo - First 200 chars of combined transcript: "${fullTranscriptText.substring(0, 200)}"`
+      );
 
       const result = {
         videoInfo,
@@ -283,13 +324,17 @@ class YouTubeService {
         fullTranscriptText,
         processingTimestamp: new Date().toISOString(),
       };
-      
-      console.log(`processVideo completed - Result contains transcript of ${result.fullTranscriptText.length} chars`);
-      
+
+      console.log(
+        `processVideo completed - Result contains transcript of ${result.fullTranscriptText.length} chars`
+      );
+
       return result;
     } catch (error) {
       console.error('Error processing video:', error);
-      throw new Error(`Failed to process video: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to process video: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -322,7 +367,7 @@ class YouTubeService {
     hasTranscript?: boolean;
   }> {
     const videoId = this.extractVideoId(videoIdOrUrl);
-    
+
     if (!videoId) {
       return {
         isValid: false,
@@ -363,4 +408,4 @@ class YouTubeService {
   }
 }
 
-export const youtubeService = new YouTubeService(); 
+export const youtubeService = new YouTubeService();

@@ -2,8 +2,20 @@ export interface FlashcardGenerationOptions {
   contentType?: 'pdf' | 'youtube' | 'lecture_recording' | 'text';
   numberOfCards?: number;
   difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
-  focusArea?: 'concepts' | 'definitions' | 'examples' | 'applications' | 'facts' | 'general';
-  questionTypes?: ('definition' | 'concept' | 'example' | 'application' | 'factual')[];
+  focusArea?:
+    | 'concepts'
+    | 'definitions'
+    | 'examples'
+    | 'applications'
+    | 'facts'
+    | 'general';
+  questionTypes?: (
+    | 'definition'
+    | 'concept'
+    | 'example'
+    | 'application'
+    | 'factual'
+  )[];
   maxTokens?: number;
   temperature?: number;
 }
@@ -67,4 +79,4 @@ export interface FlashcardValidationResult {
   isValid: boolean;
   errors: string[];
   warnings: string[];
-} 
+}

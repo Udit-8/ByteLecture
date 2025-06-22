@@ -1,14 +1,13 @@
 import { supabase, supabaseAdmin } from '../config/supabase';
 import { OpenAIService } from './openAIService';
-import { 
-  ChatSession, 
-  ChatMessage, 
-  ContentEmbedding, 
+import {
+  ChatSession,
+  ChatMessage,
+  ContentEmbedding,
   ContextSource,
   SimilaritySearchResult,
   ChatPromptContext,
   CHAT_CONFIG,
-  ChatUsage,
 } from '../types/chat';
 import { createClient } from '@supabase/supabase-js';
 
@@ -34,17 +33,17 @@ export class ChatService {
 
     const supabaseUrl = process.env.SUPABASE_URL!;
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!;
-    
+
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: {
-          Authorization: `Bearer ${userToken}`
-        }
+          Authorization: `Bearer ${userToken}`,
+        },
       },
       auth: {
         autoRefreshToken: false,
-        persistSession: false
-      }
+        persistSession: false,
+      },
     });
 
     return userClient;
@@ -54,15 +53,15 @@ export class ChatService {
    * Create a new chat session
    */
   async createSession(
-    userId: string, 
-    title?: string, 
+    userId: string,
+    title?: string,
     contextContentIds: string[] = [],
     userToken?: string
   ): Promise<ChatSession> {
     console.log('💬 ChatService: Creating session for user:', userId);
     console.log('💬 ChatService: Token provided:', !!userToken);
     console.log('💬 ChatService: Context content IDs:', contextContentIds);
-    
+
     // Use service role key to bypass RLS temporarily for insert
     const { data, error } = await supabaseAdmin
       .from('chat_sessions')
@@ -80,7 +79,7 @@ export class ChatService {
         message: error.message,
         details: error.details,
         hint: error.hint,
-        code: error.code
+        code: error.code,
       });
       throw new Error('Failed to create chat session');
     }
@@ -165,8 +164,10 @@ export class ChatService {
     contentItemId: string,
     forceRegenerate = false
   ): Promise<number> {
-    console.log('🔍 Generating embeddings for content item:', contentItemId, { forceRegenerate });
-    
+    console.log('🔍 Generating embeddings for content item:', contentItemId, {
+      forceRegenerate,
+    });
+
     // Check if embeddings already exist
     if (!forceRegenerate) {
       const { count } = await supabaseAdmin
@@ -192,15 +193,15 @@ export class ChatService {
       throw new Error('Content item not found');
     }
 
-    console.log('📄 Content item found:', { 
-      id: contentItem.id, 
+    console.log('📄 Content item found:', {
+      id: contentItem.id,
       title: contentItem.title,
-      type: contentItem.content_type 
+      type: contentItem.content_type,
     });
 
     // Get the full content text (same logic as getFullProcessedContent)
     let fullText = '';
-    
+
     if (contentItem.content_type === 'pdf') {
       // For PDFs, get processed text from processed_documents table
       const { data: pdfData, error: pdfError } = await supabaseAdmin
@@ -230,9 +231,14 @@ export class ChatService {
 
       if (!youtubeError && youtubeData) {
         fullText = youtubeData.transcript || '';
-        console.log('🎥 Retrieved YouTube transcript, length:', fullText.length);
+        console.log(
+          '🎥 Retrieved YouTube transcript, length:',
+          fullText.length
+        );
       } else {
-        console.warn('⚠️ No processed YouTube data found, falling back to summary');
+        console.warn(
+          '⚠️ No processed YouTube data found, falling back to summary'
+        );
         fullText = contentItem.summary || '';
       }
     } else if (contentItem.content_type === 'lecture_recording') {
@@ -265,7 +271,7 @@ export class ChatService {
     console.log('✂️ Splitting text into chunks...');
     const chunks = this.splitTextIntoChunks(fullText, 500);
     console.log(`📋 Generated ${chunks.length} chunks for processing`);
-    
+
     // Clear existing embeddings if regenerating
     if (forceRegenerate) {
       console.log('🧹 Clearing existing embeddings...');
@@ -277,16 +283,20 @@ export class ChatService {
 
     // Generate embeddings for each chunk
     const embeddings: ContentEmbedding[] = [];
-    
+
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
-      console.log(`🔄 Processing chunk ${i + 1}/${chunks.length} (length: ${chunk.text.length})`);
-      
+      console.log(
+        `🔄 Processing chunk ${i + 1}/${chunks.length} (length: ${chunk.text.length})`
+      );
+
       try {
         // Generate embedding using OpenAI
         console.log(`🧠 Generating embedding for chunk ${i + 1}...`);
-        const embedding = await this.openAIService.generateEmbedding(chunk.text);
-        
+        const embedding = await this.openAIService.generateEmbedding(
+          chunk.text
+        );
+
         const { data, error } = await supabaseAdmin
           .from('content_embeddings')
           .insert({
@@ -317,7 +327,9 @@ export class ChatService {
       }
     }
 
-    console.log(`🎉 Embedding generation complete! Generated ${embeddings.length} embeddings`);
+    console.log(
+      `🎉 Embedding generation complete! Generated ${embeddings.length} embeddings`
+    );
     return embeddings.length;
   }
 
@@ -331,12 +343,11 @@ export class ChatService {
     limit = CHAT_CONFIG.MAX_CONTEXT_SOURCES
   ): Promise<SimilaritySearchResult[]> {
     // Generate embedding for the user query
-    const queryEmbedding = await this.openAIService.generateEmbedding(userQuery);
+    const queryEmbedding =
+      await this.openAIService.generateEmbedding(userQuery);
 
     // Build the query with proper filters
-    let query = supabaseAdmin
-      .from('content_embeddings')
-      .select(`
+    let query = supabaseAdmin.from('content_embeddings').select(`
         *,
         content_items!inner(id, title, content_type, user_id)
       `);
@@ -365,8 +376,13 @@ export class ChatService {
       .map((embedding: any) => {
         // Debug the embedding format
         console.log('🔍 Query embedding length:', queryEmbedding.length);
-        console.log('🔍 Stored embedding type:', typeof embedding.embedding, 'length:', embedding.embedding?.length);
-        
+        console.log(
+          '🔍 Stored embedding type:',
+          typeof embedding.embedding,
+          'length:',
+          embedding.embedding?.length
+        );
+
         // Convert PostgreSQL vector to JavaScript array if needed
         let storedEmbedding = embedding.embedding;
         if (typeof storedEmbedding === 'string') {
@@ -394,7 +410,9 @@ export class ChatService {
           },
         };
       })
-      .filter(result => result.similarity_score >= CHAT_CONFIG.SIMILARITY_THRESHOLD)
+      .filter(
+        (result) => result.similarity_score >= CHAT_CONFIG.SIMILARITY_THRESHOLD
+      )
       .sort((a, b) => b.similarity_score - a.similarity_score)
       .slice(0, limit);
 
@@ -412,21 +430,34 @@ export class ChatService {
   ): Promise<{
     userMessage: ChatMessage;
     assistantMessage: ChatMessage;
-    usageInfo: { remaining_questions: number; daily_limit: number; current_usage: number };
+    usageInfo: {
+      remaining_questions: number;
+      daily_limit: number;
+      current_usage: number;
+    };
   }> {
-    console.log('💬 ChatService: sendMessage called:', { sessionId, userId, messageLength: userMessage.length });
-    
+    console.log('💬 ChatService: sendMessage called:', {
+      sessionId,
+      userId,
+      messageLength: userMessage.length,
+    });
+
     // Check usage limits
     console.log('💬 Checking usage limits...');
     const { canProceed, usage } = await this.checkUsageLimit(userId);
     console.log('💬 Usage check result:', { canProceed, usage });
-    
+
     if (!canProceed) {
-      throw new Error('Daily chat limit exceeded. Please upgrade your plan or try again tomorrow.');
+      throw new Error(
+        'Daily chat limit exceeded. Please upgrade your plan or try again tomorrow.'
+      );
     }
 
     // Verify session belongs to user
-    console.log('💬 ChatService: Verifying session access:', { sessionId, userId });
+    console.log('💬 ChatService: Verifying session access:', {
+      sessionId,
+      userId,
+    });
     const { data: session, error: sessionError } = await supabaseAdmin
       .from('chat_sessions')
       .select('*')
@@ -440,7 +471,10 @@ export class ChatService {
     }
 
     if (!session) {
-      console.error('❌ Session not found or unauthorized:', { sessionId, userId });
+      console.error('❌ Session not found or unauthorized:', {
+        sessionId,
+        userId,
+      });
       throw new Error('Chat session not found or unauthorized');
     }
 
@@ -495,10 +529,13 @@ export class ChatService {
       // Generate AI response
       console.log('💬 Generating AI response...');
       const aiResponse = await this.generateAIResponse(promptContext);
-      console.log('✅ AI response generated, length:', aiResponse.content.length);
+      console.log(
+        '✅ AI response generated, length:',
+        aiResponse.content.length
+      );
 
       // Store assistant message
-      const contextSources: ContextSource[] = similarContent.map(result => ({
+      const contextSources: ContextSource[] = similarContent.map((result) => ({
         content_item_id: result.content_item.id,
         content_title: result.content_item.title,
         section_title: result.content_embedding.section_title || undefined,
@@ -506,17 +543,18 @@ export class ChatService {
         relevance_score: result.similarity_score,
       }));
 
-      const { data: assistantMsg, error: assistantMsgError } = await supabaseAdmin
-        .from('chat_messages')
-        .insert({
-          session_id: sessionId,
-          role: 'assistant',
-          content: aiResponse.content,
-          context_sources: contextSources,
-          token_usage: aiResponse.token_usage,
-        })
-        .select()
-        .single();
+      const { data: assistantMsg, error: assistantMsgError } =
+        await supabaseAdmin
+          .from('chat_messages')
+          .insert({
+            session_id: sessionId,
+            role: 'assistant',
+            content: aiResponse.content,
+            context_sources: contextSources,
+            token_usage: aiResponse.token_usage,
+          })
+          .select()
+          .single();
 
       if (assistantMsgError) {
         throw new Error('Failed to store assistant message');
@@ -542,16 +580,19 @@ export class ChatService {
       };
     } catch (error) {
       console.error('Error generating AI response:', error);
-      
+
       // Store error message
       const { data: errorMsg } = await supabaseAdmin
         .from('chat_messages')
         .insert({
           session_id: sessionId,
           role: 'assistant',
-          content: 'I apologize, but I encountered an error while processing your question. Please try again.',
+          content:
+            'I apologize, but I encountered an error while processing your question. Please try again.',
           context_sources: [],
-          error_info: { error: error instanceof Error ? error.message : 'Unknown error' },
+          error_info: {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
         })
         .select()
         .single();
@@ -569,7 +610,11 @@ export class ChatService {
    */
   async checkUsageLimit(userId: string): Promise<{
     canProceed: boolean;
-    usage: { remaining_questions: number; daily_limit: number; current_usage: number };
+    usage: {
+      remaining_questions: number;
+      daily_limit: number;
+      current_usage: number;
+    };
   }> {
     // Get user's plan type
     const { data: user } = await supabase
@@ -579,13 +624,15 @@ export class ChatService {
       .single();
 
     const planType = user?.plan_type || 'free';
-    const dailyLimit = planType === 'free' 
-      ? CHAT_CONFIG.FREE_TIER_DAILY_LIMIT 
-      : CHAT_CONFIG.PREMIUM_TIER_DAILY_LIMIT;
+    const dailyLimit =
+      planType === 'free'
+        ? CHAT_CONFIG.FREE_TIER_DAILY_LIMIT
+        : CHAT_CONFIG.PREMIUM_TIER_DAILY_LIMIT;
 
     // Get current usage
-    const { data: usage } = await supabase
-      .rpc('get_chat_usage', { p_user_id: userId });
+    const { data: usage } = await supabase.rpc('get_chat_usage', {
+      p_user_id: userId,
+    });
 
     const currentUsage = usage || 0;
     const remaining = Math.max(0, dailyLimit - currentUsage);
@@ -619,7 +666,7 @@ export class ChatService {
 
     const response = await this.openAIService.generateChatCompletion([
       { role: 'system', content: systemPrompt },
-      ...context.conversation_history.slice(-6).map(msg => ({
+      ...context.conversation_history.slice(-6).map((msg) => ({
         role: msg.role as 'user' | 'assistant',
         content: msg.content,
       })),
@@ -655,7 +702,7 @@ export class ChatService {
         }
         prompt += `   Content: ${content.content_embedding.section_text.substring(0, 500)}...\n`;
       });
-      
+
       prompt += `\nPlease base your response primarily on this context. If you reference specific information, you can mention which source it comes from.`;
     } else {
       prompt += `\nNo relevant content found in the user's materials for this question. Let them know that you can help them better if they have relevant content uploaded, or provide general educational guidance if appropriate.`;
@@ -667,7 +714,10 @@ export class ChatService {
   /**
    * Split text into manageable chunks for embedding
    */
-  private splitTextIntoChunks(text: string, wordsPerChunk = 500): Array<{
+  private splitTextIntoChunks(
+    text: string,
+    wordsPerChunk = 500
+  ): Array<{
     text: string;
     title?: string;
   }> {
@@ -677,10 +727,11 @@ export class ChatService {
     for (let i = 0; i < words.length; i += wordsPerChunk) {
       const chunkWords = words.slice(i, i + wordsPerChunk);
       const chunkText = chunkWords.join(' ');
-      
+
       // Try to extract a title from the first line or sentence
       const firstSentence = chunkText.split(/[.!?]/)[0];
-      const title = firstSentence.length > 100 ? undefined : firstSentence.trim();
+      const title =
+        firstSentence.length > 100 ? undefined : firstSentence.trim();
 
       chunks.push({
         text: chunkText,
@@ -694,7 +745,10 @@ export class ChatService {
   /**
    * Calculate cosine similarity between two vectors
    */
-  private calculateCosineSimilarity(vectorA: number[], vectorB: number[]): number {
+  private calculateCosineSimilarity(
+    vectorA: number[],
+    vectorB: number[]
+  ): number {
     if (vectorA.length !== vectorB.length) {
       throw new Error('Vectors must have the same length');
     }
@@ -748,7 +802,11 @@ export class ChatService {
   /**
    * Update session title
    */
-  async updateSessionTitle(sessionId: string, userId: string, title: string): Promise<void> {
+  async updateSessionTitle(
+    sessionId: string,
+    userId: string,
+    title: string
+  ): Promise<void> {
     if (title.length > CHAT_CONFIG.MAX_SESSION_TITLE_LENGTH) {
       throw new Error('Session title too long');
     }
@@ -765,4 +823,4 @@ export class ChatService {
   }
 }
 
-export const chatService = new ChatService(); 
+export const chatService = new ChatService();

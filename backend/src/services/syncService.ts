@@ -2,8 +2,6 @@ import { supabaseAdmin } from '../config/supabase';
 import { paymentService } from './paymentService';
 import {
   SyncDevice,
-  SyncMetadata,
-  SyncChangeLog,
   SyncConflict,
   RegisterDeviceRequest,
   SyncChangesRequest,
@@ -18,8 +16,6 @@ import {
   SYNCABLE_TABLES,
   SyncChange,
   SyncError,
-  DeviceType,
-  SyncStatus,
 } from '../types/sync';
 
 class SyncService {
@@ -65,7 +61,6 @@ class SyncService {
 
       console.log('✅ Device registered successfully:', device.id);
       return device;
-
     } catch (error) {
       console.error('❌ Error in registerDevice:', error);
       throw error;
@@ -97,7 +92,6 @@ class SyncService {
         max_devices: limits.max_devices,
         is_premium: userPlan === 'premium',
       };
-
     } catch (error) {
       console.error('❌ Error in getUserDevices:', error);
       throw error;
@@ -118,7 +112,6 @@ class SyncService {
         console.error('Error updating device last sync:', error);
         throw new Error('Failed to update device sync timestamp');
       }
-
     } catch (error) {
       console.error('❌ Error in updateDeviceLastSync:', error);
       throw error;
@@ -142,7 +135,6 @@ class SyncService {
       }
 
       console.log('✅ Device deactivated:', deviceId);
-
     } catch (error) {
       console.error('❌ Error in deactivateDevice:', error);
       throw error;
@@ -163,12 +155,16 @@ class SyncService {
       await this.validateDeviceAccess(userId, request.device_id);
 
       // Get changes using the database function
-      const { data: changes, error } = await supabaseAdmin
-        .rpc('get_sync_changes_since', {
+      const { data: changes, error } = await supabaseAdmin.rpc(
+        'get_sync_changes_since',
+        {
           since_timestamp: request.since_timestamp,
           target_user_id: userId,
-          target_table: request.table_names ? request.table_names.join(',') : null,
-        });
+          target_table: request.table_names
+            ? request.table_names.join(',')
+            : null,
+        }
+      );
 
       if (error) {
         console.error('Error getting sync changes:', error);
@@ -186,7 +182,6 @@ class SyncService {
         latest_timestamp: new Date().toISOString(),
         has_more: false, // TODO: Implement pagination
       };
-
     } catch (error) {
       console.error('❌ Error in getSyncChangesSince:', error);
       throw error;
@@ -220,20 +215,20 @@ class SyncService {
       for (const change of request.changes) {
         try {
           const result = await this.applyIndividualChange(userId, change);
-          
+
           if (result.conflict) {
             conflicts.push(result.conflict);
           } else if (result.applied) {
             applied.push(change.record_id);
           }
-
         } catch (error) {
           console.error('Error applying change:', error);
           errors.push({
             table_name: change.table_name,
             record_id: change.record_id,
             error_type: 'application_error',
-            error_message: error instanceof Error ? error.message : 'Unknown error',
+            error_message:
+              error instanceof Error ? error.message : 'Unknown error',
             retryable: true,
           });
         }
@@ -244,14 +239,20 @@ class SyncService {
         await this.markChangesAsSynced(applied);
       }
 
-      console.log('✅ Applied changes:', applied.length, 'Conflicts:', conflicts.length, 'Errors:', errors.length);
+      console.log(
+        '✅ Applied changes:',
+        applied.length,
+        'Conflicts:',
+        conflicts.length,
+        'Errors:',
+        errors.length
+      );
 
       return {
         applied_count: applied.length,
         conflicts,
         errors,
       };
-
     } catch (error) {
       console.error('❌ Error in applySyncChanges:', error);
       throw error;
@@ -282,7 +283,7 @@ class SyncService {
 
       // Apply resolution based on strategy
       let resolvedData = request.resolved_data;
-      
+
       if (!resolvedData) {
         resolvedData = this.applyResolutionStrategy(
           conflict.local_data,
@@ -315,7 +316,6 @@ class SyncService {
       }
 
       console.log('✅ Conflict resolved:', request.conflict_id);
-
     } catch (error) {
       console.error('❌ Error in resolveConflict:', error);
       throw error;
@@ -350,8 +350,10 @@ class SyncService {
 
       // Calculate stats
       const totalRecords = metadata?.length || 0;
-      const syncedRecords = metadata?.filter(m => m.sync_status === 'synced').length || 0;
-      const pendingRecords = metadata?.filter(m => m.sync_status === 'pending').length || 0;
+      const syncedRecords =
+        metadata?.filter((m) => m.sync_status === 'synced').length || 0;
+      const pendingRecords =
+        metadata?.filter((m) => m.sync_status === 'pending').length || 0;
       const conflictRecords = conflicts?.length || 0;
 
       // Get last sync time
@@ -369,9 +371,9 @@ class SyncService {
         total_pending: pendingRecords,
         total_conflicts: conflictRecords,
         last_sync: lastSync?.last_sync || new Date().toISOString(),
-        sync_success_rate: totalRecords > 0 ? (syncedRecords / totalRecords) * 100 : 100,
+        sync_success_rate:
+          totalRecords > 0 ? (syncedRecords / totalRecords) * 100 : 100,
       };
-
     } catch (error) {
       console.error('❌ Error in getSyncStats:', error);
       throw error;
@@ -384,10 +386,10 @@ class SyncService {
   async getSyncHealth(userId: string): Promise<SyncHealth> {
     try {
       const stats = await this.getSyncStats(userId);
-      
+
       // Determine health status
       let status: 'healthy' | 'degraded' | 'error' = 'healthy';
-      
+
       if (stats.total_conflicts > 10) {
         status = 'error';
       } else if (stats.sync_success_rate < 90 || stats.total_pending > 50) {
@@ -401,7 +403,6 @@ class SyncService {
         error_count: stats.total_conflicts,
         average_sync_time_ms: 1000, // TODO: Calculate actual average
       };
-
     } catch (error) {
       console.error('❌ Error in getSyncHealth:', error);
       throw error;
@@ -412,8 +413,12 @@ class SyncService {
 
   private async getUserPlan(userId: string): Promise<string> {
     try {
-      const subscription = await paymentService.getSubscriptionStatus(userId);
-      return subscription.plan_type || 'free';
+      const subscription =
+        await paymentService.getUserSubscriptionStatus(userId);
+      if (subscription && subscription.isActive) {
+        return 'premium';
+      }
+      return 'free';
     } catch (error) {
       console.error('Error getting user plan:', error);
       return 'free';
@@ -435,7 +440,10 @@ class SyncService {
     return count || 0;
   }
 
-  private async validateDeviceAccess(userId: string, deviceId: string): Promise<void> {
+  private async validateDeviceAccess(
+    userId: string,
+    deviceId: string
+  ): Promise<void> {
     const { data: device, error } = await supabaseAdmin
       .from('sync_devices')
       .select('user_id, is_active')
@@ -456,7 +464,7 @@ class SyncService {
     ];
 
     return changes
-      .filter(change => priorityOrder.includes(change.table_name))
+      .filter((change) => priorityOrder.includes(change.table_name))
       .sort((a, b) => {
         const aPriority = priorityOrder.indexOf(a.table_name);
         const bPriority = priorityOrder.indexOf(b.table_name);
@@ -469,11 +477,18 @@ class SyncService {
     change: SyncChange
   ): Promise<{ applied: boolean; conflict?: SyncConflict }> {
     // Check for conflicts
-    const existingRecord = await this.getExistingRecord(change.table_name, change.record_id);
-    
+    const existingRecord = await this.getExistingRecord(
+      change.table_name,
+      change.record_id
+    );
+
     if (existingRecord && this.hasConflict(existingRecord, change)) {
       // Create conflict record
-      const conflict = await this.createConflict(userId, change, existingRecord);
+      const conflict = await this.createConflict(
+        userId,
+        change,
+        existingRecord
+      );
       return { applied: false, conflict };
     }
 
@@ -482,14 +497,18 @@ class SyncService {
     return { applied: true };
   }
 
-  private async getExistingRecord(tableName: string, recordId: string): Promise<any> {
+  private async getExistingRecord(
+    tableName: string,
+    recordId: string
+  ): Promise<any> {
     const { data, error } = await supabaseAdmin
       .from(tableName)
       .select('*')
       .eq('id', recordId)
       .single();
 
-    if (error && error.code !== 'PGRST116') { // Not found is OK
+    if (error && error.code !== 'PGRST116') {
+      // Not found is OK
       throw error;
     }
 
@@ -556,16 +575,18 @@ class SyncService {
     strategy: string
   ): any {
     switch (strategy) {
-      case 'last_write_wins':
+      case 'last_write_wins': {
         // Use the data with the latest timestamp
         const localTime = new Date(localData.updated_at || 0);
         const remoteTime = new Date(remoteData.updated_at || 0);
         return remoteTime > localTime ? remoteData : localData;
-        
-      case 'merge':
+      }
+
+      case 'merge': {
         // Simple merge strategy - combine non-conflicting fields
         return { ...localData, ...remoteData };
-        
+      }
+
       default:
         return remoteData; // Default to remote data
     }
@@ -576,10 +597,7 @@ class SyncService {
     recordId: string,
     resolvedData: any
   ): Promise<void> {
-    await supabaseAdmin
-      .from(tableName)
-      .update(resolvedData)
-      .eq('id', recordId);
+    await supabaseAdmin.from(tableName).update(resolvedData).eq('id', recordId);
   }
 
   private async markChangesAsSynced(changeIds: string[]): Promise<void> {
@@ -589,4 +607,4 @@ class SyncService {
   }
 }
 
-export const syncService = new SyncService(); 
+export const syncService = new SyncService();

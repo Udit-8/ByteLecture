@@ -66,13 +66,17 @@ class PaymentService {
   /**
    * Validate receipt based on platform
    */
-  async validateReceipt(request: ReceiptValidationRequest): Promise<ReceiptValidationResponse> {
+  async validateReceipt(
+    request: ReceiptValidationRequest
+  ): Promise<ReceiptValidationResponse> {
     try {
       if (!this.isInitialized) {
         await this.initialize();
       }
 
-      console.log(`[PaymentService] Validating ${request.platform} receipt for user ${request.userId}`);
+      console.log(
+        `[PaymentService] Validating ${request.platform} receipt for user ${request.userId}`
+      );
 
       let subscriptionInfo: SubscriptionInfo;
 
@@ -94,9 +98,10 @@ class PaymentService {
       };
     } catch (error) {
       console.error('[PaymentService] Receipt validation failed:', error);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
+
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
+
       // Store the failed validation
       await this.storeReceiptValidation(request, null, 'invalid', errorMessage);
 
@@ -117,7 +122,9 @@ class PaymentService {
   /**
    * Validate Apple App Store receipt
    */
-  private async validateAppleReceipt(request: ReceiptValidationRequest): Promise<SubscriptionInfo> {
+  private async validateAppleReceipt(
+    request: ReceiptValidationRequest
+  ): Promise<SubscriptionInfo> {
     const appleReceiptData = {
       'receipt-data': request.receipt,
       password: process.env.APPLE_SHARED_SECRET, // Your app's shared secret
@@ -125,7 +132,7 @@ class PaymentService {
 
     // Try production first, then sandbox
     let response = await this.callAppleReceiptAPI(appleReceiptData, false);
-    
+
     if (response.status === 21007) {
       // Receipt is from sandbox environment
       response = await this.callAppleReceiptAPI(appleReceiptData, true);
@@ -156,8 +163,12 @@ class PaymentService {
       trialExpiryDate: isInTrial ? expiryDate.toISOString() : undefined,
       autoRenewing,
       platform: 'ios',
-      originalPurchaseDate: new Date(parseInt(latestReceiptInfo.original_purchase_date_ms)).toISOString(),
-      purchaseDate: new Date(parseInt(latestReceiptInfo.purchase_date_ms)).toISOString(),
+      originalPurchaseDate: new Date(
+        parseInt(latestReceiptInfo.original_purchase_date_ms)
+      ).toISOString(),
+      purchaseDate: new Date(
+        parseInt(latestReceiptInfo.purchase_date_ms)
+      ).toISOString(),
       transactionId: latestReceiptInfo.transaction_id,
       originalTransactionId: latestReceiptInfo.original_transaction_id,
     };
@@ -166,7 +177,10 @@ class PaymentService {
   /**
    * Call Apple Receipt Validation API
    */
-  private async callAppleReceiptAPI(receiptData: any, sandbox: boolean): Promise<any> {
+  private async callAppleReceiptAPI(
+    receiptData: any,
+    sandbox: boolean
+  ): Promise<any> {
     const url = sandbox
       ? 'https://sandbox.itunes.apple.com/verifyReceipt'
       : 'https://buy.itunes.apple.com/verifyReceipt';
@@ -185,10 +199,13 @@ class PaymentService {
   /**
    * Validate Google Play receipt
    */
-  private async validateGoogleReceipt(request: ReceiptValidationRequest): Promise<SubscriptionInfo> {
+  private async validateGoogleReceipt(
+    request: ReceiptValidationRequest
+  ): Promise<SubscriptionInfo> {
     try {
-      const packageName = process.env.ANDROID_PACKAGE_NAME || 'com.bytelecture.app';
-      
+      const packageName =
+        process.env.ANDROID_PACKAGE_NAME || 'com.bytelecture.app';
+
       // For subscriptions, use the subscriptions API
       const result = await this.androidPublisher.purchases.subscriptions.get({
         packageName,
@@ -197,13 +214,16 @@ class PaymentService {
       });
 
       const subscription = result.data;
-      
+
       if (!subscription) {
         throw new Error('No subscription data returned from Google Play');
       }
 
-      const expiryDate = new Date(parseInt(subscription.expiryTimeMillis || '0'));
-      const isActive = expiryDate > new Date() && subscription.paymentState === 1;
+      const expiryDate = new Date(
+        parseInt(subscription.expiryTimeMillis || '0')
+      );
+      const isActive =
+        expiryDate > new Date() && subscription.paymentState === 1;
       const autoRenewing = subscription.autoRenewing === true;
 
       // Check if it's a trial period
@@ -221,11 +241,13 @@ class PaymentService {
         originalPurchaseDate: startDate.toISOString(),
         purchaseDate: startDate.toISOString(),
         transactionId: request.transactionId,
-        originalTransactionId: subscription.linkedPurchaseToken || request.transactionId,
+        originalTransactionId:
+          subscription.linkedPurchaseToken || request.transactionId,
       };
     } catch (error) {
       console.error('[PaymentService] Google Play validation error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
       throw new Error(`Google Play receipt validation failed: ${errorMessage}`);
     }
   }
@@ -254,21 +276,31 @@ class PaymentService {
             error,
             validatedAt: new Date().toISOString(),
           },
-          purchase_token: request.platform === 'android' ? request.receipt : null,
+          purchase_token:
+            request.platform === 'android' ? request.receipt : null,
         });
 
       if (dbError) {
-        console.error('[PaymentService] Failed to store receipt validation:', dbError);
+        console.error(
+          '[PaymentService] Failed to store receipt validation:',
+          dbError
+        );
       }
     } catch (error) {
-      console.error('[PaymentService] Error storing receipt validation:', error);
+      console.error(
+        '[PaymentService] Error storing receipt validation:',
+        error
+      );
     }
   }
 
   /**
    * Update user subscription status
    */
-  private async updateUserSubscription(userId: string, subscriptionInfo: SubscriptionInfo): Promise<void> {
+  private async updateUserSubscription(
+    userId: string,
+    subscriptionInfo: SubscriptionInfo
+  ): Promise<void> {
     try {
       // Check if subscription already exists
       const { data: existingSubscription } = await supabase
@@ -283,9 +315,14 @@ class PaymentService {
         user_id: userId,
         platform: subscriptionInfo.platform,
         product_id: subscriptionInfo.productId,
-        subscription_type: subscriptionInfo.productId.includes('monthly') ? 'monthly' : 'yearly',
-        status: subscriptionInfo.isActive ? 
-          (subscriptionInfo.isInTrial ? 'trial' : 'active') : 'expired',
+        subscription_type: subscriptionInfo.productId.includes('monthly')
+          ? 'monthly'
+          : 'yearly',
+        status: subscriptionInfo.isActive
+          ? subscriptionInfo.isInTrial
+            ? 'trial'
+            : 'active'
+          : 'expired',
         purchase_date: subscriptionInfo.purchaseDate,
         expiry_date: subscriptionInfo.expiryDate,
         trial_end_date: subscriptionInfo.trialExpiryDate,
@@ -312,7 +349,10 @@ class PaymentService {
       }
 
       if (dbError) {
-        console.error('[PaymentService] Failed to update user subscription:', dbError);
+        console.error(
+          '[PaymentService] Failed to update user subscription:',
+          dbError
+        );
         throw new Error('Failed to update subscription status');
       }
 
@@ -322,9 +362,11 @@ class PaymentService {
         existingSubscription ? 'subscription_updated' : 'subscription_created',
         { subscriptionInfo, userId }
       );
-
     } catch (error) {
-      console.error('[PaymentService] Error updating user subscription:', error);
+      console.error(
+        '[PaymentService] Error updating user subscription:',
+        error
+      );
       throw error;
     }
   }
@@ -338,26 +380,29 @@ class PaymentService {
     eventData: any
   ): Promise<void> {
     try {
-      await supabase
-        .from('subscription_events')
-        .insert({
-          subscription_id: subscriptionId,
-          event_type: eventType,
-          event_data: eventData,
-          platform_data: {
-            timestamp: new Date().toISOString(),
-            source: 'payment_service',
-          },
-        });
+      await supabase.from('subscription_events').insert({
+        subscription_id: subscriptionId,
+        event_type: eventType,
+        event_data: eventData,
+        platform_data: {
+          timestamp: new Date().toISOString(),
+          source: 'payment_service',
+        },
+      });
     } catch (error) {
-      console.error('[PaymentService] Failed to log subscription event:', error);
+      console.error(
+        '[PaymentService] Failed to log subscription event:',
+        error
+      );
     }
   }
 
   /**
    * Get user's current subscription status
    */
-  async getUserSubscriptionStatus(userId: string): Promise<SubscriptionInfo | null> {
+  async getUserSubscriptionStatus(
+    userId: string
+  ): Promise<SubscriptionInfo | null> {
     try {
       const { data: subscription, error } = await supabase
         .from('user_subscriptions')
@@ -380,7 +425,7 @@ class PaymentService {
           .from('user_subscriptions')
           .update({ status: 'expired' })
           .eq('id', subscription.id);
-        
+
         return null;
       }
 
@@ -398,7 +443,10 @@ class PaymentService {
         originalTransactionId: subscription.original_transaction_id,
       };
     } catch (error) {
-      console.error('[PaymentService] Error getting user subscription status:', error);
+      console.error(
+        '[PaymentService] Error getting user subscription status:',
+        error
+      );
       return null;
     }
   }
@@ -406,11 +454,14 @@ class PaymentService {
   /**
    * Cancel subscription
    */
-  async cancelSubscription(userId: string, subscriptionId: string): Promise<boolean> {
+  async cancelSubscription(
+    userId: string,
+    subscriptionId: string
+  ): Promise<boolean> {
     try {
       const { error } = await supabase
         .from('user_subscriptions')
-        .update({ 
+        .update({
           status: 'cancelled',
           auto_renewing: false,
           updated_at: new Date().toISOString(),
@@ -423,7 +474,11 @@ class PaymentService {
         return false;
       }
 
-      await this.logSubscriptionEvent(subscriptionId, 'subscription_cancelled', { userId });
+      await this.logSubscriptionEvent(
+        subscriptionId,
+        'subscription_cancelled',
+        { userId }
+      );
       return true;
     } catch (error) {
       console.error('[PaymentService] Error cancelling subscription:', error);
@@ -434,4 +489,4 @@ class PaymentService {
 
 // Export singleton instance
 export const paymentService = new PaymentService();
-export default paymentService; 
+export default paymentService;

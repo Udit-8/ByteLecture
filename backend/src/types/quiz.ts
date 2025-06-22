@@ -3,7 +3,13 @@
 export interface QuizGenerationOptions {
   numberOfQuestions?: number;
   difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
-  focusArea?: 'concepts' | 'applications' | 'analysis' | 'recall' | 'synthesis' | 'general';
+  focusArea?:
+    | 'concepts'
+    | 'applications'
+    | 'analysis'
+    | 'recall'
+    | 'synthesis'
+    | 'general';
   questionTypes?: ('multiple_choice' | 'true_false' | 'fill_blank')[];
   contentType?: 'pdf' | 'youtube' | 'lecture_recording' | 'text';
   maxTokens?: number;
@@ -202,7 +208,11 @@ export interface SubmitQuizAttemptResponse {
     totalQuestions: number;
     percentage: number;
     timeSpent: number;
-    answers: { questionId: string; selectedAnswer: number; isCorrect: boolean }[];
+    answers: {
+      questionId: string;
+      selectedAnswer: number;
+      isCorrect: boolean;
+    }[];
     completedAt: Date;
   };
   error?: string;
@@ -255,4 +265,4 @@ export interface QuestionStats {
     answer: number;
     count: number;
   }[];
-} 
+}

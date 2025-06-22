@@ -20,16 +20,19 @@ export class ContentController {
   /**
    * Get all content items for the authenticated user
    */
-  public async getUserContentItems(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getUserContentItems(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const userId = req.user!.id;
-      const { 
-        limit = 20, 
-        offset = 0, 
+      const {
+        limit = 20,
+        offset = 0,
         contentType,
         processed,
         sortBy = 'created_at',
-        sortOrder = 'desc' 
+        sortOrder = 'desc',
       } = req.query;
 
       let query = this.supabase
@@ -62,21 +65,22 @@ export class ContentController {
         return;
       }
 
-      const contentItems = data?.map(item => ({
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        contentType: item.content_type,
-        fileUrl: item.file_url,
-        youtubeUrl: item.youtube_url,
-        youtubeVideoId: item.youtube_video_id,
-        fileSize: item.file_size,
-        duration: item.duration,
-        processed: item.processed,
-        summary: item.summary ? item.summary.substring(0, 200) + '...' : null, // Truncated summary
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-      })) || [];
+      const contentItems =
+        data?.map((item) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          contentType: item.content_type,
+          fileUrl: item.file_url,
+          youtubeUrl: item.youtube_url,
+          youtubeVideoId: item.youtube_video_id,
+          fileSize: item.file_size,
+          duration: item.duration,
+          processed: item.processed,
+          summary: item.summary ? item.summary.substring(0, 200) + '...' : null, // Truncated summary
+          createdAt: item.created_at,
+          updatedAt: item.updated_at,
+        })) || [];
 
       res.json({
         success: true,
@@ -100,7 +104,10 @@ export class ContentController {
   /**
    * Get a specific content item by ID
    */
-  public async getContentItem(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getContentItem(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -115,7 +122,8 @@ export class ContentController {
       if (error || !data) {
         res.status(404).json({
           error: 'Content not found',
-          message: 'The requested content item does not exist or you do not have access to it',
+          message:
+            'The requested content item does not exist or you do not have access to it',
         });
         return;
       }
@@ -150,7 +158,10 @@ export class ContentController {
   /**
    * Create a new content item
    */
-  public async createContentItem(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async createContentItem(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const userId = req.user!.id;
       const {
@@ -237,7 +248,10 @@ export class ContentController {
   /**
    * Update a content item
    */
-  public async updateContentItem(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async updateContentItem(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -247,7 +261,7 @@ export class ContentController {
       delete updateData.id;
       delete updateData.user_id;
       delete updateData.created_at;
-      
+
       // Update timestamp
       updateData.updated_at = new Date().toISOString();
 
@@ -271,7 +285,8 @@ export class ContentController {
       if (!data) {
         res.status(404).json({
           error: 'Content not found',
-          message: 'The content item does not exist or you do not have access to it',
+          message:
+            'The content item does not exist or you do not have access to it',
         });
         return;
       }
@@ -306,7 +321,10 @@ export class ContentController {
   /**
    * Delete a content item
    */
-  public async deleteContentItem(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async deleteContentItem(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -342,7 +360,10 @@ export class ContentController {
   /**
    * Mark content item as processed
    */
-  public async markAsProcessed(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async markAsProcessed(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -372,7 +393,8 @@ export class ContentController {
       if (!data) {
         res.status(404).json({
           error: 'Content not found',
-          message: 'The content item does not exist or you do not have access to it',
+          message:
+            'The content item does not exist or you do not have access to it',
         });
         return;
       }
@@ -407,7 +429,10 @@ export class ContentController {
   /**
    * Get full processed content for a content item (including extracted text)
    */
-  public async getFullProcessedContent(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getFullProcessedContent(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -423,7 +448,8 @@ export class ContentController {
       if (contentError || !contentItem) {
         res.status(404).json({
           error: 'Content not found',
-          message: 'The requested content item does not exist or you do not have access to it',
+          message:
+            'The requested content item does not exist or you do not have access to it',
         });
         return;
       }
@@ -433,7 +459,7 @@ export class ContentController {
 
       // Get the actual processed content based on content type
       switch (contentItem.content_type) {
-        case 'pdf':
+        case 'pdf': {
           // Get PDF processed content
           const { data: pdfData, error: pdfError } = await this.supabase
             .from('processed_documents')
@@ -451,8 +477,9 @@ export class ContentController {
             };
           }
           break;
+        }
 
-        case 'youtube':
+        case 'youtube': {
           // Get YouTube processed content
           const { data: youtubeData, error: youtubeError } = await this.supabase
             .from('processed_videos')
@@ -469,8 +496,9 @@ export class ContentController {
             };
           }
           break;
+        }
 
-        case 'lecture_recording':
+        case 'lecture_recording': {
           // Get audio transcription content
           const { data: audioData, error: audioError } = await this.supabase
             .from('transcriptions')
@@ -488,6 +516,7 @@ export class ContentController {
             };
           }
           break;
+        }
 
         default:
           fullContent = contentItem.summary || contentItem.description || '';
@@ -525,7 +554,10 @@ export class ContentController {
   /**
    * Get user content statistics
    */
-  public async getUserStats(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getUserStats(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const userId = req.user!.id;
 
@@ -544,7 +576,8 @@ export class ContentController {
       }
 
       const totalItems = stats?.length || 0;
-      const processedItems = stats?.filter(item => item.processed).length || 0;
+      const processedItems =
+        stats?.filter((item) => item.processed).length || 0;
       const contentTypes = stats?.reduce((acc: any, item) => {
         acc[item.content_type] = (acc[item.content_type] || 0) + 1;
         return acc;
@@ -556,7 +589,10 @@ export class ContentController {
           totalItems,
           processedItems,
           pendingItems: totalItems - processedItems,
-          processingRate: totalItems > 0 ? Math.round((processedItems / totalItems) * 100) : 0,
+          processingRate:
+            totalItems > 0
+              ? Math.round((processedItems / totalItems) * 100)
+              : 0,
           contentTypes: contentTypes || {},
         },
       });
@@ -568,4 +604,4 @@ export class ContentController {
       });
     }
   }
-} 
+}

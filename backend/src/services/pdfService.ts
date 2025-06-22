@@ -38,22 +38,22 @@ export class PDFProcessingService {
 
       // Download the PDF file from Supabase Storage
       const pdfBuffer = await this.downloadPDFFromStorage(filePath);
-      
+
       if (!pdfBuffer) {
         throw new Error('Failed to download PDF from storage');
       }
 
       // Parse PDF document
       const pdfData = await pdfParse(pdfBuffer);
-      
+
       // Extract metadata
       const metadata = await this.extractMetadata(pdfData, pdfBuffer.length);
-      
+
       // Extract text content
       const extractedText = pdfData.text;
-      
+
       // Clean and preprocess text
-      const cleanedText = processingOptions.cleanText 
+      const cleanedText = processingOptions.cleanText
         ? this.cleanExtractedText(extractedText, {
             removeExtraWhitespace: true,
             removeHeaders: processingOptions.removeHeaders,
@@ -65,7 +65,7 @@ export class PDFProcessingService {
         : extractedText;
 
       // Detect sections if enabled
-      const sections = processingOptions.detectSections 
+      const sections = processingOptions.detectSections
         ? this.detectSections(cleanedText, metadata.pageCount)
         : [];
 
@@ -91,7 +91,9 @@ export class PDFProcessingService {
 
       const processingTime = Date.now() - startTime;
 
-      console.log(`PDF processing completed in ${processingTime}ms for: ${filePath}`);
+      console.log(
+        `PDF processing completed in ${processingTime}ms for: ${filePath}`
+      );
 
       return {
         success: true,
@@ -102,11 +104,11 @@ export class PDFProcessingService {
         processingTime,
         metadata,
       };
-
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
       console.error(`PDF processing failed for ${filePath}:`, error);
 
       // Store failure record
@@ -123,7 +125,9 @@ export class PDFProcessingService {
   /**
    * Download PDF file from Supabase Storage
    */
-  private async downloadPDFFromStorage(filePath: string): Promise<Buffer | null> {
+  private async downloadPDFFromStorage(
+    filePath: string
+  ): Promise<Buffer | null> {
     try {
       const { data, error } = await supabaseAdmin.storage
         .from(this.bucketName)
@@ -147,7 +151,10 @@ export class PDFProcessingService {
   /**
    * Extract metadata from PDF document
    */
-  private async extractMetadata(pdfData: any, fileSize: number): Promise<PDFMetadata> {
+  private async extractMetadata(
+    pdfData: any,
+    fileSize: number
+  ): Promise<PDFMetadata> {
     try {
       const info = pdfData.info || {};
 
@@ -157,9 +164,13 @@ export class PDFProcessingService {
         subject: info.Subject || undefined,
         creator: info.Creator || undefined,
         producer: info.Producer || undefined,
-        creationDate: info.CreationDate ? new Date(info.CreationDate) : undefined,
+        creationDate: info.CreationDate
+          ? new Date(info.CreationDate)
+          : undefined,
         modificationDate: info.ModDate ? new Date(info.ModDate) : undefined,
-        keywords: info.Keywords ? info.Keywords.split(',').map((k: string) => k.trim()) : [],
+        keywords: info.Keywords
+          ? info.Keywords.split(',').map((k: string) => k.trim())
+          : [],
         pageCount: pdfData.numpages || 1,
         fileSize,
       };
@@ -173,12 +184,13 @@ export class PDFProcessingService {
     }
   }
 
-
-
   /**
    * Clean and preprocess extracted text
    */
-  private cleanExtractedText(text: string, options: TextCleaningOptions): string {
+  private cleanExtractedText(
+    text: string,
+    options: TextCleaningOptions
+  ): string {
     let cleaned = text;
 
     if (options.normalizeLineBreaks) {
@@ -233,7 +245,7 @@ export class PDFProcessingService {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      
+
       if (!line) {
         currentPosition += lines[i].length + 1;
         continue;
@@ -241,7 +253,7 @@ export class PDFProcessingService {
 
       // Detect section type
       const sectionType = this.detectSectionType(line);
-      
+
       if (sectionType === 'title' || sectionType === 'subtitle') {
         // Create a new section
         const section: PDFSection = {
@@ -285,7 +297,11 @@ export class PDFProcessingService {
     }
 
     // List items
-    if (/^[•·▪▫◦‣⁃-]\s+/.test(line) || /^\d+\.\s+/.test(line) || /^[a-z]\)\s+/.test(line)) {
+    if (
+      /^[•·▪▫◦‣⁃-]\s+/.test(line) ||
+      /^\d+\.\s+/.test(line) ||
+      /^[a-z]\)\s+/.test(line)
+    ) {
       return 'list';
     }
 
@@ -296,7 +312,11 @@ export class PDFProcessingService {
   /**
    * Estimate page number based on text position
    */
-  private estimatePageNumber(position: number, fullText: string, totalPages: number): number {
+  private estimatePageNumber(
+    position: number,
+    fullText: string,
+    totalPages: number
+  ): number {
     const ratio = position / fullText.length;
     return Math.max(1, Math.min(totalPages, Math.ceil(ratio * totalPages)));
   }
@@ -310,14 +330,14 @@ export class PDFProcessingService {
     if (pages.length < 3) return text;
 
     // Find potential headers (first few lines of each page)
-    const potentialHeaders = pages.slice(1).map(page => {
+    const potentialHeaders = pages.slice(1).map((page) => {
       const lines = page.trim().split('\n').slice(0, 3);
       return lines.join('\n');
     });
 
     // Find common headers
     const headerCounts = new Map<string, number>();
-    potentialHeaders.forEach(header => {
+    potentialHeaders.forEach((header) => {
       const count = headerCounts.get(header) || 0;
       headerCounts.set(header, count + 1);
     });
@@ -328,8 +348,11 @@ export class PDFProcessingService {
       .map(([header]) => header);
 
     let cleaned = text;
-    headersToRemove.forEach(header => {
-      const regex = new RegExp(header.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    headersToRemove.forEach((header) => {
+      const regex = new RegExp(
+        header.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+        'g'
+      );
       cleaned = cleaned.replace(regex, '');
     });
 
@@ -344,13 +367,13 @@ export class PDFProcessingService {
     const pages = text.split(/--- Page \d+ ---/);
     if (pages.length < 3) return text;
 
-    const potentialFooters = pages.slice(1).map(page => {
+    const potentialFooters = pages.slice(1).map((page) => {
       const lines = page.trim().split('\n').slice(-3);
       return lines.join('\n');
     });
 
     const footerCounts = new Map<string, number>();
-    potentialFooters.forEach(footer => {
+    potentialFooters.forEach((footer) => {
       const count = footerCounts.get(footer) || 0;
       footerCounts.set(footer, count + 1);
     });
@@ -360,8 +383,11 @@ export class PDFProcessingService {
       .map(([footer]) => footer);
 
     let cleaned = text;
-    footersToRemove.forEach(footer => {
-      const regex = new RegExp(footer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    footersToRemove.forEach((footer) => {
+      const regex = new RegExp(
+        footer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+        'g'
+      );
       cleaned = cleaned.replace(regex, '');
     });
 
@@ -375,7 +401,7 @@ export class PDFProcessingService {
     const { data } = supabaseAdmin.storage
       .from(this.bucketName)
       .getPublicUrl(filePath);
-    
+
     return data.publicUrl;
   }
 
@@ -389,7 +415,9 @@ export class PDFProcessingService {
   /**
    * Store processed content in database
    */
-  private async storeProcessedContent(content: ProcessedPDFContent): Promise<string> {
+  private async storeProcessedContent(
+    content: ProcessedPDFContent
+  ): Promise<string> {
     try {
       // Store main document record
       const { data: docData, error: docError } = await supabaseAdmin
@@ -418,7 +446,7 @@ export class PDFProcessingService {
 
       // Store sections if any
       if (content.sections.length > 0) {
-        const sectionsData = content.sections.map(section => ({
+        const sectionsData = content.sections.map((section) => ({
           document_id: documentId,
           section_id: section.id,
           title: section.title,
@@ -448,22 +476,23 @@ export class PDFProcessingService {
   /**
    * Store processing failure record
    */
-  private async storeProcessingFailure(filePath: string, error: string): Promise<void> {
+  private async storeProcessingFailure(
+    filePath: string,
+    error: string
+  ): Promise<void> {
     try {
-      await supabaseAdmin
-        .from('processed_documents')
-        .insert({
-          original_file_name: this.extractFileName(filePath),
-          file_path: filePath,
-          public_url: this.getPublicUrl(filePath),
-          extracted_text: '',
-          cleaned_text: '',
-          metadata: { pageCount: 0, fileSize: 0, keywords: [] },
-          processing_status: 'failed',
-          processing_error: error,
-          created_at: new Date(),
-          updated_at: new Date(),
-        });
+      await supabaseAdmin.from('processed_documents').insert({
+        original_file_name: this.extractFileName(filePath),
+        file_path: filePath,
+        public_url: this.getPublicUrl(filePath),
+        extracted_text: '',
+        cleaned_text: '',
+        metadata: { pageCount: 0, fileSize: 0, keywords: [] },
+        processing_status: 'failed',
+        processing_error: error,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
     } catch (dbError) {
       console.error('Failed to store processing failure:', dbError);
     }
@@ -472,7 +501,9 @@ export class PDFProcessingService {
   /**
    * Get processing status for a file
    */
-  async getProcessingStatus(filePath: string): Promise<ProcessingStatus | null> {
+  async getProcessingStatus(
+    filePath: string
+  ): Promise<ProcessingStatus | null> {
     try {
       const { data, error } = await supabaseAdmin
         .from('processed_documents')
@@ -498,7 +529,7 @@ export class PDFProcessingService {
     // Update status to processing
     await supabaseAdmin
       .from('processed_documents')
-      .update({ 
+      .update({
         processing_status: 'processing',
         updated_at: new Date(),
       })
@@ -509,4 +540,4 @@ export class PDFProcessingService {
 }
 
 // Export singleton instance
-export const pdfService = new PDFProcessingService(); 
+export const pdfService = new PDFProcessingService();

@@ -12,7 +12,7 @@ router.use(authenticateToken);
 /**
  * POST /api/flashcards/generate
  * Generate flashcards from provided content
- * 
+ *
  * Body:
  * {
  *   content: string,
@@ -28,13 +28,20 @@ router.use(authenticateToken);
  *   }
  * }
  */
-router.post('/generate', rateLimitMiddleware, flashcardController.generateFlashcards.bind(flashcardController));
+router.post(
+  '/generate',
+  rateLimitMiddleware,
+  flashcardController.generateFlashcards.bind(flashcardController)
+);
 
 /**
  * GET /api/flashcards/sets/:id
  * Get a specific flashcard set by ID with all flashcards
  */
-router.get('/sets/:id', flashcardController.getFlashcardSet.bind(flashcardController));
+router.get(
+  '/sets/:id',
+  flashcardController.getFlashcardSet.bind(flashcardController)
+);
 
 /**
  * GET /api/flashcards/sets
@@ -44,36 +51,51 @@ router.get('/sets/:id', flashcardController.getFlashcardSet.bind(flashcardContro
  * - offset?: number (default: 0)
  * - content_item_id?: string (filter by content item)
  */
-router.get('/sets', flashcardController.getUserFlashcardSets.bind(flashcardController));
+router.get(
+  '/sets',
+  flashcardController.getUserFlashcardSets.bind(flashcardController)
+);
 
 /**
  * GET /api/flashcards/content-item/:contentItemId
  * Get all flashcard sets for a specific content item
  */
-router.get('/content-item/:contentItemId', flashcardController.getFlashcardsByContentItem.bind(flashcardController));
+router.get(
+  '/content-item/:contentItemId',
+  flashcardController.getFlashcardsByContentItem.bind(flashcardController)
+);
 
 /**
  * PUT /api/flashcards/sets/:id
  * Update a flashcard set (title, description)
- * 
+ *
  * Body:
  * {
  *   title?: string,
  *   description?: string
  * }
  */
-router.put('/sets/:id', flashcardController.updateFlashcardSet.bind(flashcardController));
+router.put(
+  '/sets/:id',
+  flashcardController.updateFlashcardSet.bind(flashcardController)
+);
 
 /**
  * DELETE /api/flashcards/sets/:id
  * Delete a specific flashcard set and all its flashcards
  */
-router.delete('/sets/:id', flashcardController.deleteFlashcardSet.bind(flashcardController));
+router.delete(
+  '/sets/:id',
+  flashcardController.deleteFlashcardSet.bind(flashcardController)
+);
 
 /**
  * GET /api/flashcards/health
  * Health check for flashcard service
  */
-router.get('/health', flashcardController.healthCheck.bind(flashcardController));
+router.get(
+  '/health',
+  flashcardController.healthCheck.bind(flashcardController)
+);
 
-export default router; 
+export default router;

@@ -12,7 +12,7 @@ router.use(authenticateToken);
 /**
  * POST /api/summaries/generate
  * Generate a new AI summary for provided content
- * 
+ *
  * Body:
  * {
  *   content: string,
@@ -26,7 +26,11 @@ router.use(authenticateToken);
  *   }
  * }
  */
-router.post('/generate', rateLimitMiddleware, summaryController.generateSummary.bind(summaryController));
+router.post(
+  '/generate',
+  rateLimitMiddleware,
+  summaryController.generateSummary.bind(summaryController)
+);
 
 /**
  * GET /api/summaries/:id
@@ -50,13 +54,19 @@ router.get('/', summaryController.getUserSummaries.bind(summaryController));
  * GET /api/summaries/content-item/:contentItemId
  * Get all summaries for a specific content item
  */
-router.get('/content-item/:contentItemId', summaryController.getSummariesByContentItem.bind(summaryController));
+router.get(
+  '/content-item/:contentItemId',
+  summaryController.getSummariesByContentItem.bind(summaryController)
+);
 
 /**
  * PUT /api/summaries/:id/access
  * Update access tracking for a summary (called when user views summary)
  */
-router.put('/:id/access', summaryController.updateSummaryAccess.bind(summaryController));
+router.put(
+  '/:id/access',
+  summaryController.updateSummaryAccess.bind(summaryController)
+);
 
 /**
  * DELETE /api/summaries/:id
@@ -68,13 +78,19 @@ router.delete('/:id', summaryController.deleteSummary.bind(summaryController));
  * GET /api/summaries/cache/stats
  * Get cache performance statistics (for analytics)
  */
-router.get('/cache/stats', summaryController.getCacheStats.bind(summaryController));
+router.get(
+  '/cache/stats',
+  summaryController.getCacheStats.bind(summaryController)
+);
 
 /**
  * POST /api/summaries/cache/cleanup
  * Manually trigger cache cleanup (admin/maintenance)
  */
-router.post('/cache/cleanup', summaryController.cleanupCache.bind(summaryController));
+router.post(
+  '/cache/cleanup',
+  summaryController.cleanupCache.bind(summaryController)
+);
 
 /**
  * GET /api/summaries/health
@@ -82,4 +98,4 @@ router.post('/cache/cleanup', summaryController.cleanupCache.bind(summaryControl
  */
 router.get('/health', summaryController.healthCheck.bind(summaryController));
 
-export default router; 
+export default router;

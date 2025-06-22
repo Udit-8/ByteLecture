@@ -31,7 +31,10 @@ export interface TranscriptionResult {
 
 export interface SpeechProvider {
   name: string;
-  transcribe(audioBuffer: Buffer, options: TranscriptionOptions): Promise<TranscriptionResult>;
+  transcribe(
+    audioBuffer: Buffer,
+    options: TranscriptionOptions
+  ): Promise<TranscriptionResult>;
 }
 
 class OpenAIProvider implements SpeechProvider {
@@ -45,9 +48,12 @@ class OpenAIProvider implements SpeechProvider {
     }
   }
 
-  async transcribe(audioBuffer: Buffer, options: TranscriptionOptions): Promise<TranscriptionResult> {
+  async transcribe(
+    audioBuffer: Buffer,
+    options: TranscriptionOptions
+  ): Promise<TranscriptionResult> {
     const startTime = Date.now();
-    
+
     try {
       const formData = new FormData();
       formData.append('file', audioBuffer, {
@@ -57,30 +63,33 @@ class OpenAIProvider implements SpeechProvider {
       formData.append('model', 'whisper-1');
       formData.append('language', options.language || 'en');
       formData.append('response_format', 'verbose_json');
-      
+
       if (options.enableWordTimestamps) {
         formData.append('timestamp_granularities[]', 'word');
       }
-      
+
       if (options.temperature !== undefined) {
         formData.append('temperature', options.temperature.toString());
       }
 
-      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          ...formData.getHeaders(),
-        },
-        body: formData,
-      });
+      const response = await fetch(
+        'https://api.openai.com/v1/audio/transcriptions',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            ...formData.getHeaders(),
+          },
+          body: formData,
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.text();
         throw new Error(`OpenAI API error: ${response.status} - ${errorData}`);
       }
 
-      const result = await response.json() as any;
+      const result = (await response.json()) as any;
       const processingTime = Date.now() - startTime;
 
       // Extract word timestamps if available
@@ -94,7 +103,9 @@ class OpenAIProvider implements SpeechProvider {
       return {
         success: true,
         transcript: result.text,
-        confidence: result.segments?.[0]?.avg_logprob ? Math.exp(result.segments[0].avg_logprob) : undefined,
+        confidence: result.segments?.[0]?.avg_logprob
+          ? Math.exp(result.segments[0].avg_logprob)
+          : undefined,
         duration: result.duration,
         wordTimestamps,
         language: result.language,
@@ -124,12 +135,15 @@ class GoogleProvider implements SpeechProvider {
     }
   }
 
-  async transcribe(audioBuffer: Buffer, options: TranscriptionOptions): Promise<TranscriptionResult> {
+  async transcribe(
+    audioBuffer: Buffer,
+    options: TranscriptionOptions
+  ): Promise<TranscriptionResult> {
     const startTime = Date.now();
-    
+
     try {
       const audioBase64 = audioBuffer.toString('base64');
-      
+
       const requestBody = {
         config: {
           encoding: 'M4A',
@@ -144,20 +158,23 @@ class GoogleProvider implements SpeechProvider {
         },
       };
 
-      const response = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${this.apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
+      const response = await fetch(
+        `https://speech.googleapis.com/v1/speech:recognize?key=${this.apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.text();
         throw new Error(`Google API error: ${response.status} - ${errorData}`);
       }
 
-      const result = await response.json() as any;
+      const result = (await response.json()) as any;
       const processingTime = Date.now() - startTime;
 
       if (!result.results || result.results.length === 0) {
@@ -170,7 +187,7 @@ class GoogleProvider implements SpeechProvider {
       }
 
       const alternative = result.results[0].alternatives[0];
-      
+
       // Extract word timestamps if available
       const wordTimestamps = alternative.words?.map((word: any) => ({
         word: word.word,
@@ -218,14 +235,19 @@ class SpeechToTextService {
     }
 
     if (this.providers.size === 0) {
-      throw new Error('No speech-to-text providers available. Please check API keys.');
+      throw new Error(
+        'No speech-to-text providers available. Please check API keys.'
+      );
     }
   }
 
   /**
    * Generate cache key for audio content
    */
-  private generateCacheKey(audioBuffer: Buffer, options: TranscriptionOptions): string {
+  private generateCacheKey(
+    audioBuffer: Buffer,
+    options: TranscriptionOptions
+  ): string {
     const optionsStr = JSON.stringify(options);
     const hash = createHash('sha256');
     hash.update(audioBuffer);
@@ -236,7 +258,9 @@ class SpeechToTextService {
   /**
    * Get cached transcription result
    */
-  private async getCachedResult(cacheKey: string): Promise<TranscriptionResult | null> {
+  private async getCachedResult(
+    cacheKey: string
+  ): Promise<TranscriptionResult | null> {
     try {
       const { data, error } = await supabaseAdmin
         .from('transcription_cache')
@@ -258,15 +282,16 @@ class SpeechToTextService {
   /**
    * Cache transcription result
    */
-  private async cacheResult(cacheKey: string, result: TranscriptionResult): Promise<void> {
+  private async cacheResult(
+    cacheKey: string,
+    result: TranscriptionResult
+  ): Promise<void> {
     try {
-      await supabaseAdmin
-        .from('transcription_cache')
-        .upsert({
-          cache_key: cacheKey,
-          result,
-          created_at: new Date().toISOString(),
-        });
+      await supabaseAdmin.from('transcription_cache').upsert({
+        cache_key: cacheKey,
+        result,
+        created_at: new Date().toISOString(),
+      });
     } catch (error) {
       console.error('Error caching result:', error);
       // Don't throw - caching is not critical
@@ -282,7 +307,7 @@ class SpeechToTextService {
     options: TranscriptionOptions = {}
   ): Promise<TranscriptionResult> {
     const cacheKey = this.generateCacheKey(audioBuffer, options);
-    
+
     // Check cache first
     const cachedResult = await this.getCachedResult(cacheKey);
     if (cachedResult) {
@@ -291,7 +316,10 @@ class SpeechToTextService {
     }
 
     // Check user quota
-    const quotaCheck = await usageTrackingService.checkUserQuota(userId, 'ai_processing');
+    const quotaCheck = await usageTrackingService.checkUserQuota(
+      userId,
+      'ai_processing'
+    );
     if (!quotaCheck.allowed) {
       return {
         success: false,
@@ -316,11 +344,13 @@ class SpeechToTextService {
       if (result.success) {
         // Record usage
         await usageTrackingService.incrementUsage(userId, 'ai_processing');
-        
+
         // Cache the result
         await this.cacheResult(cacheKey, result);
-        
-        console.log(`Transcription completed successfully with ${providerName}`);
+
+        console.log(
+          `Transcription completed successfully with ${providerName}`
+        );
       } else {
         // Log the error
         await usageTrackingService.logError({
@@ -330,23 +360,36 @@ class SpeechToTextService {
           error_details: { provider: providerName, options },
         });
 
-        console.error(`Transcription failed with ${providerName}:`, result.error);
+        console.error(
+          `Transcription failed with ${providerName}:`,
+          result.error
+        );
       }
 
       return result;
     } catch (error) {
       console.error(`Transcription error with ${providerName}:`, error);
-      
+
       await usageTrackingService.logError({
         user_id: userId,
         error_type: 'processing_error',
-        error_message: error instanceof Error ? error.message : 'Unknown transcription error',
-        error_details: { provider: providerName, options, error: error instanceof Error ? error.stack : String(error) },
+        error_message:
+          error instanceof Error
+            ? error.message
+            : 'Unknown transcription error',
+        error_details: {
+          provider: providerName,
+          options,
+          error: error instanceof Error ? error.stack : String(error),
+        },
       });
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown transcription error',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Unknown transcription error',
         provider: providerName,
       };
     }
@@ -367,4 +410,4 @@ class SpeechToTextService {
   }
 }
 
-export const speechToTextService = new SpeechToTextService(); 
+export const speechToTextService = new SpeechToTextService();

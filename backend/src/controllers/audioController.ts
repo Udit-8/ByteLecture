@@ -16,9 +16,12 @@ export class AudioController {
   /**
    * Transcribe audio from Supabase Storage
    */
-  async transcribeAudio(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async transcribeAudio(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     const userId = req.user?.id;
-    
+
     try {
       // Check authentication
       if (!userId) {
@@ -39,7 +42,7 @@ export class AudioController {
           error_message: 'File path is required for audio transcription',
           request_path: req.path,
           user_agent: req.get('User-Agent'),
-          ip_address: req.ip
+          ip_address: req.ip,
         });
 
         res.status(400).json({
@@ -50,16 +53,20 @@ export class AudioController {
       }
 
       // Check quota before processing
-      const quotaCheck = await usageTrackingService.checkUserQuota(userId, 'ai_processing');
+      const quotaCheck = await usageTrackingService.checkUserQuota(
+        userId,
+        'ai_processing'
+      );
       if (!quotaCheck.allowed) {
-        const quotaMessage = usageTrackingService.formatQuotaErrorMessage(quotaCheck);
-        
+        const quotaMessage =
+          usageTrackingService.formatQuotaErrorMessage(quotaCheck);
+
         await usageTrackingService.logError({
           user_id: userId,
           error_type: 'quota_exceeded',
           error_message: quotaMessage,
           request_path: req.path,
-          error_details: { quota: quotaCheck }
+          error_details: { quota: quotaCheck },
         });
 
         res.status(429).json({
@@ -72,9 +79,8 @@ export class AudioController {
       }
 
       // Download audio file from Supabase Storage
-      const { data: audioData, error: downloadError } = await supabaseAdmin.storage
-        .from('audio-recordings')
-        .download(filePath);
+      const { data: audioData, error: downloadError } =
+        await supabaseAdmin.storage.from('audio-recordings').download(filePath);
 
       if (downloadError || !audioData) {
         await usageTrackingService.logError({
@@ -82,13 +88,14 @@ export class AudioController {
           error_type: 'upload_error',
           error_message: `Failed to download audio file: ${downloadError?.message || 'File not found'}`,
           request_path: req.path,
-          error_details: { filePath, downloadError }
+          error_details: { filePath, downloadError },
         });
 
         res.status(404).json({
           success: false,
           error: 'Audio file not found',
-          message: 'The specified audio file could not be retrieved from storage',
+          message:
+            'The specified audio file could not be retrieved from storage',
         });
         return;
       }
@@ -102,7 +109,7 @@ export class AudioController {
           error_type: 'validation_error',
           error_message: 'Audio file is empty',
           request_path: req.path,
-          error_details: { filePath }
+          error_details: { filePath },
         });
 
         res.status(400).json({
@@ -121,7 +128,9 @@ export class AudioController {
       };
 
       // Validate provider
-      if (!speechToTextService.isProviderAvailable(transcriptionOptions.provider)) {
+      if (
+        !speechToTextService.isProviderAvailable(transcriptionOptions.provider)
+      ) {
         res.status(400).json({
           success: false,
           error: 'Invalid provider',
@@ -131,7 +140,9 @@ export class AudioController {
         return;
       }
 
-      console.log(`Starting transcription for user ${userId}, file: ${filePath}, provider: ${transcriptionOptions.provider}`);
+      console.log(
+        `Starting transcription for user ${userId}, file: ${filePath}, provider: ${transcriptionOptions.provider}`
+      );
 
       // Perform transcription
       const result = await speechToTextService.transcribeAudio(
@@ -146,7 +157,7 @@ export class AudioController {
           const contentService = new ContentService();
           const fileName = filePath.split('/').pop() || 'Recording';
           const title = fileName.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '); // Remove extension and format
-          
+
           await contentService.createContentItem({
             user_id: userId,
             title: title,
@@ -188,13 +199,18 @@ export class AudioController {
       }
     } catch (error) {
       console.error('Audio transcription controller error:', error);
-      
+
       await usageTrackingService.logError({
         user_id: userId,
         error_type: 'server_error',
-        error_message: error instanceof Error ? error.message : 'Unknown error during audio transcription',
+        error_message:
+          error instanceof Error
+            ? error.message
+            : 'Unknown error during audio transcription',
         request_path: req.path,
-        error_details: { error: error instanceof Error ? error.stack : String(error) }
+        error_details: {
+          error: error instanceof Error ? error.stack : String(error),
+        },
       });
 
       res.status(500).json({
@@ -208,9 +224,12 @@ export class AudioController {
   /**
    * Get transcription history for the user
    */
-  async getTranscriptionHistory(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async getTranscriptionHistory(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     const userId = req.user?.id;
-    
+
     try {
       if (!userId) {
         res.status(401).json({
@@ -220,10 +239,14 @@ export class AudioController {
         return;
       }
 
-      const { limit = 50, offset = 0 } = req.query;
+      // const { limit = 50, offset = 0 } = req.query; // Currently unused
 
       // Get user's usage stats for AI processing
-      const stats = await usageTrackingService.getUserUsageStats(userId, 'ai_processing', 30);
+      const stats = await usageTrackingService.getUserUsageStats(
+        userId,
+        'ai_processing',
+        30
+      );
 
       res.status(200).json({
         success: true,
@@ -247,7 +270,7 @@ export class AudioController {
    */
   async getQuotaInfo(req: AuthenticatedRequest, res: Response): Promise<void> {
     const userId = req.user?.id;
-    
+
     try {
       if (!userId) {
         res.status(401).json({
@@ -257,7 +280,10 @@ export class AudioController {
         return;
       }
 
-      const quota = await usageTrackingService.checkUserQuota(userId, 'ai_processing');
+      const quota = await usageTrackingService.checkUserQuota(
+        userId,
+        'ai_processing'
+      );
 
       res.status(200).json({
         success: true,
@@ -282,7 +308,7 @@ export class AudioController {
   async healthCheck(req: Request, res: Response): Promise<void> {
     try {
       const availableProviders = speechToTextService.getAvailableProviders();
-      
+
       res.status(200).json({
         success: true,
         data: {
@@ -302,4 +328,4 @@ export class AudioController {
   }
 }
 
-export const audioController = new AudioController(); 
+export const audioController = new AudioController();

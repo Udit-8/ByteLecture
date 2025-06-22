@@ -64,7 +64,9 @@ export class OpenAIService {
       timeout: this.config.timeout,
     });
 
-    console.log(`🤖 OpenAI Service initialized with model: ${this.config.model}`);
+    console.log(
+      `🤖 OpenAI Service initialized with model: ${this.config.model}`
+    );
   }
 
   /**
@@ -78,8 +80,11 @@ export class OpenAIService {
   /**
    * Split content into chunks that fit within token limits
    */
-  public chunkContent(content: string, maxTokensPerChunk: number = 3000): ChunkResult {
-    const sentences = content.match(/[^\.!?]+[\.!?]+/g) || [content];
+  public chunkContent(
+    content: string,
+    maxTokensPerChunk: number = 3000
+  ): ChunkResult {
+    const sentences = content.match(/[^.!?]+[.!?]+/g) || [content];
     const chunks: string[] = [];
     let currentChunk = '';
     let totalTokens = 0;
@@ -89,7 +94,10 @@ export class OpenAIService {
       const currentChunkTokens = this.estimateTokens(currentChunk);
 
       // If adding this sentence would exceed the limit, start a new chunk
-      if (currentChunkTokens + sentenceTokens > maxTokensPerChunk && currentChunk) {
+      if (
+        currentChunkTokens + sentenceTokens > maxTokensPerChunk &&
+        currentChunk
+      ) {
         chunks.push(currentChunk.trim());
         totalTokens += currentChunkTokens;
         currentChunk = sentence;
@@ -114,21 +122,30 @@ export class OpenAIService {
   /**
    * Generate a summary prompt based on content type and options
    */
-  private generatePrompt(content: string, options: SummarizationOptions): string {
-    const { length = 'medium', focusArea = 'general', contentType = 'text' } = options;
+  private generatePrompt(
+    content: string,
+    options: SummarizationOptions
+  ): string {
+    const {
+      length = 'medium',
+      focusArea = 'general',
+      contentType = 'text',
+    } = options;
 
     // Base prompt templates for different content types
     const contentTypePrompts = {
       pdf: 'You are analyzing an academic or professional document.',
       youtube: 'You are analyzing a YouTube video transcript.',
-      audio: 'You are analyzing an audio transcript from a lecture or recording.',
+      audio:
+        'You are analyzing an audio transcript from a lecture or recording.',
       text: 'You are analyzing text content.',
     };
 
     // Length specifications
     const lengthSpecs = {
       short: 'Create a concise summary in 2-3 sentences (50-100 words).',
-      medium: 'Create a comprehensive summary in 1-2 paragraphs (150-300 words).',
+      medium:
+        'Create a comprehensive summary in 1-2 paragraphs (150-300 words).',
       long: 'Create a detailed summary in 3-4 paragraphs (400-600 words).',
     };
 
@@ -137,7 +154,8 @@ export class OpenAIService {
       concepts: 'Focus on key concepts, theories, and main ideas.',
       examples: 'Focus on examples, case studies, and practical applications.',
       applications: 'Focus on how the information can be applied practically.',
-      general: 'Provide a balanced overview covering main points and supporting details.',
+      general:
+        'Provide a balanced overview covering main points and supporting details.',
     };
 
     return `${contentTypePrompts[contentType]}
@@ -167,7 +185,9 @@ Summary:`;
     attempt: number = 1
   ): Promise<OpenAI.Chat.Completions.ChatCompletion> {
     try {
-      console.log(`🔄 OpenAI API call attempt ${attempt}/${this.retryAttempts}`);
+      console.log(
+        `🔄 OpenAI API call attempt ${attempt}/${this.retryAttempts}`
+      );
       const response = await this.client.chat.completions.create({
         ...params,
         stream: false, // Ensure we get a non-streaming response
@@ -175,16 +195,21 @@ Summary:`;
       console.log(`✅ OpenAI API call successful on attempt ${attempt}`);
       return response;
     } catch (error: any) {
-      console.error(`❌ OpenAI API call failed on attempt ${attempt}:`, error.message);
+      console.error(
+        `❌ OpenAI API call failed on attempt ${attempt}:`,
+        error.message
+      );
 
       if (attempt >= this.retryAttempts) {
-        throw new Error(`OpenAI API failed after ${this.retryAttempts} attempts: ${error.message}`);
+        throw new Error(
+          `OpenAI API failed after ${this.retryAttempts} attempts: ${error.message}`
+        );
       }
 
       // Exponential backoff
       const delay = this.retryDelay * Math.pow(2, attempt - 1);
       console.log(`⏳ Retrying in ${delay}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
 
       return this.makeAPICallWithRetry(params, attempt + 1);
     }
@@ -238,9 +263,14 @@ Summary:`;
     try {
       // Determine max tokens per chunk based on model and options
       const maxTokensPerChunk = 3000; // Safe limit for most models
-      const { chunks, totalTokens } = this.chunkContent(content, maxTokensPerChunk);
+      const { chunks, totalTokens } = this.chunkContent(
+        content,
+        maxTokensPerChunk
+      );
 
-      console.log(`📊 Content split into ${chunks.length} chunks, estimated ${totalTokens} tokens`);
+      console.log(
+        `📊 Content split into ${chunks.length} chunks, estimated ${totalTokens} tokens`
+      );
 
       let finalSummary: string;
       let totalTokensUsed = 0;
@@ -253,16 +283,16 @@ Summary:`;
       } else {
         // Multiple chunks - summarize each then combine
         console.log(`🔄 Processing ${chunks.length} chunks...`);
-        
+
         const chunkSummaries: string[] = [];
-        
+
         for (let i = 0; i < chunks.length; i++) {
           console.log(`📄 Processing chunk ${i + 1}/${chunks.length}`);
           const result = await this.summarizeChunk(chunks[i], {
             ...options,
             length: 'short', // Keep chunk summaries short
           });
-          
+
           chunkSummaries.push(result.summary);
           totalTokensUsed += result.tokensUsed;
         }
@@ -270,8 +300,11 @@ Summary:`;
         // Combine chunk summaries into final summary
         const combinedSummaries = chunkSummaries.join('\n\n');
         console.log(`🔗 Combining ${chunkSummaries.length} chunk summaries`);
-        
-        const finalResult = await this.summarizeChunk(combinedSummaries, options);
+
+        const finalResult = await this.summarizeChunk(
+          combinedSummaries,
+          options
+        );
         finalSummary = finalResult.summary;
         totalTokensUsed += finalResult.tokensUsed;
       }
@@ -308,13 +341,14 @@ Summary:`;
   public async testConnection(): Promise<boolean> {
     try {
       console.log('🔍 Testing OpenAI connection...');
-      
+
       const response = await this.client.chat.completions.create({
         model: this.config.model,
         messages: [
           {
             role: 'user',
-            content: 'Hello! Please respond with "Connection successful" to test the API.',
+            content:
+              'Hello! Please respond with "Connection successful" to test the API.',
           },
         ],
         max_tokens: 10,
@@ -323,9 +357,15 @@ Summary:`;
       });
 
       const message = response.choices[0]?.message?.content || '';
-      const success = message.toLowerCase().includes('connection') || message.toLowerCase().includes('successful');
-      
-      console.log(success ? '✅ OpenAI connection test successful' : '⚠️ OpenAI connection test uncertain');
+      const success =
+        message.toLowerCase().includes('connection') ||
+        message.toLowerCase().includes('successful');
+
+      console.log(
+        success
+          ? '✅ OpenAI connection test successful'
+          : '⚠️ OpenAI connection test uncertain'
+      );
       return success;
     } catch (error: any) {
       console.error('❌ OpenAI connection test failed:', error.message);
@@ -345,7 +385,7 @@ Summary:`;
    */
   public updateConfig(newConfig: Partial<OpenAIConfig>): void {
     this.config = { ...this.config, ...newConfig };
-    
+
     // Re-initialize client if API key changed
     if (newConfig.apiKey) {
       this.client = new OpenAI({
@@ -353,7 +393,7 @@ Summary:`;
         timeout: this.config.timeout,
       });
     }
-    
+
     console.log('🔄 OpenAI configuration updated');
   }
 
@@ -363,14 +403,14 @@ Summary:`;
   public async generateEmbedding(text: string): Promise<number[]> {
     try {
       console.log('🔄 Generating embedding for text...');
-      
+
       const response = await this.client.embeddings.create({
         model: 'text-embedding-ada-002',
         input: text,
       });
 
       const embedding = response.data[0]?.embedding;
-      
+
       if (!embedding) {
         throw new Error('No embedding returned from OpenAI');
       }
@@ -391,7 +431,7 @@ Summary:`;
   ): Promise<{ content: string; usage: any }> {
     try {
       console.log('🔄 Generating chat completion...');
-      
+
       const response = await this.makeAPICallWithRetry({
         model: this.config.model,
         messages,
@@ -418,4 +458,4 @@ Summary:`;
   ): Promise<OpenAI.Chat.Completions.ChatCompletion> {
     return this.makeAPICallWithRetry(params);
   }
-} 
+}

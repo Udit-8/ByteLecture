@@ -11,8 +11,8 @@ router.get('/health', (req: Request, res: Response) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     service: 'ByteLecture Backend',
-    version: '1.0.0'
+    version: '1.0.0',
   });
 });
 
-export default router; 
+export default router;

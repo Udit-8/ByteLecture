@@ -1,6 +1,9 @@
 // Payment Controller for Google Play & Apple Pay Integration
 import { Request, Response } from 'express';
-import { paymentService, ReceiptValidationRequest } from '../services/paymentService';
+import {
+  paymentService,
+  ReceiptValidationRequest,
+} from '../services/paymentService';
 import { usageTrackingService } from '../services/usageTrackingService';
 
 interface AuthenticatedRequest extends Request {
@@ -14,7 +17,10 @@ export class PaymentController {
   /**
    * Validate receipt from mobile app
    */
-  async validateReceipt(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async validateReceipt(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { receipt, platform, productId, transactionId } = req.body;
       const userId = req.user?.id;
@@ -25,14 +31,17 @@ export class PaymentController {
       }
 
       if (!receipt || !platform || !productId || !transactionId) {
-        res.status(400).json({ 
-          error: 'Missing required fields: receipt, platform, productId, transactionId' 
+        res.status(400).json({
+          error:
+            'Missing required fields: receipt, platform, productId, transactionId',
         });
         return;
       }
 
       if (!['ios', 'android'].includes(platform)) {
-        res.status(400).json({ error: 'Platform must be either ios or android' });
+        res
+          .status(400)
+          .json({ error: 'Platform must be either ios or android' });
         return;
       }
 
@@ -44,14 +53,16 @@ export class PaymentController {
         userId,
       };
 
-      console.log(`[PaymentController] Validating receipt for user ${userId}, platform: ${platform}`);
+      console.log(
+        `[PaymentController] Validating receipt for user ${userId}, platform: ${platform}`
+      );
 
       const result = await paymentService.validateReceipt(validationRequest);
 
       if (result.valid) {
         // Reset usage limits for premium user
         await usageTrackingService.resetUserUsage(userId);
-        
+
         res.json({
           success: true,
           subscription: result.subscriptionStatus,
@@ -65,8 +76,9 @@ export class PaymentController {
       }
     } catch (error) {
       console.error('[PaymentController] Receipt validation error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
+
       res.status(500).json({
         success: false,
         error: 'Internal server error during receipt validation',
@@ -78,7 +90,10 @@ export class PaymentController {
   /**
    * Get user's current subscription status
    */
-  async getSubscriptionStatus(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async getSubscriptionStatus(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const userId = req.user?.id;
 
@@ -87,9 +102,12 @@ export class PaymentController {
         return;
       }
 
-      console.log(`[PaymentController] Getting subscription status for user ${userId}`);
+      console.log(
+        `[PaymentController] Getting subscription status for user ${userId}`
+      );
 
-      const subscription = await paymentService.getUserSubscriptionStatus(userId);
+      const subscription =
+        await paymentService.getUserSubscriptionStatus(userId);
 
       if (subscription) {
         res.json({
@@ -119,9 +137,13 @@ export class PaymentController {
         });
       }
     } catch (error) {
-      console.error('[PaymentController] Get subscription status error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
+      console.error(
+        '[PaymentController] Get subscription status error:',
+        error
+      );
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
+
       res.status(500).json({
         success: false,
         error: 'Internal server error while fetching subscription status',
@@ -138,14 +160,19 @@ export class PaymentController {
       const platform = req.query.platform as string;
 
       if (platform && !['ios', 'android'].includes(platform)) {
-        res.status(400).json({ error: 'Platform must be either ios or android' });
+        res
+          .status(400)
+          .json({ error: 'Platform must be either ios or android' });
         return;
       }
 
       // Return product configuration
       const products = [
         {
-          productId: platform === 'ios' ? 'com.bytelecture.monthly' : 'monthly_subscription',
+          productId:
+            platform === 'ios'
+              ? 'com.bytelecture.monthly'
+              : 'monthly_subscription',
           type: 'monthly',
           price: '99',
           currency: 'INR',
@@ -155,7 +182,10 @@ export class PaymentController {
           platform: platform || 'both',
         },
         {
-          productId: platform === 'ios' ? 'com.bytelecture.yearly' : 'yearly_subscription',
+          productId:
+            platform === 'ios'
+              ? 'com.bytelecture.yearly'
+              : 'yearly_subscription',
           type: 'yearly',
           price: '999',
           currency: 'INR',
@@ -166,8 +196,10 @@ export class PaymentController {
         },
       ];
 
-      const filteredProducts = platform 
-        ? products.filter(p => p.platform === platform || p.platform === 'both')
+      const filteredProducts = platform
+        ? products.filter(
+            (p) => p.platform === platform || p.platform === 'both'
+          )
         : products;
 
       res.json({
@@ -190,8 +222,9 @@ export class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] Get products error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
+
       res.status(500).json({
         success: false,
         error: 'Internal server error while fetching products',
@@ -203,7 +236,10 @@ export class PaymentController {
   /**
    * Cancel user subscription
    */
-  async cancelSubscription(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async cancelSubscription(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const userId = req.user?.id;
       const { subscriptionId } = req.body;
@@ -218,9 +254,14 @@ export class PaymentController {
         return;
       }
 
-      console.log(`[PaymentController] Cancelling subscription ${subscriptionId} for user ${userId}`);
+      console.log(
+        `[PaymentController] Cancelling subscription ${subscriptionId} for user ${userId}`
+      );
 
-      const success = await paymentService.cancelSubscription(userId, subscriptionId);
+      const success = await paymentService.cancelSubscription(
+        userId,
+        subscriptionId
+      );
 
       if (success) {
         res.json({
@@ -235,8 +276,9 @@ export class PaymentController {
       }
     } catch (error) {
       console.error('[PaymentController] Cancel subscription error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
+
       res.status(500).json({
         success: false,
         error: 'Internal server error while cancelling subscription',
@@ -248,7 +290,10 @@ export class PaymentController {
   /**
    * Get subscription quota and usage information
    */
-  async getSubscriptionQuota(req: AuthenticatedRequest, res: Response): Promise<void> {
+  async getSubscriptionQuota(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const userId = req.user?.id;
 
@@ -258,34 +303,41 @@ export class PaymentController {
       }
 
       // Get subscription status
-      const subscription = await paymentService.getUserSubscriptionStatus(userId);
+      const subscription =
+        await paymentService.getUserSubscriptionStatus(userId);
       const isPremium = subscription?.isActive || false;
 
       // Get current usage
       const usage = await usageTrackingService.getUserUsage(userId);
 
       // Define limits based on subscription
-      const limits = isPremium ? {
-        audioTranscription: -1, // Unlimited
-        pdfProcessing: -1,      // Unlimited
-        youtubeProcessing: -1,  // Unlimited
-        flashcardGeneration: -1, // Unlimited
-        quizGeneration: -1,     // Unlimited
-        aiTutorQuestions: -1,   // Unlimited
-      } : {
-        audioTranscription: 10,  // Free tier limits
-        pdfProcessing: 5,
-        youtubeProcessing: 3,
-        flashcardGeneration: 20,
-        quizGeneration: 10,
-        aiTutorQuestions: 50,
-      };
+      const limits = isPremium
+        ? {
+            audioTranscription: -1, // Unlimited
+            pdfProcessing: -1, // Unlimited
+            youtubeProcessing: -1, // Unlimited
+            flashcardGeneration: -1, // Unlimited
+            quizGeneration: -1, // Unlimited
+            aiTutorQuestions: -1, // Unlimited
+          }
+        : {
+            audioTranscription: 10, // Free tier limits
+            pdfProcessing: 5,
+            youtubeProcessing: 3,
+            flashcardGeneration: 20,
+            quizGeneration: 10,
+            aiTutorQuestions: 50,
+          };
 
       res.json({
         success: true,
         subscription: {
           isActive: isPremium,
-          plan: isPremium ? (subscription?.productId?.includes('yearly') ? 'yearly' : 'monthly') : 'free',
+          plan: isPremium
+            ? subscription?.productId?.includes('yearly')
+              ? 'yearly'
+              : 'monthly'
+            : 'free',
           expiryDate: subscription?.expiryDate,
           isInTrial: subscription?.isInTrial || false,
         },
@@ -299,18 +351,43 @@ export class PaymentController {
         },
         limits,
         quotaStatus: {
-          audioTranscription: isPremium ? 'unlimited' : (usage.audioTranscription || 0) >= limits.audioTranscription ? 'exceeded' : 'available',
-          pdfProcessing: isPremium ? 'unlimited' : (usage.pdfProcessing || 0) >= limits.pdfProcessing ? 'exceeded' : 'available',
-          youtubeProcessing: isPremium ? 'unlimited' : (usage.youtubeProcessing || 0) >= limits.youtubeProcessing ? 'exceeded' : 'available',
-          flashcardGeneration: isPremium ? 'unlimited' : (usage.flashcardGeneration || 0) >= limits.flashcardGeneration ? 'exceeded' : 'available',
-          quizGeneration: isPremium ? 'unlimited' : (usage.quizGeneration || 0) >= limits.quizGeneration ? 'exceeded' : 'available',
-          aiTutorQuestions: isPremium ? 'unlimited' : (usage.aiTutorQuestions || 0) >= limits.aiTutorQuestions ? 'exceeded' : 'available',
+          audioTranscription: isPremium
+            ? 'unlimited'
+            : (usage.audioTranscription || 0) >= limits.audioTranscription
+              ? 'exceeded'
+              : 'available',
+          pdfProcessing: isPremium
+            ? 'unlimited'
+            : (usage.pdfProcessing || 0) >= limits.pdfProcessing
+              ? 'exceeded'
+              : 'available',
+          youtubeProcessing: isPremium
+            ? 'unlimited'
+            : (usage.youtubeProcessing || 0) >= limits.youtubeProcessing
+              ? 'exceeded'
+              : 'available',
+          flashcardGeneration: isPremium
+            ? 'unlimited'
+            : (usage.flashcardGeneration || 0) >= limits.flashcardGeneration
+              ? 'exceeded'
+              : 'available',
+          quizGeneration: isPremium
+            ? 'unlimited'
+            : (usage.quizGeneration || 0) >= limits.quizGeneration
+              ? 'exceeded'
+              : 'available',
+          aiTutorQuestions: isPremium
+            ? 'unlimited'
+            : (usage.aiTutorQuestions || 0) >= limits.aiTutorQuestions
+              ? 'exceeded'
+              : 'available',
         },
       });
     } catch (error) {
       console.error('[PaymentController] Get subscription quota error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
+
       res.status(500).json({
         success: false,
         error: 'Internal server error while fetching subscription quota',
@@ -338,8 +415,9 @@ export class PaymentController {
       });
     } catch (error) {
       console.error('[PaymentController] Health check error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
+
       res.status(500).json({
         success: false,
         status: 'unhealthy',
@@ -352,4 +430,4 @@ export class PaymentController {
 
 // Export singleton instance
 export const paymentController = new PaymentController();
-export default paymentController; 
+export default paymentController;

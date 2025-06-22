@@ -27,7 +27,10 @@ export class SummaryController {
   /**
    * Generate a new AI summary
    */
-  public async generateSummary(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async generateSummary(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { content, contentType, contentItemId, options } = req.body;
       const userId = req.user!.id;
@@ -41,10 +44,14 @@ export class SummaryController {
         return;
       }
 
-      if (!contentType || !['pdf', 'youtube', 'audio', 'text'].includes(contentType)) {
+      if (
+        !contentType ||
+        !['pdf', 'youtube', 'audio', 'text'].includes(contentType)
+      ) {
         res.status(400).json({
           error: 'Invalid input',
-          message: 'Valid contentType is required (pdf, youtube, audio, or text)',
+          message:
+            'Valid contentType is required (pdf, youtube, audio, or text)',
         });
         return;
       }
@@ -91,7 +98,10 @@ export class SummaryController {
 
       // Generate new summary
       console.log('📝 Generating new summary with OpenAI');
-      const result = await this.openAIService.generateSummary(content, summaryOptions);
+      const result = await this.openAIService.generateSummary(
+        content,
+        summaryOptions
+      );
 
       if (!result) {
         res.status(500).json({
@@ -113,7 +123,11 @@ export class SummaryController {
 
       // Update content item with summary if contentItemId provided
       if (contentItemId && summaryId) {
-        await this.updateContentItemSummary(contentItemId, result.summary, userId);
+        await this.updateContentItemSummary(
+          contentItemId,
+          result.summary,
+          userId
+        );
       }
 
       res.json({
@@ -146,7 +160,10 @@ export class SummaryController {
   /**
    * Get a specific summary by ID
    */
-  public async getSummary(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getSummary(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -161,7 +178,8 @@ export class SummaryController {
       if (error || !data) {
         res.status(404).json({
           error: 'Summary not found',
-          message: 'The requested summary does not exist or you do not have access to it',
+          message:
+            'The requested summary does not exist or you do not have access to it',
         });
         return;
       }
@@ -210,7 +228,10 @@ export class SummaryController {
   /**
    * Get all summaries for the authenticated user
    */
-  public async getUserSummaries(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getUserSummaries(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const userId = req.user!.id;
       const {
@@ -286,7 +307,10 @@ export class SummaryController {
   /**
    * Get summaries for a specific content item
    */
-  public async getSummariesByContentItem(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getSummariesByContentItem(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { contentItemId } = req.params;
       const userId = req.user!.id;
@@ -343,7 +367,10 @@ export class SummaryController {
   /**
    * Update summary access tracking
    */
-  public async updateSummaryAccess(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async updateSummaryAccess(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -380,7 +407,10 @@ export class SummaryController {
   /**
    * Delete a summary
    */
-  public async deleteSummary(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async deleteSummary(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -415,7 +445,10 @@ export class SummaryController {
   /**
    * Get cache statistics
    */
-  public async getCacheStats(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getCacheStats(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { days = 7 } = req.query;
       const stats = await summaryCacheService.getCacheStats(Number(days));
@@ -450,10 +483,15 @@ export class SummaryController {
   /**
    * Manually trigger cache cleanup
    */
-  public async cleanupCache(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async cleanupCache(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { daysToKeep = 30 } = req.body;
-      const deletedCount = await summaryCacheService.cleanupOldEntries(Number(daysToKeep));
+      const deletedCount = await summaryCacheService.cleanupOldEntries(
+        Number(daysToKeep)
+      );
 
       res.json({
         success: true,
@@ -476,10 +514,10 @@ export class SummaryController {
     try {
       // Test OpenAI connection
       const openAIHealthy = await this.openAIService.testConnection();
-      
+
       // Test cache service
       const cacheInfo = summaryCacheService.getCacheInfo();
-      
+
       // Test database connection
       const { error: dbError } = await this.supabase
         .from('ai_summaries')
@@ -534,4 +572,4 @@ export class SummaryController {
       // Don't throw error as this is a non-critical operation
     }
   }
-} 
+}

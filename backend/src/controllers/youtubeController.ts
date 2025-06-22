@@ -17,23 +17,26 @@ export interface AuthenticatedRequest extends Request {
  */
 function parseDurationToSeconds(duration: string): number {
   if (!duration) return 0;
-  
+
   let seconds = 0;
   const hourMatch = duration.match(/(\d+)h/);
   const minuteMatch = duration.match(/(\d+)m/);
   const secondMatch = duration.match(/(\d+)s/);
-  
+
   if (hourMatch) seconds += parseInt(hourMatch[1]) * 3600;
   if (minuteMatch) seconds += parseInt(minuteMatch[1]) * 60;
   if (secondMatch) seconds += parseInt(secondMatch[1]);
-  
+
   return seconds;
 }
 
 /**
  * Validate a YouTube URL
  */
-export const validateYouTubeVideo = async (req: AuthenticatedRequest, res: Response) => {
+export const validateYouTubeVideo = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     const { url } = req.body;
 
@@ -54,7 +57,8 @@ export const validateYouTubeVideo = async (req: AuthenticatedRequest, res: Respo
     console.error('Error validating YouTube video:', error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to validate video',
+      error:
+        error instanceof Error ? error.message : 'Failed to validate video',
     });
   }
 };
@@ -62,7 +66,10 @@ export const validateYouTubeVideo = async (req: AuthenticatedRequest, res: Respo
 /**
  * Get YouTube video metadata
  */
-export const getVideoMetadata = async (req: AuthenticatedRequest, res: Response) => {
+export const getVideoMetadata = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     const { videoId } = req.params;
 
@@ -83,7 +90,10 @@ export const getVideoMetadata = async (req: AuthenticatedRequest, res: Response)
     console.error('Error fetching video metadata:', error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch video metadata',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch video metadata',
     });
   }
 };
@@ -91,7 +101,10 @@ export const getVideoMetadata = async (req: AuthenticatedRequest, res: Response)
 /**
  * Process a YouTube video completely
  */
-export const processYouTubeVideo = async (req: AuthenticatedRequest, res: Response) => {
+export const processYouTubeVideo = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     const { url } = req.body;
     const userId = req.user?.id;
@@ -122,7 +135,9 @@ export const processYouTubeVideo = async (req: AuthenticatedRequest, res: Respon
     // Check if video is already processed by this user (cache check)
     const cachedVideo = await cacheService.getProcessedVideo(videoId, userId);
     if (cachedVideo) {
-      console.log(`Cache hit for processed video: ${videoId} by user ${userId}`);
+      console.log(
+        `Cache hit for processed video: ${videoId} by user ${userId}`
+      );
       return res.json({
         success: true,
         data: {
@@ -145,7 +160,9 @@ export const processYouTubeVideo = async (req: AuthenticatedRequest, res: Respon
           },
           transcript: [], // Not stored in cache for performance
           fullTranscriptText: cachedVideo.transcript,
-          processingTimestamp: cachedVideo.metadata?.processingTimestamp || cachedVideo.processed_at,
+          processingTimestamp:
+            cachedVideo.metadata?.processingTimestamp ||
+            cachedVideo.processed_at,
           recordId: cachedVideo.id,
           fromCache: true,
         },
@@ -153,7 +170,10 @@ export const processYouTubeVideo = async (req: AuthenticatedRequest, res: Respon
     }
 
     // Check user quota
-    const quotaResult = await usageTrackingService.checkUserQuota(userId, 'youtube_processing');
+    const quotaResult = await usageTrackingService.checkUserQuota(
+      userId,
+      'youtube_processing'
+    );
     if (!quotaResult.allowed) {
       await usageTrackingService.logError({
         user_id: userId,
@@ -164,7 +184,7 @@ export const processYouTubeVideo = async (req: AuthenticatedRequest, res: Respon
           url,
           quotaLimit: quotaResult.daily_limit,
           currentUsage: quotaResult.current_usage,
-        }
+        },
       });
 
       return res.status(429).json({
@@ -182,20 +202,28 @@ export const processYouTubeVideo = async (req: AuthenticatedRequest, res: Respon
       // Process the video
       console.log(`Starting video processing for: ${videoId}`);
       const result = await youtubeService.processVideo(url);
-      
+
       console.log(`Video processing completed for: ${videoId}`);
-      console.log(`Transcript length: ${result.fullTranscriptText.length} characters`);
+      console.log(
+        `Transcript length: ${result.fullTranscriptText.length} characters`
+      );
       console.log(`Transcript segments: ${result.transcript.length}`);
-      
+
       // Log first 100 characters of transcript for debugging
       if (result.fullTranscriptText.length > 0) {
-        console.log(`Transcript preview: ${result.fullTranscriptText.substring(0, 100)}...`);
+        console.log(
+          `Transcript preview: ${result.fullTranscriptText.substring(0, 100)}...`
+        );
       } else {
         console.warn(`Empty transcript for video: ${videoId}`);
       }
 
       // Track usage
-      await usageTrackingService.incrementUsage(userId, 'youtube_processing', 1);
+      await usageTrackingService.incrementUsage(
+        userId,
+        'youtube_processing',
+        1
+      );
 
       // Store the processed video data in database
       const { data: videoRecord, error: dbError } = await supabaseAdmin
@@ -232,15 +260,15 @@ export const processYouTubeVideo = async (req: AuthenticatedRequest, res: Respon
           error_details: {
             videoId,
             error: dbError.message,
-          }
+          },
         });
-        
+
         // Still return success since processing completed
         // The data is available in the response even if storage failed
       } else {
         // Cache the processed video data for faster future access
         cacheService.setProcessedVideo(videoId, userId, videoRecord);
-        
+
         // Create content item for Recent Notes integration
         try {
           const contentService = new ContentService();
@@ -269,7 +297,6 @@ export const processYouTubeVideo = async (req: AuthenticatedRequest, res: Respon
           recordId: videoRecord?.id,
         },
       });
-
     } catch (processingError) {
       // Log the processing error
       await usageTrackingService.logError({
@@ -279,13 +306,15 @@ export const processYouTubeVideo = async (req: AuthenticatedRequest, res: Respon
         error_details: {
           videoId,
           url,
-          error: processingError instanceof Error ? processingError.message : 'Unknown error',
-        }
+          error:
+            processingError instanceof Error
+              ? processingError.message
+              : 'Unknown error',
+        },
       });
 
       throw processingError;
     }
-
   } catch (error) {
     console.error('Error processing YouTube video:', error);
     res.status(500).json({
@@ -298,7 +327,10 @@ export const processYouTubeVideo = async (req: AuthenticatedRequest, res: Respon
 /**
  * Get user's processed videos
  */
-export const getUserVideos = async (req: AuthenticatedRequest, res: Response) => {
+export const getUserVideos = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     const userId = req.user?.id;
 
@@ -339,7 +371,10 @@ export const getUserVideos = async (req: AuthenticatedRequest, res: Response) =>
 /**
  * Get a specific processed video
  */
-export const getProcessedVideo = async (req: AuthenticatedRequest, res: Response) => {
+export const getProcessedVideo = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     const { videoId } = req.params;
     const userId = req.user?.id;
@@ -354,7 +389,9 @@ export const getProcessedVideo = async (req: AuthenticatedRequest, res: Response
     // Check cache first
     const cachedVideo = await cacheService.getProcessedVideo(videoId, userId);
     if (cachedVideo) {
-      console.log(`Cache hit for processed video: ${videoId} by user ${userId}`);
+      console.log(
+        `Cache hit for processed video: ${videoId} by user ${userId}`
+      );
       return res.json({
         success: true,
         data: cachedVideo,
@@ -376,7 +413,7 @@ export const getProcessedVideo = async (req: AuthenticatedRequest, res: Response
           error: 'Video not found',
         });
       }
-      
+
       console.error('Error fetching video:', error);
       return res.status(500).json({
         success: false,
@@ -403,10 +440,13 @@ export const getProcessedVideo = async (req: AuthenticatedRequest, res: Response
 /**
  * Get cache statistics (admin/debug endpoint)
  */
-export const getCacheStats = async (req: AuthenticatedRequest, res: Response) => {
+export const getCacheStats = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     const stats = cacheService.getStats();
-    
+
     res.json({
       success: true,
       data: {
@@ -419,7 +459,8 @@ export const getCacheStats = async (req: AuthenticatedRequest, res: Response) =>
     console.error('Error getting cache stats:', error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to get cache stats',
+      error:
+        error instanceof Error ? error.message : 'Failed to get cache stats',
     });
   }
 };
@@ -427,7 +468,10 @@ export const getCacheStats = async (req: AuthenticatedRequest, res: Response) =>
 /**
  * Clear cache for a specific video (admin/debug endpoint)
  */
-export const clearVideoCache = async (req: AuthenticatedRequest, res: Response) => {
+export const clearVideoCache = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
   try {
     const { videoId } = req.params;
     const userId = req.user?.id;
@@ -453,4 +497,4 @@ export const clearVideoCache = async (req: AuthenticatedRequest, res: Response) 
       error: error instanceof Error ? error.message : 'Failed to clear cache',
     });
   }
-}; 
+};

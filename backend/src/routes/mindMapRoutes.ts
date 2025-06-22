@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { mindMapController } from '../controllers/mindMapController';
-import { authenticateToken, requirePlan } from '../middleware/auth';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
@@ -46,4 +46,4 @@ router.delete('/:id', mindMapController.deleteMindMap);
  */
 router.get('/:id/export', mindMapController.exportMindMap);
 
-export default router; 
+export default router;

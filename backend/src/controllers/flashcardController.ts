@@ -31,7 +31,10 @@ export class FlashcardController {
   /**
    * Generate flashcards from content
    */
-  public async generateFlashcards(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async generateFlashcards(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { content, contentType, contentItemId, options } = req.body;
       const userId = req.user!.id;
@@ -45,10 +48,14 @@ export class FlashcardController {
         return;
       }
 
-      if (!contentType || !['pdf', 'youtube', 'lecture_recording', 'text'].includes(contentType)) {
+      if (
+        !contentType ||
+        !['pdf', 'youtube', 'lecture_recording', 'text'].includes(contentType)
+      ) {
         res.status(400).json({
           error: 'Invalid input',
-          message: 'Valid contentType is required (pdf, youtube, lecture_recording, or text)',
+          message:
+            'Valid contentType is required (pdf, youtube, lecture_recording, or text)',
         });
         return;
       }
@@ -59,16 +66,26 @@ export class FlashcardController {
         numberOfCards: options?.numberOfCards || 10,
         difficulty: options?.difficulty || 'mixed',
         focusArea: options?.focusArea || 'general',
-        questionTypes: options?.questionTypes || ['definition', 'concept', 'example', 'application'],
+        questionTypes: options?.questionTypes || [
+          'definition',
+          'concept',
+          'example',
+          'application',
+        ],
         maxTokens: options?.maxTokens,
         temperature: options?.temperature,
       };
 
-      console.log(`🃏 Generating flashcards from ${contentType} content for user ${userId}`);
+      console.log(
+        `🃏 Generating flashcards from ${contentType} content for user ${userId}`
+      );
       console.log(`📊 Options:`, flashcardOptions);
 
       // Generate flashcards
-      const result = await this.flashcardService.generateFlashcards(content, flashcardOptions);
+      const result = await this.flashcardService.generateFlashcards(
+        content,
+        flashcardOptions
+      );
 
       if (!result) {
         res.status(500).json({
@@ -117,7 +134,10 @@ export class FlashcardController {
   /**
    * Get a specific flashcard set by ID
    */
-  public async getFlashcardSet(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getFlashcardSet(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -133,7 +153,8 @@ export class FlashcardController {
       if (setError || !setData) {
         res.status(404).json({
           error: 'Flashcard set not found',
-          message: 'The requested flashcard set does not exist or you do not have access to it',
+          message:
+            'The requested flashcard set does not exist or you do not have access to it',
         });
         return;
       }
@@ -147,7 +168,7 @@ export class FlashcardController {
           id: setData.id,
           title: setData.title,
           description: setData.description,
-          flashcards: flashcards.map(card => ({
+          flashcards: flashcards.map((card) => ({
             id: card.id,
             question: card.question,
             answer: card.answer,
@@ -171,20 +192,28 @@ export class FlashcardController {
   /**
    * Get all flashcard sets for the current user
    */
-  public async getUserFlashcardSets(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getUserFlashcardSets(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const userId = req.user!.id;
       const { limit = 10, offset = 0, content_item_id } = req.query;
 
       let query = this.supabase
         .from('flashcard_sets')
-        .select(`
+        .select(
+          `
           *,
           flashcards:flashcards(count)
-        `)
+        `
+        )
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
+        .range(
+          parseInt(offset as string),
+          parseInt(offset as string) + parseInt(limit as string) - 1
+        );
 
       // Filter by content item if provided
       if (content_item_id) {
@@ -204,20 +233,23 @@ export class FlashcardController {
 
       res.json({
         success: true,
-        flashcardSets: data?.map(set => ({
-          id: set.id,
-          title: set.title,
-          description: set.description,
-          flashcardCount: set.flashcards?.[0]?.count || 0,
-          contentItemId: set.content_item_id,
-          createdAt: set.created_at,
-          updatedAt: set.updated_at,
-        })) || [],
+        flashcardSets:
+          data?.map((set) => ({
+            id: set.id,
+            title: set.title,
+            description: set.description,
+            flashcardCount: set.flashcards?.[0]?.count || 0,
+            contentItemId: set.content_item_id,
+            createdAt: set.created_at,
+            updatedAt: set.updated_at,
+          })) || [],
         pagination: {
           total: count || 0,
           limit: parseInt(limit as string),
           offset: parseInt(offset as string),
-          hasMore: (count || 0) > parseInt(offset as string) + parseInt(limit as string),
+          hasMore:
+            (count || 0) >
+            parseInt(offset as string) + parseInt(limit as string),
         },
       });
     } catch (error) {
@@ -232,17 +264,22 @@ export class FlashcardController {
   /**
    * Get flashcards for a specific content item
    */
-  public async getFlashcardsByContentItem(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getFlashcardsByContentItem(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { contentItemId } = req.params;
       const userId = req.user!.id;
 
       const { data, error } = await this.supabase
         .from('flashcard_sets')
-        .select(`
+        .select(
+          `
           *,
           flashcards:flashcards(*)
-        `)
+        `
+        )
         .eq('content_item_id', contentItemId)
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
@@ -258,15 +295,16 @@ export class FlashcardController {
 
       res.json({
         success: true,
-        flashcardSets: data?.map(set => ({
-          id: set.id,
-          title: set.title,
-          description: set.description,
-          flashcards: set.flashcards || [],
-          contentItemId: set.content_item_id,
-          createdAt: set.created_at,
-          updatedAt: set.updated_at,
-        })) || [],
+        flashcardSets:
+          data?.map((set) => ({
+            id: set.id,
+            title: set.title,
+            description: set.description,
+            flashcards: set.flashcards || [],
+            contentItemId: set.content_item_id,
+            createdAt: set.created_at,
+            updatedAt: set.updated_at,
+          })) || [],
       });
     } catch (error) {
       console.error('❌ Error getting flashcards by content item:', error);
@@ -280,7 +318,10 @@ export class FlashcardController {
   /**
    * Delete a flashcard set
    */
-  public async deleteFlashcardSet(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async deleteFlashcardSet(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -303,7 +344,10 @@ export class FlashcardController {
   /**
    * Update a flashcard set (title, description)
    */
-  public async updateFlashcardSet(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async updateFlashcardSet(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const { title, description } = req.body;
@@ -333,7 +377,8 @@ export class FlashcardController {
       if (error || !data) {
         res.status(404).json({
           error: 'Flashcard set not found',
-          message: 'The flashcard set does not exist or you do not have access to it',
+          message:
+            'The flashcard set does not exist or you do not have access to it',
         });
         return;
       }
@@ -365,7 +410,7 @@ export class FlashcardController {
   public async healthCheck(req: Request, res: Response): Promise<void> {
     try {
       // Test database connection
-      const { data, error } = await this.supabase
+      const { error } = await this.supabase
         .from('flashcard_sets')
         .select('count')
         .limit(1);
@@ -393,4 +438,4 @@ export class FlashcardController {
       });
     }
   }
-} 
+}

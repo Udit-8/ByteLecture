@@ -98,7 +98,7 @@ export class SummaryCacheService {
   public async getCachedSummary(
     content: string,
     options: SummarizationOptions,
-    userId: string
+    _userId: string
   ): Promise<CachedSummary | null> {
     const contentHash = this.generateContentHash(content);
     const cacheKey = this.generateCacheKey(contentHash, options);
@@ -108,10 +108,10 @@ export class SummaryCacheService {
       if (this.inMemoryCache.has(cacheKey)) {
         console.log('💨 Cache hit (in-memory)');
         const cached = this.inMemoryCache.get(cacheKey)!;
-        
+
         // Update access tracking in background
         this.updateAccessTracking(cached.id).catch(console.error);
-        
+
         return cached;
       }
 
@@ -134,7 +134,7 @@ export class SummaryCacheService {
       if (data && data.length > 0) {
         console.log('🎯 Cache hit (database)');
         const record = data[0];
-        
+
         const cachedSummary: CachedSummary = {
           id: record.id,
           summaryText: record.summary_text,
@@ -150,12 +150,12 @@ export class SummaryCacheService {
 
         // Add to in-memory cache
         this.addToMemoryCache(cacheKey, cachedSummary);
-        
+
         // Update access tracking
         if (record.id) {
           await this.updateAccessTracking(record.id);
         }
-        
+
         return cachedSummary;
       }
 
@@ -178,7 +178,11 @@ export class SummaryCacheService {
     contentItemId?: string
   ): Promise<string | null> {
     const contentHash = this.generateContentHash(content);
-    const { length = 'medium', focusArea = 'general', contentType = 'text' } = options;
+    const {
+      length = 'medium',
+      focusArea = 'general',
+      contentType = 'text',
+    } = options;
 
     try {
       const summaryRecord: Omit<SummaryRecord, 'id'> = {
@@ -232,7 +236,12 @@ export class SummaryCacheService {
       this.addToMemoryCache(cacheKey, cachedSummary);
 
       // Update cache statistics
-      await this.updateCacheStats(false, result.tokensUsed, summaryRecord.estimatedCost, result.processingTime);
+      await this.updateCacheStats(
+        false,
+        result.tokensUsed,
+        summaryRecord.estimatedCost,
+        result.processingTime
+      );
 
       return data.id;
     } catch (error) {
@@ -314,7 +323,12 @@ export class SummaryCacheService {
       const { data, error } = await this.supabase
         .from('summary_cache_stats')
         .select('*')
-        .gte('date', new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .gte(
+          'date',
+          new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split('T')[0]
+        )
         .order('date', { ascending: false });
 
       if (error) {
@@ -341,7 +355,8 @@ export class SummaryCacheService {
           cacheMisses: acc.cacheMisses + day.cache_misses,
           totalTokensUsed: acc.totalTokensUsed + day.total_tokens_used,
           totalCost: acc.totalCost + parseFloat(day.total_cost),
-          averageProcessingTime: acc.averageProcessingTime + day.average_processing_time_ms,
+          averageProcessingTime:
+            acc.averageProcessingTime + day.average_processing_time_ms,
         }),
         {
           totalRequests: 0,
@@ -355,8 +370,12 @@ export class SummaryCacheService {
 
       return {
         ...totals,
-        hitRatio: totals.totalRequests > 0 ? (totals.cacheHits / totals.totalRequests) * 100 : 0,
-        averageProcessingTime: data.length > 0 ? totals.averageProcessingTime / data.length : 0,
+        hitRatio:
+          totals.totalRequests > 0
+            ? (totals.cacheHits / totals.totalRequests) * 100
+            : 0,
+        averageProcessingTime:
+          data.length > 0 ? totals.averageProcessingTime / data.length : 0,
       };
     } catch (error) {
       console.error('❌ Error getting cache stats:', error);
@@ -416,4 +435,4 @@ export class SummaryCacheService {
 }
 
 // Export singleton instance
-export default new SummaryCacheService(); 
+export default new SummaryCacheService();

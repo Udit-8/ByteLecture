@@ -1,7 +1,11 @@
 import { Request, Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { OpenAIService } from '../services/openAIService';
-import { QuizService, QuizGenerationOptions, QuizAttempt } from '../services/quizService';
+import {
+  QuizService,
+  QuizGenerationOptions,
+  QuizAttempt,
+} from '../services/quizService';
 import { usageTrackingService } from '../services/usageTrackingService';
 import { createClient } from '@supabase/supabase-js';
 
@@ -31,7 +35,10 @@ export class QuizController {
   /**
    * Generate quiz from content
    */
-  public async generateQuiz(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async generateQuiz(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { content, contentType, contentItemId, options } = req.body;
       const userId = req.user!.id;
@@ -45,10 +52,14 @@ export class QuizController {
         return;
       }
 
-      if (!contentType || !['pdf', 'youtube', 'lecture_recording', 'text'].includes(contentType)) {
+      if (
+        !contentType ||
+        !['pdf', 'youtube', 'lecture_recording', 'text'].includes(contentType)
+      ) {
         res.status(400).json({
           error: 'Invalid input',
-          message: 'Valid contentType is required (pdf, youtube, lecture_recording, or text)',
+          message:
+            'Valid contentType is required (pdf, youtube, lecture_recording, or text)',
         });
         return;
       }
@@ -64,11 +75,16 @@ export class QuizController {
         temperature: options?.temperature,
       };
 
-      console.log(`🧠 Generating quiz from ${contentType} content for user ${userId}`);
+      console.log(
+        `🧠 Generating quiz from ${contentType} content for user ${userId}`
+      );
       console.log(`📊 Options:`, quizOptions);
 
       // Check user quota before generation
-      const quota = await usageTrackingService.checkUserQuota(userId, 'quiz_generation');
+      const quota = await usageTrackingService.checkUserQuota(
+        userId,
+        'quiz_generation'
+      );
       if (!quota.allowed) {
         res.status(429).json({
           error: 'Quota exceeded',
@@ -139,7 +155,10 @@ export class QuizController {
   /**
    * Get a specific quiz set by ID
    */
-  public async getQuizSet(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getQuizSet(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -155,7 +174,8 @@ export class QuizController {
       if (setError || !setData) {
         res.status(404).json({
           error: 'Quiz set not found',
-          message: 'The requested quiz set does not exist or you do not have access to it',
+          message:
+            'The requested quiz set does not exist or you do not have access to it',
         });
         return;
       }
@@ -169,7 +189,7 @@ export class QuizController {
           id: setData.id,
           title: setData.title,
           description: setData.description,
-          questions: questions.map(question => ({
+          questions: questions.map((question) => ({
             id: question.id,
             question: question.question,
             options: question.options,
@@ -201,20 +221,28 @@ export class QuizController {
   /**
    * Get all quiz sets for the current user
    */
-  public async getUserQuizSets(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getUserQuizSets(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const userId = req.user!.id;
       const { limit = 10, offset = 0, content_item_id } = req.query;
 
       let query = this.supabase
         .from('quiz_sets')
-        .select(`
+        .select(
+          `
           *,
           questions:quiz_questions(count)
-        `)
+        `
+        )
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
+        .range(
+          parseInt(offset as string),
+          parseInt(offset as string) + parseInt(limit as string) - 1
+        );
 
       // Filter by content item if provided
       if (content_item_id) {
@@ -234,24 +262,27 @@ export class QuizController {
 
       res.json({
         success: true,
-        quizSets: data?.map(set => ({
-          id: set.id,
-          title: set.title,
-          description: set.description,
-          totalQuestions: set.total_questions,
-          estimatedDuration: set.estimated_duration,
-          difficulty: set.difficulty,
-          metadata: set.metadata,
-          contentItemId: set.content_item_id,
-          questionCount: set.questions?.[0]?.count || 0,
-          createdAt: set.created_at,
-          updatedAt: set.updated_at,
-        })) || [],
+        quizSets:
+          data?.map((set) => ({
+            id: set.id,
+            title: set.title,
+            description: set.description,
+            totalQuestions: set.total_questions,
+            estimatedDuration: set.estimated_duration,
+            difficulty: set.difficulty,
+            metadata: set.metadata,
+            contentItemId: set.content_item_id,
+            questionCount: set.questions?.[0]?.count || 0,
+            createdAt: set.created_at,
+            updatedAt: set.updated_at,
+          })) || [],
         pagination: {
           total: count || 0,
           limit: parseInt(limit as string),
           offset: parseInt(offset as string),
-          hasMore: (count || 0) > parseInt(offset as string) + parseInt(limit as string),
+          hasMore:
+            (count || 0) >
+            parseInt(offset as string) + parseInt(limit as string),
         },
       });
     } catch (error) {
@@ -266,17 +297,22 @@ export class QuizController {
   /**
    * Get quiz sets by content item
    */
-  public async getQuizSetsByContentItem(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getQuizSetsByContentItem(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { contentItemId } = req.params;
       const userId = req.user!.id;
 
       const { data, error } = await this.supabase
         .from('quiz_sets')
-        .select(`
+        .select(
+          `
           *,
           questions:quiz_questions(count)
-        `)
+        `
+        )
         .eq('user_id', userId)
         .eq('content_item_id', contentItemId)
         .order('created_at', { ascending: false });
@@ -292,18 +328,19 @@ export class QuizController {
 
       res.json({
         success: true,
-        quizSets: data?.map(set => ({
-          id: set.id,
-          title: set.title,
-          description: set.description,
-          totalQuestions: set.total_questions,
-          estimatedDuration: set.estimated_duration,
-          difficulty: set.difficulty,
-          metadata: set.metadata,
-          questionCount: set.questions?.[0]?.count || 0,
-          createdAt: set.created_at,
-          updatedAt: set.updated_at,
-        })) || [],
+        quizSets:
+          data?.map((set) => ({
+            id: set.id,
+            title: set.title,
+            description: set.description,
+            totalQuestions: set.total_questions,
+            estimatedDuration: set.estimated_duration,
+            difficulty: set.difficulty,
+            metadata: set.metadata,
+            questionCount: set.questions?.[0]?.count || 0,
+            createdAt: set.created_at,
+            updatedAt: set.updated_at,
+          })) || [],
         contentItemId,
       });
     } catch (error) {
@@ -318,7 +355,10 @@ export class QuizController {
   /**
    * Delete a quiz set
    */
-  public async deleteQuizSet(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async deleteQuizSet(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -341,7 +381,10 @@ export class QuizController {
   /**
    * Retry quiz by regenerating questions on the same topic
    */
-  public async retryQuiz(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async retryQuiz(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -358,7 +401,8 @@ export class QuizController {
       if (setError || !originalSet) {
         res.status(404).json({
           error: 'Quiz set not found',
-          message: 'The requested quiz set does not exist or you do not have access to it',
+          message:
+            'The requested quiz set does not exist or you do not have access to it',
         });
         return;
       }
@@ -377,7 +421,8 @@ export class QuizController {
         if (contentError || !contentItem) {
           res.status(404).json({
             error: 'Original content not found',
-            message: 'Cannot retry quiz - original content is no longer available',
+            message:
+              'Cannot retry quiz - original content is no longer available',
           });
           return;
         }
@@ -388,7 +433,8 @@ export class QuizController {
         // If no content item, we cannot regenerate
         res.status(400).json({
           error: 'Cannot retry quiz',
-          message: 'This quiz cannot be retried as it was not generated from saved content',
+          message:
+            'This quiz cannot be retried as it was not generated from saved content',
         });
         return;
       }
@@ -404,7 +450,9 @@ export class QuizController {
         quizOptions = {
           ...quizOptions,
           focusArea: originalSet.metadata.focusArea || 'general',
-          questionTypes: originalSet.metadata.questionTypes || ['multiple_choice'],
+          questionTypes: originalSet.metadata.questionTypes || [
+            'multiple_choice',
+          ],
         };
       }
 
@@ -412,7 +460,10 @@ export class QuizController {
       console.log(`📊 Options:`, quizOptions);
 
       // Check user quota before generation
-      const quota = await usageTrackingService.checkUserQuota(userId, 'quiz_generation');
+      const quota = await usageTrackingService.checkUserQuota(
+        userId,
+        'quiz_generation'
+      );
       if (!quota.allowed) {
         res.status(429).json({
           error: 'Quota exceeded',
@@ -433,7 +484,8 @@ export class QuizController {
       if (!result.success || !result.quizSet) {
         res.status(500).json({
           error: 'Quiz regeneration failed',
-          message: result.error || 'Failed to regenerate quiz. Please try again.',
+          message:
+            result.error || 'Failed to regenerate quiz. Please try again.',
         });
         return;
       }
@@ -491,7 +543,10 @@ export class QuizController {
   /**
    * Generate sharing link for a quiz
    */
-  public async generateShareLink(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async generateShareLink(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { id } = req.params;
       const userId = req.user!.id;
@@ -508,7 +563,8 @@ export class QuizController {
       if (setError || !quizSet) {
         res.status(404).json({
           error: 'Quiz set not found',
-          message: 'The requested quiz set does not exist or you do not have access to it',
+          message:
+            'The requested quiz set does not exist or you do not have access to it',
         });
         return;
       }
@@ -518,7 +574,7 @@ export class QuizController {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + expiresIn);
 
-      const { data: shareRecord, error: shareError } = await this.supabase
+      const { error: shareError } = await this.supabase
         .from('quiz_shares')
         .insert({
           id: shareId,
@@ -569,7 +625,10 @@ export class QuizController {
   /**
    * Access shared quiz
    */
-  public async accessSharedQuiz(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async accessSharedQuiz(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { shareId } = req.params;
       const userId = req.user?.id; // Optional for anonymous access
@@ -577,10 +636,12 @@ export class QuizController {
       // Get share record
       const { data: shareRecord, error: shareError } = await this.supabase
         .from('quiz_shares')
-        .select(`
+        .select(
+          `
           *,
           quiz_sets!inner(*)
-        `)
+        `
+        )
         .eq('id', shareId)
         .single();
 
@@ -613,14 +674,16 @@ export class QuizController {
       // Update access count
       await this.supabase
         .from('quiz_shares')
-        .update({ 
+        .update({
           access_count: shareRecord.access_count + 1,
           last_accessed_at: new Date().toISOString(),
         })
         .eq('id', shareId);
 
       // Get quiz questions
-      const questions = await this.quizService.getQuizQuestions(shareRecord.quiz_set_id);
+      const questions = await this.quizService.getQuizQuestions(
+        shareRecord.quiz_set_id
+      );
 
       res.json({
         success: true,
@@ -628,7 +691,7 @@ export class QuizController {
           id: shareRecord.quiz_sets.id,
           title: shareRecord.quiz_sets.title,
           description: shareRecord.quiz_sets.description,
-          questions: questions.map(question => ({
+          questions: questions.map((question) => ({
             id: question.id,
             question: question.question,
             options: question.options,
@@ -665,12 +728,15 @@ export class QuizController {
   /**
    * Submit quiz attempt
    */
-  public async submitQuizAttempt(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async submitQuizAttempt(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       console.log('🔍 Quiz attempt submission request:', {
         params: req.params,
         body: req.body,
-        user: req.user?.id
+        user: req.user?.id,
       });
 
       const { quizSetId } = req.params;
@@ -680,36 +746,36 @@ export class QuizController {
       // Validate required fields
       if (!userId) {
         console.error('❌ User ID missing from request');
-        res.status(401).json({ 
-          success: false, 
-          error: 'User authentication required' 
+        res.status(401).json({
+          success: false,
+          error: 'User authentication required',
         });
         return;
       }
 
       if (!quizSetId) {
         console.error('❌ Quiz set ID missing from params');
-        res.status(400).json({ 
-          success: false, 
-          error: 'Quiz set ID is required' 
+        res.status(400).json({
+          success: false,
+          error: 'Quiz set ID is required',
         });
         return;
       }
 
       if (!answers || !Array.isArray(answers)) {
         console.error('❌ Answers missing or invalid:', { answers });
-        res.status(400).json({ 
-          success: false, 
-          error: 'Answers array is required' 
+        res.status(400).json({
+          success: false,
+          error: 'Answers array is required',
         });
         return;
       }
 
       if (timeSpent === undefined || timeSpent === null) {
         console.error('❌ Time spent missing:', { timeSpent });
-        res.status(400).json({ 
-          success: false, 
-          error: 'Time spent is required' 
+        res.status(400).json({
+          success: false,
+          error: 'Time spent is required',
         });
         return;
       }
@@ -718,7 +784,7 @@ export class QuizController {
 
       // Get quiz questions to validate answers and calculate score
       const questions = await this.quizService.getQuizQuestions(quizSetId);
-      
+
       if (questions.length === 0) {
         console.error('❌ Quiz set not found or has no questions');
         res.status(404).json({
@@ -730,22 +796,31 @@ export class QuizController {
       }
 
       console.log('✅ Found quiz questions:', questions.length);
-      
+
       // Log the questions for debugging
-      console.log('🔍 Debug - Questions:', questions.map(q => ({ id: q.id, question: q.question.substring(0, 50) + '...' })));
-      
+      console.log(
+        '🔍 Debug - Questions:',
+        questions.map((q) => ({
+          id: q.id,
+          question: q.question.substring(0, 50) + '...',
+        }))
+      );
+
       // Log the answers for debugging
       console.log('🔍 Debug - Answers received:', answers);
 
       // Validate and score answers
       const scoredAnswers = answers.map((answer: any, index: number) => {
-        console.log(`🔍 Debug - Processing answer ${index}:`, { questionId: answer.questionId, selectedAnswer: answer.selectedAnswer });
-        
-        const question = questions.find(q => q.id === answer.questionId);
+        console.log(`🔍 Debug - Processing answer ${index}:`, {
+          questionId: answer.questionId,
+          selectedAnswer: answer.selectedAnswer,
+        });
+
+        const question = questions.find((q) => q.id === answer.questionId);
         if (!question) {
-          console.error(`❌ Question not found for answer:`, { 
-            questionId: answer.questionId, 
-            availableQuestionIds: questions.map(q => q.id) 
+          console.error(`❌ Question not found for answer:`, {
+            questionId: answer.questionId,
+            availableQuestionIds: questions.map((q) => q.id),
           });
           throw new Error(`Question ${answer.questionId} not found`);
         }
@@ -758,10 +833,14 @@ export class QuizController {
         };
       });
 
-      const score = scoredAnswers.filter(a => a.isCorrect).length;
+      const score = scoredAnswers.filter((a) => a.isCorrect).length;
       const totalQuestions = questions.length;
 
-      console.log('✅ Answers scored:', { score, totalQuestions, percentage: Math.round((score / totalQuestions) * 100) });
+      console.log('✅ Answers scored:', {
+        score,
+        totalQuestions,
+        percentage: Math.round((score / totalQuestions) * 100),
+      });
 
       // Create quiz attempt object
       const quizAttempt: QuizAttempt = {
@@ -796,7 +875,7 @@ export class QuizController {
       });
     } catch (error) {
       console.error('❌ Error in submitQuizAttempt controller:', error);
-      
+
       // Log more details about the error
       if (error instanceof Error) {
         console.error('❌ Error name:', error.name);
@@ -804,10 +883,10 @@ export class QuizController {
         console.error('❌ Error stack:', error.stack);
       }
 
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         error: 'Failed to submit quiz attempt',
-        details: error instanceof Error ? error.message : String(error)
+        details: error instanceof Error ? error.message : String(error),
       });
     }
   }
@@ -815,7 +894,10 @@ export class QuizController {
   /**
    * Get quiz attempts for a specific quiz set
    */
-  public async getQuizAttempts(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getQuizAttempts(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { quizSetId } = req.params;
       const userId = req.user!.id;
@@ -838,16 +920,19 @@ export class QuizController {
 
       res.json({
         success: true,
-        attempts: data?.map(attempt => ({
-          id: attempt.id,
-          quizSetId: attempt.quiz_set_id,
-          score: attempt.score,
-          totalQuestions: attempt.total_questions,
-          percentage: Math.round((attempt.score / attempt.total_questions) * 100),
-          timeSpent: attempt.time_spent,
-          completedAt: attempt.completed_at,
-          answers: attempt.answers,
-        })) || [],
+        attempts:
+          data?.map((attempt) => ({
+            id: attempt.id,
+            quizSetId: attempt.quiz_set_id,
+            score: attempt.score,
+            totalQuestions: attempt.total_questions,
+            percentage: Math.round(
+              (attempt.score / attempt.total_questions) * 100
+            ),
+            timeSpent: attempt.time_spent,
+            completedAt: attempt.completed_at,
+            answers: attempt.answers,
+          })) || [],
       });
     } catch (error) {
       console.error('❌ Error getting quiz attempts:', error);
@@ -861,7 +946,10 @@ export class QuizController {
   /**
    * Get user's overall quiz performance analytics
    */
-  public async getUserPerformanceAnalytics(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getUserPerformanceAnalytics(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const userId = req.user!.id;
       const { timeframe = '30' } = req.query; // Default to last 30 days
@@ -872,7 +960,8 @@ export class QuizController {
       // Get overall stats
       const { data: attempts, error: attemptsError } = await this.supabase
         .from('quiz_attempts')
-        .select(`
+        .select(
+          `
           id,
           score,
           total_questions,
@@ -880,13 +969,17 @@ export class QuizController {
           completed_at,
           quiz_set_id,
           quiz_sets!inner(title, difficulty, content_item_id)
-        `)
+        `
+        )
         .eq('user_id', userId)
         .gte('completed_at', startDate.toISOString())
         .order('completed_at', { ascending: true });
 
       if (attemptsError) {
-        console.error('❌ Error fetching quiz attempts for analytics:', attemptsError);
+        console.error(
+          '❌ Error fetching quiz attempts for analytics:',
+          attemptsError
+        );
         res.status(500).json({
           error: 'Database error',
           message: 'Failed to fetch quiz attempts',
@@ -895,46 +988,61 @@ export class QuizController {
       }
 
       const totalAttempts = attempts?.length || 0;
-      const totalCorrect = attempts?.reduce((sum, attempt) => sum + attempt.score, 0) || 0;
-      const totalQuestions = attempts?.reduce((sum, attempt) => sum + attempt.total_questions, 0) || 0;
-      const totalTimeSpent = attempts?.reduce((sum, attempt) => sum + (attempt.time_spent || 0), 0) || 0;
+      const totalCorrect =
+        attempts?.reduce((sum, attempt) => sum + attempt.score, 0) || 0;
+      const totalQuestions =
+        attempts?.reduce((sum, attempt) => sum + attempt.total_questions, 0) ||
+        0;
+      const totalTimeSpent =
+        attempts?.reduce(
+          (sum, attempt) => sum + (attempt.time_spent || 0),
+          0
+        ) || 0;
 
       // Calculate trends (improvement over time)
-      const dailyStats = attempts?.reduce((acc: Record<string, any>, attempt) => {
-        const date = new Date(attempt.completed_at).toISOString().split('T')[0];
-        if (!acc[date]) {
-          acc[date] = { correct: 0, total: 0, attempts: 0, timeSpent: 0 };
-        }
-        acc[date].correct += attempt.score;
-        acc[date].total += attempt.total_questions;
-        acc[date].attempts += 1;
-        acc[date].timeSpent += attempt.time_spent || 0;
-        return acc;
-      }, {}) || {};
+      const dailyStats =
+        attempts?.reduce((acc: Record<string, any>, attempt) => {
+          const date = new Date(attempt.completed_at)
+            .toISOString()
+            .split('T')[0];
+          if (!acc[date]) {
+            acc[date] = { correct: 0, total: 0, attempts: 0, timeSpent: 0 };
+          }
+          acc[date].correct += attempt.score;
+          acc[date].total += attempt.total_questions;
+          acc[date].attempts += 1;
+          acc[date].timeSpent += attempt.time_spent || 0;
+          return acc;
+        }, {}) || {};
 
       // Performance by difficulty
-      const difficultyStats = attempts?.reduce((acc: Record<string, any>, attempt) => {
-        const difficulty = (attempt as any).quiz_sets?.difficulty || 'unknown';
-        if (!acc[difficulty]) {
-          acc[difficulty] = { correct: 0, total: 0, attempts: 0 };
-        }
-        acc[difficulty].correct += attempt.score;
-        acc[difficulty].total += attempt.total_questions;
-        acc[difficulty].attempts += 1;
-        return acc;
-      }, {}) || {};
+      const difficultyStats =
+        attempts?.reduce((acc: Record<string, any>, attempt) => {
+          const difficulty =
+            (attempt as any).quiz_sets?.difficulty || 'unknown';
+          if (!acc[difficulty]) {
+            acc[difficulty] = { correct: 0, total: 0, attempts: 0 };
+          }
+          acc[difficulty].correct += attempt.score;
+          acc[difficulty].total += attempt.total_questions;
+          acc[difficulty].attempts += 1;
+          return acc;
+        }, {}) || {};
 
       // Recent performance (last 5 attempts)
-      const recentAttempts = attempts?.slice(-5).map(attempt => ({
-        id: attempt.id,
-        quizTitle: (attempt as any).quiz_sets?.title || 'Unknown Quiz',
-        score: attempt.score,
-        totalQuestions: attempt.total_questions,
-        percentage: Math.round((attempt.score / attempt.total_questions) * 100),
-        timeSpent: attempt.time_spent,
-        completedAt: attempt.completed_at,
-        difficulty: (attempt as any).quiz_sets?.difficulty || 'unknown',
-      })) || [];
+      const recentAttempts =
+        attempts?.slice(-5).map((attempt) => ({
+          id: attempt.id,
+          quizTitle: (attempt as any).quiz_sets?.title || 'Unknown Quiz',
+          score: attempt.score,
+          totalQuestions: attempt.total_questions,
+          percentage: Math.round(
+            (attempt.score / attempt.total_questions) * 100
+          ),
+          timeSpent: attempt.time_spent,
+          completedAt: attempt.completed_at,
+          difficulty: (attempt as any).quiz_sets?.difficulty || 'unknown',
+        })) || [];
 
       res.json({
         success: true,
@@ -943,24 +1051,43 @@ export class QuizController {
             totalAttempts,
             totalCorrect,
             totalQuestions,
-            overallAccuracy: totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
-            averageTimePerQuestion: totalQuestions > 0 ? Math.round(totalTimeSpent / totalQuestions) : 0,
+            overallAccuracy:
+              totalQuestions > 0
+                ? Math.round((totalCorrect / totalQuestions) * 100)
+                : 0,
+            averageTimePerQuestion:
+              totalQuestions > 0
+                ? Math.round(totalTimeSpent / totalQuestions)
+                : 0,
             totalTimeSpent,
           },
           trends: {
-            dailyStats: Object.entries(dailyStats).map(([date, stats]: [string, any]) => ({
-              date,
-              accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
-              attempts: stats.attempts,
-              avgTimePerQuestion: stats.total > 0 ? Math.round(stats.timeSpent / stats.total) : 0,
-            })),
+            dailyStats: Object.entries(dailyStats).map(
+              ([date, stats]: [string, any]) => ({
+                date,
+                accuracy:
+                  stats.total > 0
+                    ? Math.round((stats.correct / stats.total) * 100)
+                    : 0,
+                attempts: stats.attempts,
+                avgTimePerQuestion:
+                  stats.total > 0
+                    ? Math.round(stats.timeSpent / stats.total)
+                    : 0,
+              })
+            ),
           },
           performance: {
-            byDifficulty: Object.entries(difficultyStats).map(([difficulty, stats]: [string, any]) => ({
-              difficulty,
-              accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
-              attempts: stats.attempts,
-            })),
+            byDifficulty: Object.entries(difficultyStats).map(
+              ([difficulty, stats]: [string, any]) => ({
+                difficulty,
+                accuracy:
+                  stats.total > 0
+                    ? Math.round((stats.correct / stats.total) * 100)
+                    : 0,
+                attempts: stats.attempts,
+              })
+            ),
           },
           recentAttempts,
         },
@@ -978,14 +1105,18 @@ export class QuizController {
   /**
    * Get detailed performance for a specific content item
    */
-  public async getContentPerformance(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getContentPerformance(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const { contentItemId } = req.params;
       const userId = req.user!.id;
 
       const { data: attempts, error } = await this.supabase
         .from('quiz_attempts')
-        .select(`
+        .select(
+          `
           id,
           score,
           total_questions,
@@ -993,7 +1124,8 @@ export class QuizController {
           completed_at,
           quiz_set_id,
           quiz_sets!inner(title, difficulty, content_item_id)
-        `)
+        `
+        )
         .eq('user_id', userId)
         .eq('quiz_sets.content_item_id', contentItemId)
         .order('completed_at', { ascending: true });
@@ -1008,48 +1140,71 @@ export class QuizController {
       }
 
       const totalAttempts = attempts?.length || 0;
-      const totalCorrect = attempts?.reduce((sum, attempt) => sum + attempt.score, 0) || 0;
-      const totalQuestions = attempts?.reduce((sum, attempt) => sum + attempt.total_questions, 0) || 0;
-      
+      const totalCorrect =
+        attempts?.reduce((sum, attempt) => sum + attempt.score, 0) || 0;
+      const totalQuestions =
+        attempts?.reduce((sum, attempt) => sum + attempt.total_questions, 0) ||
+        0;
+
       // Calculate improvement trend
-      const improvementTrend = attempts?.map((attempt, index) => ({
-        attemptNumber: index + 1,
-        percentage: Math.round((attempt.score / attempt.total_questions) * 100),
-        date: attempt.completed_at,
-      })) || [];
+      const improvementTrend =
+        attempts?.map((attempt, index) => ({
+          attemptNumber: index + 1,
+          percentage: Math.round(
+            (attempt.score / attempt.total_questions) * 100
+          ),
+          date: attempt.completed_at,
+        })) || [];
 
       // Best and worst performance
-      const performances = attempts?.map(attempt => ({
-        percentage: Math.round((attempt.score / attempt.total_questions) * 100),
-        quizTitle: (attempt as any).quiz_sets?.title || 'Unknown Quiz',
-        completedAt: attempt.completed_at,
-      })) || [];
+      const performances =
+        attempts?.map((attempt) => ({
+          percentage: Math.round(
+            (attempt.score / attempt.total_questions) * 100
+          ),
+          quizTitle: (attempt as any).quiz_sets?.title || 'Unknown Quiz',
+          completedAt: attempt.completed_at,
+        })) || [];
 
-      const bestPerformance = performances.length > 0 ? 
-        performances.reduce((best, current) => current.percentage > best.percentage ? current : best) : null;
-      
-      const worstPerformance = performances.length > 0 ? 
-        performances.reduce((worst, current) => current.percentage < worst.percentage ? current : worst) : null;
+      const bestPerformance =
+        performances.length > 0
+          ? performances.reduce((best, current) =>
+              current.percentage > best.percentage ? current : best
+            )
+          : null;
+
+      const worstPerformance =
+        performances.length > 0
+          ? performances.reduce((worst, current) =>
+              current.percentage < worst.percentage ? current : worst
+            )
+          : null;
 
       res.json({
         success: true,
         contentPerformance: {
           contentItemId,
           totalAttempts,
-          overallAccuracy: totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0,
+          overallAccuracy:
+            totalQuestions > 0
+              ? Math.round((totalCorrect / totalQuestions) * 100)
+              : 0,
           improvementTrend,
           bestPerformance,
           worstPerformance,
-          attempts: attempts?.map(attempt => ({
-            id: attempt.id,
-            quizTitle: (attempt as any).quiz_sets?.title || 'Unknown Quiz',
-            score: attempt.score,
-            totalQuestions: attempt.total_questions,
-            percentage: Math.round((attempt.score / attempt.total_questions) * 100),
-            timeSpent: attempt.time_spent,
-            completedAt: attempt.completed_at,
-            difficulty: (attempt as any).quiz_sets?.difficulty || 'unknown',
-          })) || [],
+          attempts:
+            attempts?.map((attempt) => ({
+              id: attempt.id,
+              quizTitle: (attempt as any).quiz_sets?.title || 'Unknown Quiz',
+              score: attempt.score,
+              totalQuestions: attempt.total_questions,
+              percentage: Math.round(
+                (attempt.score / attempt.total_questions) * 100
+              ),
+              timeSpent: attempt.time_spent,
+              completedAt: attempt.completed_at,
+              difficulty: (attempt as any).quiz_sets?.difficulty || 'unknown',
+            })) || [],
         },
       });
     } catch (error) {
@@ -1064,13 +1219,19 @@ export class QuizController {
   /**
    * Get user usage and quota information
    */
-  public async getUserUsage(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async getUserUsage(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const userId = req.user!.id;
-      
+
       // Get current usage quota for quiz generation
-      const quota = await usageTrackingService.checkUserQuota(userId, 'quiz_generation');
-      
+      const quota = await usageTrackingService.checkUserQuota(
+        userId,
+        'quiz_generation'
+      );
+
       res.json({
         success: true,
         quota: {
@@ -1110,4 +1271,4 @@ export class QuizController {
   }
 }
 
-export default QuizController; 
+export default QuizController;

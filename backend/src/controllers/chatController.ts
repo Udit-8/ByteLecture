@@ -1,16 +1,11 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { ChatService } from '../services/chatService';
-import { 
-  CreateChatSessionRequest, 
-  CreateChatSessionResponse,
+import {
   SendMessageRequest,
-  SendMessageResponse,
   GetChatSessionsResponse,
   GetChatMessagesResponse,
   ChatUsageResponse,
-  GenerateEmbeddingsRequest,
-  GenerateEmbeddingsResponse
 } from '../types/chat';
 
 export class ChatController {
@@ -21,7 +16,10 @@ export class ChatController {
   }
 
   // Create a new chat session
-  createSession = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  createSession = async (
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> => {
     try {
       const userId = req.user?.id;
       if (!userId) {
@@ -46,21 +44,27 @@ export class ChatController {
 
       const response = {
         success: true,
-        data: { session }
+        data: { session },
       };
 
       res.status(201).json(response);
     } catch (error) {
       console.error('Error creating chat session:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to create chat session' 
+      res.status(500).json({
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create chat session',
       });
     }
   };
 
   // Get user's chat sessions
-  getSessions = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  getSessions = async (
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> => {
     try {
       const userId = req.user?.id;
       if (!userId) {
@@ -85,22 +89,28 @@ export class ChatController {
           page: Number(page),
           limit: Number(limit),
           total,
-          has_more: hasMore
-        }
+          has_more: hasMore,
+        },
       };
 
       res.json(response);
     } catch (error) {
       console.error('Error fetching chat sessions:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to fetch chat sessions' 
+      res.status(500).json({
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch chat sessions',
       });
     }
   };
 
   // Send a message and get AI response
-  sendMessage = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  sendMessage = async (
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> => {
     try {
       const userId = req.user?.id;
       if (!userId) {
@@ -112,9 +122,9 @@ export class ChatController {
       const { content }: SendMessageRequest = req.body;
 
       if (!content || content.trim().length === 0) {
-        res.status(400).json({ 
-          success: false, 
-          error: 'Message content is required' 
+        res.status(400).json({
+          success: false,
+          error: 'Message content is required',
         });
         return;
       }
@@ -131,43 +141,50 @@ export class ChatController {
           userMessage: result.userMessage,
           aiMessage: result.assistantMessage,
           tokensUsed: result.assistantMessage.token_usage?.total_tokens || 0,
-          contextSources: result.assistantMessage.context_sources || []
-        }
+          contextSources: result.assistantMessage.context_sources || [],
+        },
       };
 
       res.json(response);
     } catch (error) {
       console.error('Error sending chat message:', error);
-      
+
       // Handle specific error types
       if (error instanceof Error) {
         if (error.message.includes('daily limit')) {
-          res.status(429).json({ 
-            success: false, 
+          res.status(429).json({
+            success: false,
             error: error.message,
-            errorCode: 'USAGE_LIMIT_EXCEEDED'
+            errorCode: 'USAGE_LIMIT_EXCEEDED',
           });
           return;
         }
-        
-        if (error.message.includes('not found') || error.message.includes('access')) {
-          res.status(404).json({ 
-            success: false, 
-            error: error.message 
+
+        if (
+          error.message.includes('not found') ||
+          error.message.includes('access')
+        ) {
+          res.status(404).json({
+            success: false,
+            error: error.message,
           });
           return;
         }
       }
 
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to send message' 
+      res.status(500).json({
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Failed to send message',
       });
     }
   };
 
   // Get messages for a specific session
-  getMessages = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  getMessages = async (
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> => {
     try {
       const userId = req.user?.id;
       if (!userId) {
@@ -194,22 +211,28 @@ export class ChatController {
           page: Number(page),
           limit: Number(limit),
           total,
-          has_more: hasMore
-        }
+          has_more: hasMore,
+        },
       };
 
       res.json(response);
     } catch (error) {
       console.error('Error fetching chat messages:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to fetch chat messages' 
+      res.status(500).json({
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch chat messages',
       });
     }
   };
 
   // Update session title
-  updateSession = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  updateSession = async (
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> => {
     try {
       const userId = req.user?.id;
       if (!userId) {
@@ -221,9 +244,9 @@ export class ChatController {
       const { title } = req.body;
 
       if (!title || title.trim().length === 0) {
-        res.status(400).json({ 
-          success: false, 
-          error: 'Session title is required' 
+        res.status(400).json({
+          success: false,
+          error: 'Session title is required',
         });
         return;
       }
@@ -236,19 +259,25 @@ export class ChatController {
 
       res.json({
         success: true,
-        message: 'Session title updated successfully'
+        message: 'Session title updated successfully',
       });
     } catch (error) {
       console.error('Error updating chat session:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to update chat session' 
+      res.status(500).json({
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to update chat session',
       });
     }
   };
 
   // Delete a chat session
-  deleteSession = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  deleteSession = async (
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> => {
     try {
       const userId = req.user?.id;
       if (!userId) {
@@ -262,19 +291,25 @@ export class ChatController {
 
       res.json({
         success: true,
-        message: 'Chat session deleted successfully'
+        message: 'Chat session deleted successfully',
       });
     } catch (error) {
       console.error('Error deleting chat session:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to delete chat session' 
+      res.status(500).json({
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to delete chat session',
       });
     }
   };
 
   // Generate embeddings for content
-  generateEmbeddings = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  generateEmbeddings = async (
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> => {
     try {
       const userId = req.user?.id;
       if (!userId) {
@@ -285,12 +320,13 @@ export class ChatController {
       const { content_item_id, contentIds, force_regenerate } = req.body;
 
       // Support both single content_item_id and multiple contentIds for compatibility
-      const idsToProcess = contentIds || (content_item_id ? [content_item_id] : []);
+      const idsToProcess =
+        contentIds || (content_item_id ? [content_item_id] : []);
 
       if (!idsToProcess || idsToProcess.length === 0) {
-        res.status(400).json({ 
-          success: false, 
-          error: 'Content item ID(s) are required' 
+        res.status(400).json({
+          success: false,
+          error: 'Content item ID(s) are required',
         });
         return;
       }
@@ -305,26 +341,32 @@ export class ChatController {
       for (const contentId of idsToProcess) {
         try {
           console.log(`📋 Processing content item: ${contentId}`);
-          const embeddingsCount = await this.chatService.generateContentEmbeddings(
-            contentId, 
-            force_regenerate || false
-          );
+          const embeddingsCount =
+            await this.chatService.generateContentEmbeddings(
+              contentId,
+              force_regenerate || false
+            );
 
           results.push({
             contentId,
             success: true,
-            embeddingsCount
+            embeddingsCount,
           });
 
           totalEmbeddings += embeddingsCount;
           successful++;
-          console.log(`✅ Generated ${embeddingsCount} embeddings for ${contentId}`);
+          console.log(
+            `✅ Generated ${embeddingsCount} embeddings for ${contentId}`
+          );
         } catch (error) {
-          console.error(`❌ Failed to generate embeddings for ${contentId}:`, error);
+          console.error(
+            `❌ Failed to generate embeddings for ${contentId}:`,
+            error
+          );
           results.push({
             contentId,
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
           failed++;
         }
@@ -337,23 +379,34 @@ export class ChatController {
           successful,
           failed,
           totalEmbeddings,
-          results
-        }
+          results,
+        },
       };
 
-      console.log('🎉 Embedding generation complete:', { processed: idsToProcess.length, successful, failed, totalEmbeddings });
+      console.log('🎉 Embedding generation complete:', {
+        processed: idsToProcess.length,
+        successful,
+        failed,
+        totalEmbeddings,
+      });
       res.json(response);
     } catch (error) {
       console.error('Error generating embeddings:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to generate embeddings' 
+      res.status(500).json({
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to generate embeddings',
       });
     }
   };
 
   // Get user's chat usage statistics
-  getUsage = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  getUsage = async (
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> => {
     try {
       const userId = req.user?.id;
       if (!userId) {
@@ -369,17 +422,18 @@ export class ChatController {
           current_usage: usage.usage.current_usage,
           daily_limit: usage.usage.daily_limit,
           remaining_questions: usage.usage.remaining_questions,
-          reset_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Next day
-        }
+          reset_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Next day
+        },
       };
 
       res.json(response);
     } catch (error) {
       console.error('Error fetching chat usage:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to fetch chat usage' 
+      res.status(500).json({
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Failed to fetch chat usage',
       });
     }
   };
-} 
+}

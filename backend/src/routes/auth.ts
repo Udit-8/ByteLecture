@@ -156,49 +156,53 @@ router.get('/me', authenticateToken, async (req: AuthenticatedRequest, res) => {
  * PUT /api/auth/profile
  * Update user profile
  */
-router.put('/profile', authenticateToken, async (req: AuthenticatedRequest, res) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({
-        error: 'Not authenticated',
-        message: 'User not found in request',
+router.put(
+  '/profile',
+  authenticateToken,
+  async (req: AuthenticatedRequest, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          error: 'Not authenticated',
+          message: 'User not found in request',
+        });
+      }
+
+      const { full_name, avatar_url } = req.body;
+      const updates: any = {};
+
+      if (full_name !== undefined) updates.full_name = full_name;
+      if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({
+          error: 'No updates provided',
+          message: 'Please provide fields to update',
+        });
+      }
+
+      const result = await authService.updateProfile(req.user.id, updates);
+
+      if (result.error) {
+        return res.status(400).json({
+          error: 'Update failed',
+          message: result.error,
+        });
+      }
+
+      res.json({
+        message: 'Profile updated successfully',
+        user: result.user,
+      });
+    } catch (error) {
+      console.error('Update profile error:', error);
+      res.status(500).json({
+        error: 'Internal server error',
+        message: 'Failed to update profile',
       });
     }
-
-    const { full_name, avatar_url } = req.body;
-    const updates: any = {};
-
-    if (full_name !== undefined) updates.full_name = full_name;
-    if (avatar_url !== undefined) updates.avatar_url = avatar_url;
-
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({
-        error: 'No updates provided',
-        message: 'Please provide fields to update',
-      });
-    }
-
-    const result = await authService.updateProfile(req.user.id, updates);
-
-    if (result.error) {
-      return res.status(400).json({
-        error: 'Update failed',
-        message: result.error,
-      });
-    }
-
-    res.json({
-      message: 'Profile updated successfully',
-      user: result.user,
-    });
-  } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      message: 'Failed to update profile',
-    });
   }
-});
+);
 
 /**
  * POST /api/auth/reset-password
@@ -321,4 +325,4 @@ router.get('/health', (req, res) => {
   });
 });
 
-export default router; 
+export default router;

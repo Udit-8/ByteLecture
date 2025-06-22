@@ -1,6 +1,6 @@
 import { supabaseAdmin, supabase } from '../config/supabase';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
+// import bcrypt from 'bcryptjs'; // Currently unused
 
 export interface UserProfile {
   id: string;
@@ -31,7 +31,11 @@ class AuthService {
     this.jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
   }
 
-  async register(email: string, password: string, fullName?: string): Promise<AuthResponse> {
+  async register(
+    email: string,
+    password: string,
+    fullName?: string
+  ): Promise<AuthResponse> {
     try {
       // Create user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
@@ -56,8 +60,9 @@ class AuthService {
       // Check if email confirmation is required
       if (data.user && !data.session) {
         // For development: provide a helpful message
-        return { 
-          error: 'Please check your email and click the verification link to complete your registration. Note: You may need to disable email confirmation in Supabase settings for easier development.' 
+        return {
+          error:
+            'Please check your email and click the verification link to complete your registration. Note: You may need to disable email confirmation in Supabase settings for easier development.',
         };
       }
 
@@ -80,21 +85,25 @@ class AuthService {
             created_at: data.user.created_at || new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
-          session: data.session ? {
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-            expires_in: data.session.expires_in,
-          } : undefined,
+          session: data.session
+            ? {
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token,
+                expires_in: data.session.expires_in,
+              }
+            : undefined,
         };
       }
 
       return {
         user: userProfile as UserProfile,
-        session: data.session ? {
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-          expires_in: data.session.expires_in,
-        } : undefined,
+        session: data.session
+          ? {
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+              expires_in: data.session.expires_in,
+            }
+          : undefined,
       };
     } catch (error) {
       console.error('Registration error:', error);
@@ -144,7 +153,7 @@ class AuthService {
     }
   }
 
-  async logout(accessToken: string): Promise<AuthResponse> {
+  async logout(_accessToken: string): Promise<AuthResponse> {
     try {
       // Sign out with Supabase Auth
       const { error } = await supabase.auth.signOut();
@@ -179,7 +188,10 @@ class AuthService {
     }
   }
 
-  async updateProfile(userId: string, updates: Partial<UserProfile>): Promise<AuthResponse> {
+  async updateProfile(
+    userId: string,
+    updates: Partial<UserProfile>
+  ): Promise<AuthResponse> {
     try {
       const { data: userProfile, error } = await supabaseAdmin
         .from('users')
@@ -267,16 +279,21 @@ class AuthService {
     }
   }
 
-  async verifyToken(token: string): Promise<{ valid: boolean; userId?: string }> {
+  async verifyToken(
+    token: string
+  ): Promise<{ valid: boolean; userId?: string }> {
     try {
       // First try to verify with JWT secret (for our custom tokens)
       const decoded = jwt.verify(token, this.jwtSecret) as any;
       return { valid: true, userId: decoded.sub || decoded.userId };
-    } catch (jwtError) {
+    } catch {
       try {
         // If JWT verification fails, try Supabase auth verification
-        const { data: { user }, error } = await supabase.auth.getUser(token);
-        
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser(token);
+
         if (error || !user) {
           return { valid: false };
         }
@@ -291,4 +308,4 @@ class AuthService {
 }
 
 export const authService = new AuthService();
-export default authService; 
+export default authService;

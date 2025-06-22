@@ -24,4 +24,4 @@ router.get('/usage', chatController.getUsage);
 // Administrative/maintenance routes
 router.post('/embeddings/generate', chatController.generateEmbeddings);
 
-export default router; 
+export default router;

@@ -13,17 +13,23 @@ class RateLimitStore {
 
   constructor() {
     // Clean up expired entries every 5 minutes
-    this.cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      for (const [key, entry] of this.store.entries()) {
-        if (now > entry.resetTime) {
-          this.store.delete(key);
+    this.cleanupInterval = setInterval(
+      () => {
+        const now = Date.now();
+        for (const [key, entry] of this.store.entries()) {
+          if (now > entry.resetTime) {
+            this.store.delete(key);
+          }
         }
-      }
-    }, 5 * 60 * 1000);
+      },
+      5 * 60 * 1000
+    );
   }
 
-  increment(key: string, windowMs: number): { count: number; resetTime: number } {
+  increment(
+    key: string,
+    windowMs: number
+  ): { count: number; resetTime: number } {
     const now = Date.now();
     const entry = this.store.get(key);
 
@@ -68,7 +74,8 @@ export const createRateLimit = (options: RateLimitOptions) => {
     windowMs,
     maxRequests,
     message = 'Too many requests, please try again later.',
-    keyGenerator = (req: AuthenticatedRequest) => req.user?.id || req.ip || 'anonymous',
+    keyGenerator = (req: AuthenticatedRequest) =>
+      req.user?.id || req.ip || 'anonymous',
   } = options;
 
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -79,7 +86,7 @@ export const createRateLimit = (options: RateLimitOptions) => {
         next();
         return;
       }
-      
+
       const { count, resetTime } = rateLimitStore.increment(key, windowMs);
 
       // Add rate limit headers
@@ -121,9 +128,13 @@ export const standardRateLimit = createRateLimit({
  * Strict rate limiter for resource-intensive endpoints like AI summarization
  * (20 requests per hour for free users, more for premium)
  */
-export const rateLimitMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+export const rateLimitMiddleware = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void => {
   const userPlan = req.user?.plan_type || 'free';
-  
+
   // Different limits based on plan type
   const planLimits = {
     free: { maxRequests: 20, windowMs: 60 * 60 * 1000 }, // 20/hour
@@ -163,4 +174,4 @@ export default {
   rateLimitMiddleware,
   readRateLimit,
   burstRateLimit,
-}; 
+};

@@ -18,7 +18,7 @@ export class PDFController {
    */
   async processPDF(req: AuthenticatedRequest, res: Response): Promise<void> {
     const userId = req.user?.id;
-    
+
     try {
       // Check authentication
       if (!userId) {
@@ -39,7 +39,7 @@ export class PDFController {
           error_message: 'File path is required for PDF processing',
           request_path: req.path,
           user_agent: req.get('User-Agent'),
-          ip_address: req.ip
+          ip_address: req.ip,
         });
 
         res.status(400).json({
@@ -57,7 +57,7 @@ export class PDFController {
           error_type: 'quota_exceeded',
           error_message: quotaCheck.reason || 'PDF processing quota exceeded',
           request_path: req.path,
-          error_details: { quota: quotaCheck.quota }
+          error_details: { quota: quotaCheck.quota },
         });
 
         res.status(429).json({
@@ -106,7 +106,10 @@ export class PDFController {
         return;
       }
 
-      const result = await pdfService.processPDFFromStorage(filePath, processingOptions);
+      const result = await pdfService.processPDFFromStorage(
+        filePath,
+        processingOptions
+      );
 
       if (result.success) {
         // Log AI processing usage if applicable
@@ -117,7 +120,7 @@ export class PDFController {
           const contentService = new ContentService();
           const fileName = filePath.split('/').pop() || 'Document';
           const title = fileName.replace('.pdf', '').replace(/[-_]/g, ' ');
-          
+
           await contentService.createContentItem({
             user_id: userId,
             title: title,
@@ -151,7 +154,7 @@ export class PDFController {
           error_type: 'processing_error',
           error_message: result.error || 'PDF processing failed',
           request_path: req.path,
-          error_details: { filePath, options: processingOptions }
+          error_details: { filePath, options: processingOptions },
         });
 
         res.status(500).json({
@@ -162,13 +165,18 @@ export class PDFController {
       }
     } catch (error) {
       console.error('PDF processing controller error:', error);
-      
+
       await usageTrackingService.logError({
         user_id: userId,
         error_type: 'server_error',
-        error_message: error instanceof Error ? error.message : 'Unknown error during PDF processing',
+        error_message:
+          error instanceof Error
+            ? error.message
+            : 'Unknown error during PDF processing',
         request_path: req.path,
-        error_details: { error: error instanceof Error ? error.stack : String(error) }
+        error_details: {
+          error: error instanceof Error ? error.stack : String(error),
+        },
       });
 
       res.status(500).json({
@@ -194,7 +202,9 @@ export class PDFController {
         return;
       }
 
-      const status = await pdfService.getProcessingStatus(decodeURIComponent(filePath));
+      const status = await pdfService.getProcessingStatus(
+        decodeURIComponent(filePath)
+      );
 
       if (status === null) {
         res.status(404).json({
@@ -282,21 +292,28 @@ export class PDFController {
       }
 
       // Only process INSERT events for PDF files
-      if (webhook.type === 'INSERT' && webhook.record.name.toLowerCase().endsWith('.pdf')) {
+      if (
+        webhook.type === 'INSERT' &&
+        webhook.record.name.toLowerCase().endsWith('.pdf')
+      ) {
         const filePath = webhook.record.name;
-        
+
         console.log(`Processing PDF upload webhook for: ${filePath}`);
 
         // Process the PDF asynchronously
-        pdfService.processPDFFromStorage(filePath)
-          .then(result => {
+        pdfService
+          .processPDFFromStorage(filePath)
+          .then((result) => {
             if (result.success) {
               console.log(`Auto-processing completed for: ${filePath}`);
             } else {
-              console.error(`Auto-processing failed for: ${filePath}`, result.error);
+              console.error(
+                `Auto-processing failed for: ${filePath}`,
+                result.error
+              );
             }
           })
-          .catch(error => {
+          .catch((error) => {
             console.error(`Auto-processing error for: ${filePath}`, error);
           });
 
@@ -322,4 +339,4 @@ export class PDFController {
 }
 
 // Export singleton instance
-export const pdfController = new PDFController(); 
+export const pdfController = new PDFController();

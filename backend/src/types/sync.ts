@@ -3,8 +3,15 @@
 export type DeviceType = 'mobile' | 'tablet' | 'web';
 export type SyncStatus = 'pending' | 'synced' | 'conflict' | 'error';
 export type SyncOperation = 'INSERT' | 'UPDATE' | 'DELETE';
-export type ConflictType = 'update_conflict' | 'delete_conflict' | 'version_conflict';
-export type ResolutionStrategy = 'last_write_wins' | 'merge' | 'user_choice' | 'custom';
+export type ConflictType =
+  | 'update_conflict'
+  | 'delete_conflict'
+  | 'version_conflict';
+export type ResolutionStrategy =
+  | 'last_write_wins'
+  | 'merge'
+  | 'user_choice'
+  | 'custom';
 
 export interface SyncDevice {
   id: string;
@@ -209,17 +216,13 @@ export const SYNCABLE_TABLES = {
     'user_usage_tracking',
   ],
   // Low priority - background sync
-  LOW_PRIORITY: [
-    'error_logs',
-    'summary_cache_stats',
-    'plan_limits',
-  ],
+  LOW_PRIORITY: ['error_logs', 'summary_cache_stats', 'plan_limits'],
 } as const;
 
-export type SyncableTable = 
-  | typeof SYNCABLE_TABLES.HIGH_PRIORITY[number]
-  | typeof SYNCABLE_TABLES.MEDIUM_PRIORITY[number]
-  | typeof SYNCABLE_TABLES.LOW_PRIORITY[number];
+export type SyncableTable =
+  | (typeof SYNCABLE_TABLES.HIGH_PRIORITY)[number]
+  | (typeof SYNCABLE_TABLES.MEDIUM_PRIORITY)[number]
+  | (typeof SYNCABLE_TABLES.LOW_PRIORITY)[number];
 
 // Utility types
 export interface SyncStats {
@@ -236,4 +239,4 @@ export interface SyncHealth {
   pending_operations: number;
   error_count: number;
   average_sync_time_ms: number;
-} 
+}

@@ -18,7 +18,11 @@ router.post('/process', authenticateToken, pdfController.processPDF);
  * @access Private (requires authentication)
  * @params { filePath: string } - URL encoded file path
  */
-router.get('/status/:filePath', authenticateToken, pdfController.getProcessingStatus);
+router.get(
+  '/status/:filePath',
+  authenticateToken,
+  pdfController.getProcessingStatus
+);
 
 /**
  * @route POST /api/pdf/reprocess
@@ -36,4 +40,4 @@ router.post('/reprocess', authenticateToken, pdfController.reprocessDocument);
  */
 router.post('/webhook', pdfController.handleStorageWebhook);
 
-export default router; 
+export default router;

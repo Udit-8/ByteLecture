@@ -6,11 +6,11 @@ export interface MindMapNode {
   content?: string;
   level: number;
   children?: MindMapNode[];
-  
+
   // Position for layout
   position_x?: number;
   position_y?: number;
-  
+
   // User customizations
   user_notes?: string;
   color?: string;
@@ -28,24 +28,24 @@ export interface MindMap {
   id: string;
   user_id: string;
   content_item_id?: string;
-  
+
   // Mind map metadata
   title: string;
   description?: string;
   style: MindMapStyle;
-  
+
   // Mind map structure
   mind_map_data: MindMapData;
-  
+
   // Metrics
   node_count: number;
   max_depth: number;
-  
+
   // Processing metadata
   ai_model?: string;
   tokens_used?: number;
   processing_time_ms?: number;
-  
+
   // Timestamps
   created_at: string;
   updated_at: string;
@@ -55,21 +55,21 @@ export interface MindMapNodeDB {
   id: string;
   mind_map_id: string;
   parent_node_id?: string;
-  
+
   // Node content
   title: string;
   content?: string;
   level: number;
-  
+
   // Position for layout
   position_x: number;
   position_y: number;
-  
+
   // User customizations
   user_notes?: string;
   color?: string;
   is_expanded: boolean;
-  
+
   // Timestamps
   created_at: string;
   updated_at: string;
@@ -80,13 +80,13 @@ export interface MindMapShare {
   mind_map_id: string;
   shared_by_user_id: string;
   shared_with_user_id?: string;
-  
+
   // Sharing options
   share_token?: string;
   can_edit: boolean;
   can_comment: boolean;
   expires_at?: string;
-  
+
   // Timestamps
   created_at: string;
   updated_at: string;
@@ -133,4 +133,4 @@ export interface MindMapAnalysisResult {
   suggested_structure: MindMapNode;
   complexity_score: number;
   recommended_depth: number;
-} 
+}

@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { theme } from '../constants/theme';
-import { Card, LoadingIndicator } from './';
+import { Card, LoadingIndicator, PremiumUpsellModal } from './';
 import { UploadErrorBoundary } from './ErrorBoundary';
 import {
   validatePDFFile,
@@ -80,6 +80,7 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
     limit?: number;
     isPremium?: boolean;
   }>({});
+  const [showPremiumUpsell, setShowPremiumUpsell] = useState(false);
 
   // Check bucket access on component mount
   React.useEffect(() => {
@@ -168,23 +169,7 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
       const permissionResult = await permissionService.checkFeatureUsage('pdf_processing', 'pdf_upload');
       
       if (!permissionResult.allowed) {
-        const alertTitle = 'Upload Limit Reached';
-        const alertMessage = permissionResult.upgrade_message || 
-          'You have reached your daily PDF upload limit. Please try again tomorrow or upgrade your plan for unlimited uploads.';
-        
-        if (navigation) {
-          Alert.alert(alertTitle, alertMessage, [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Upgrade Plan',
-              style: 'default',
-              onPress: () => navigation.navigate('Subscription', { from: 'pdf-quota' }),
-            },
-          ]);
-        } else {
-          Alert.alert(alertTitle, alertMessage);
-        }
-        
+        setShowPremiumUpsell(true);
         return;
       }
 
@@ -325,35 +310,20 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
           errorMessage.includes('limit') ||
           errorMessage.includes('exceeded')
         ) {
-          alertTitle = 'Upload Limit Reached';
-          errorMessage =
-            'You have reached your daily upload limit. Please try again tomorrow or upgrade your plan for unlimited uploads.';
+          setShowPremiumUpsell(true);
 
-          // Show enhanced alert with upgrade option if navigation is available
-          if (navigation) {
-            Alert.alert(alertTitle, errorMessage, [
-              { text: 'Cancel' },
-              {
-                text: 'Upgrade Plan',
-                style: 'default',
-                onPress: () =>
-                  navigation.navigate('Subscription', { from: 'pdf-quota' }),
-              },
-            ]);
+          const uploadResult: UploadResult = {
+            success: false,
+            error: 'Upload limit reached',
+          };
 
-            const uploadResult: UploadResult = {
-              success: false,
-              error: errorMessage,
-            };
-
-            onUploadError?.(errorMessage);
-            onUploadComplete?.(uploadResult);
-            setIsUploading(false);
-            setUploadProgress(0);
-            setDetailedProgress(null);
-            setUploadController(null);
-            return; // Exit early to avoid duplicate alerts
-          }
+          onUploadError?.('Upload limit reached');
+          onUploadComplete?.(uploadResult);
+          setIsUploading(false);
+          setUploadProgress(0);
+          setDetailedProgress(null);
+          setUploadController(null);
+          return; // Exit early to avoid duplicate alerts
         }
         // Check for authentication errors
         else if (
@@ -588,6 +558,18 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
           </View>
         )}
       </View>
+
+      <PremiumUpsellModal
+        visible={showPremiumUpsell}
+        onClose={() => setShowPremiumUpsell(false)}
+        onUpgrade={() => {
+          setShowPremiumUpsell(false);
+          navigation?.navigate('Subscription', { from: 'pdf-quota' });
+        }}
+        featureType="pdf-processing"
+        currentUsage={quotaInfo.limit && quotaInfo.remaining !== undefined ? (quotaInfo.limit - quotaInfo.remaining) : undefined}
+        limit={quotaInfo.limit}
+      />
     </UploadErrorBoundary>
   );
 };

@@ -7,3 +7,5 @@ export { FeatureCard } from './FeatureCard';
 export { AISummary } from './AISummary';
 export { PDFUpload } from './PDFUpload';
 export type { PDFFile, UploadResult } from './PDFUpload';
+export { PremiumUpsellModal } from './PremiumUpsellModal';
+export type { FeatureType } from './PremiumUpsellModal';

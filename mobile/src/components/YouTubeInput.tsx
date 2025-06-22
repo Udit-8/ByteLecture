@@ -17,6 +17,7 @@ import {
   YouTubeVideoInfo,
 } from '../services/youtubeAPI';
 import { permissionService } from '../services';
+import { PremiumUpsellModal } from './PremiumUpsellModal';
 import { validateYouTubeUrl, extractVideoId } from '../utils/youtubeValidation';
 
 export interface YouTubeInputProps {
@@ -62,6 +63,7 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
     limit?: number;
     isPremium?: boolean;
   }>({});
+  const [showPremiumUpsell, setShowPremiumUpsell] = useState(false);
 
   // Check quota on component mount
   React.useEffect(() => {
@@ -143,23 +145,7 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
       const permissionResult = await permissionService.checkFeatureUsage('youtube_processing');
       
       if (!permissionResult.allowed) {
-        const alertTitle = 'Processing Limit Reached';
-        const alertMessage = permissionResult.upgrade_message || 
-          'You have reached your daily YouTube processing limit. Please try again tomorrow or upgrade your plan for unlimited processing.';
-        
-        if (navigation) {
-          Alert.alert(alertTitle, alertMessage, [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Upgrade Plan',
-              style: 'default',
-              onPress: () => navigation.navigate('Subscription', { from: 'youtube-quota' }),
-            },
-          ]);
-        } else {
-          Alert.alert(alertTitle, alertMessage);
-        }
-        
+        setShowPremiumUpsell(true);
         return;
       }
     } catch (error) {
@@ -206,28 +192,7 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
         errorMessage.includes('limit') ||
         errorMessage.includes('exceeded')
       ) {
-        if (navigation) {
-          Alert.alert(
-            'Daily Limit Reached',
-            'You have reached your daily YouTube processing limit. Upgrade to premium for unlimited processing.',
-            [
-              { text: 'Cancel' },
-              {
-                text: 'Upgrade Plan',
-                style: 'default',
-                onPress: () =>
-                  navigation.navigate('Subscription', {
-                    from: 'youtube-quota',
-                  }),
-              },
-            ]
-          );
-        } else {
-          Alert.alert(
-            'Daily Limit Reached',
-            'You have reached your daily YouTube processing limit. Please try again tomorrow or upgrade your plan.'
-          );
-        }
+        setShowPremiumUpsell(true);
       } else {
         Alert.alert('Processing Error', errorMessage);
       }
@@ -428,6 +393,18 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
           )}
         </View>
       )}
+
+      <PremiumUpsellModal
+        visible={showPremiumUpsell}
+        onClose={() => setShowPremiumUpsell(false)}
+        onUpgrade={() => {
+          setShowPremiumUpsell(false);
+          navigation?.navigate('Subscription', { from: 'youtube-quota' });
+        }}
+        featureType="youtube-processing"
+        currentUsage={quotaInfo.limit && quotaInfo.remaining !== undefined ? (quotaInfo.limit - quotaInfo.remaining) : undefined}
+        limit={quotaInfo.limit}
+      />
     </View>
   );
 };

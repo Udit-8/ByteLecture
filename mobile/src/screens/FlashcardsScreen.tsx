@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Header, Card, Button, LoadingIndicator } from '../components';
+import { Header, Card, Button, LoadingIndicator, PremiumUpsellModal } from '../components';
 import { theme } from '../constants/theme';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useFlashcards } from '../hooks/useFlashcards';
@@ -37,6 +37,7 @@ export const FlashcardsScreen: React.FC<FlashcardsScreenProps> = ({ navigation }
     limit?: number;
     isPremium?: boolean;
   }>({});
+  const [showPremiumUpsell, setShowPremiumUpsell] = useState(false);
 
   const {
     sets,
@@ -68,19 +69,7 @@ export const FlashcardsScreen: React.FC<FlashcardsScreenProps> = ({ navigation }
       const permissionResult = await permissionService.checkFeatureUsage('flashcard_generation');
       
       if (!permissionResult.allowed) {
-        const alertTitle = 'Generation Limit Reached';
-        const alertMessage = permissionResult.upgrade_message || 
-          'You have reached your daily flashcard generation limit. Please try again tomorrow or upgrade your plan for unlimited flashcard generation.';
-        
-        Alert.alert(alertTitle, alertMessage, [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Upgrade Plan',
-            style: 'default',
-            onPress: () => navigation.navigate('Subscription', { from: 'flashcard-quota' }),
-          },
-        ]);
-        
+        setShowPremiumUpsell(true);
         setGenerationError('Daily flashcard generation limit reached');
         return;
       }
@@ -514,6 +503,18 @@ export const FlashcardsScreen: React.FC<FlashcardsScreenProps> = ({ navigation }
           </View>
         )}
       </ScrollView>
+
+      <PremiumUpsellModal
+        visible={showPremiumUpsell}
+        onClose={() => setShowPremiumUpsell(false)}
+        onUpgrade={() => {
+          setShowPremiumUpsell(false);
+          navigation.navigate('Subscription', { from: 'flashcard-quota' });
+        }}
+        featureType="flashcard-generation"
+        currentUsage={quotaInfo.limit && quotaInfo.remaining !== undefined ? (quotaInfo.limit - quotaInfo.remaining) : undefined}
+        limit={quotaInfo.limit}
+      />
     </SafeAreaView>
   );
 };

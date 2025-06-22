@@ -17,9 +17,14 @@ import { useNavigation } from '../contexts/NavigationContext';
 import { useFlashcards } from '../hooks/useFlashcards';
 import { Flashcard } from '../services/flashcardAPI';
 import { contentAPI } from '../services/contentAPI';
+import { permissionService } from '../services';
 import { FlashcardStudyScreen } from './FlashcardStudyScreen';
 
-export const FlashcardsScreen: React.FC = () => {
+interface FlashcardsScreenProps {
+  navigation: any;
+}
+
+export const FlashcardsScreen: React.FC<FlashcardsScreenProps> = ({ navigation }) => {
   const { selectedNote, setMainMode } = useNavigation();
   const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
@@ -27,6 +32,11 @@ export const FlashcardsScreen: React.FC = () => {
   const [autoGenerating, setAutoGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [isStudyMode, setIsStudyMode] = useState(false);
+  const [quotaInfo, setQuotaInfo] = useState<{
+    remaining?: number;
+    limit?: number;
+    isPremium?: boolean;
+  }>({});
 
   const {
     sets,
@@ -54,6 +64,27 @@ export const FlashcardsScreen: React.FC = () => {
   // Auto-generate flashcards for content
   const autoGenerateFlashcards = async (contentItemId: string) => {
     try {
+      // Check permissions before generating flashcards
+      const permissionResult = await permissionService.checkFeatureUsage('flashcard_generation');
+      
+      if (!permissionResult.allowed) {
+        const alertTitle = 'Generation Limit Reached';
+        const alertMessage = permissionResult.upgrade_message || 
+          'You have reached your daily flashcard generation limit. Please try again tomorrow or upgrade your plan for unlimited flashcard generation.';
+        
+        Alert.alert(alertTitle, alertMessage, [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Upgrade Plan',
+            style: 'default',
+            onPress: () => navigation.navigate('Subscription', { from: 'flashcard-quota' }),
+          },
+        ]);
+        
+        setGenerationError('Daily flashcard generation limit reached');
+        return;
+      }
+
       setAutoGenerating(true);
       setGenerationError(null);
       console.log('🤖 Auto-generating flashcards for content:', contentItemId);
@@ -97,6 +128,20 @@ export const FlashcardsScreen: React.FC = () => {
         );
         setSelectedSetId(flashcardSet.id);
         // The generateFlashcards hook already updates the sets and currentSet
+        
+        // Refresh quota info after successful generation
+        try {
+          const updatedPermission = await permissionService.checkFeatureUsage('flashcard_generation');
+          if (updatedPermission.limit !== undefined) {
+            setQuotaInfo({
+              remaining: updatedPermission.remaining,
+              limit: updatedPermission.limit,
+              isPremium: updatedPermission.limit === -1,
+            });
+          }
+        } catch (error) {
+          console.error('Error refreshing quota:', error);
+        }
       } else {
         throw new Error('Failed to generate flashcards');
       }
@@ -114,6 +159,25 @@ export const FlashcardsScreen: React.FC = () => {
   useEffect(() => {
     loadSets();
   }, [loadSets]);
+
+  // Check quota on component mount
+  useEffect(() => {
+    const checkQuota = async () => {
+      try {
+        const permissionResult = await permissionService.checkFeatureUsage('flashcard_generation');
+        if (permissionResult.limit !== undefined) {
+          setQuotaInfo({
+            remaining: permissionResult.remaining,
+            limit: permissionResult.limit,
+            isPremium: permissionResult.limit === -1,
+          });
+        }
+      } catch (error) {
+        console.error('Error checking flashcard quota:', error);
+      }
+    };
+    checkQuota();
+  }, []);
 
   // Auto-generate flashcards when needed
   useEffect(() => {
@@ -310,6 +374,13 @@ export const FlashcardsScreen: React.FC = () => {
               ? `Study "${activeSet.title}" flashcards`
               : 'Study with intelligent flashcards created from your learning materials.'}
           </Text>
+          {quotaInfo.limit !== undefined && (
+            <Text style={styles.quotaText}>
+              {quotaInfo.isPremium 
+                ? '✨ Unlimited flashcard generation' 
+                : `${quotaInfo.remaining} of ${quotaInfo.limit} generations remaining today`}
+            </Text>
+          )}
         </View>
 
         {activeSet && (
@@ -473,6 +544,12 @@ const styles = StyleSheet.create({
     color: theme.colors.warning[100],
     lineHeight:
       theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
+  },
+  quotaText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.warning[200],
+    marginTop: theme.spacing.sm,
+    fontStyle: 'italic',
   },
   statsContainer: {
     flexDirection: 'row',

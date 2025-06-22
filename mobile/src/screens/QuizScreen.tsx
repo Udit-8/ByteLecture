@@ -19,7 +19,7 @@ import {
   QuizQuestion,
   QuizGenerationOptions,
 } from '../services/quizAPI';
-import { contentAPI } from '../services';
+import { contentAPI, permissionService } from '../services';
 
 type QuizScreenMode = 'list' | 'generation' | 'taking' | 'results';
 
@@ -62,6 +62,13 @@ export const QuizScreen: React.FC = () => {
       focusArea: 'general',
       questionTypes: ['multiple_choice'],
     });
+  
+  // Quota state
+  const [quotaInfo, setQuotaInfo] = useState<{
+    remaining?: number;
+    limit?: number;
+    isPremium?: boolean;
+  }>({});
 
   // Load quiz sets when screen mounts or selectedNote changes
   useEffect(() => {
@@ -80,6 +87,25 @@ export const QuizScreen: React.FC = () => {
     }
   }, [error]);
 
+  // Check quota on component mount
+  useEffect(() => {
+    const checkQuota = async () => {
+      try {
+        const permissionResult = await permissionService.checkFeatureUsage('quiz_generation');
+        if (permissionResult.limit !== undefined) {
+          setQuotaInfo({
+            remaining: permissionResult.remaining,
+            limit: permissionResult.limit,
+            isPremium: permissionResult.limit === -1,
+          });
+        }
+      } catch (error) {
+        console.error('Error checking quiz quota:', error);
+      }
+    };
+    checkQuota();
+  }, []);
+
   const handleBackPress = () => {
     if (mode === 'taking' || mode === 'results') {
       handleExitQuiz();
@@ -92,6 +118,30 @@ export const QuizScreen: React.FC = () => {
     if (!selectedNote) {
       Alert.alert('Error', 'No content selected for quiz generation');
       return;
+    }
+
+    // Check permissions before generating quiz
+    try {
+      const permissionResult = await permissionService.checkFeatureUsage('quiz_generation');
+      
+      if (!permissionResult.allowed) {
+        const alertTitle = 'Generation Limit Reached';
+        const alertMessage = permissionResult.upgrade_message || 
+          'You have reached your daily quiz generation limit. Please try again tomorrow or upgrade your plan for unlimited quiz generation.';
+        
+        Alert.alert(alertTitle, alertMessage, [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Upgrade Plan',
+            style: 'default',
+            onPress: () => (navigation as any).navigate('Subscription', { from: 'quiz-quota' }),
+          },
+        ]);
+        
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking permissions:', error);
     }
 
     setMode('generation');
@@ -464,7 +514,7 @@ export const QuizScreen: React.FC = () => {
             <View style={styles.resultActions}>
               <Button
                 title="View Performance Analytics"
-                onPress={() => navigation.navigate('QuizPerformance' as never)}
+                onPress={() => (navigation as any).navigate('QuizPerformance')}
                 variant="primary"
                 style={styles.actionButton}
               />

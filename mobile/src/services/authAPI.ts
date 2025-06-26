@@ -28,7 +28,9 @@ class AuthAPI {
     body?: any
   ): Promise<AuthResponse> {
     try {
-      const token = await AsyncStorage.getItem('auth_token');
+      // Get auth token using helper
+      const { getAuthToken } = await import('./authHelper');
+      const token = await getAuthToken();
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -99,7 +101,8 @@ class AuthAPI {
   }
 
   async getStoredToken(): Promise<string | null> {
-    return await AsyncStorage.getItem('auth_token');
+    const { getAuthToken } = await import('./authHelper');
+    return await getAuthToken();
   }
 
   async clearStoredToken(): Promise<void> {

@@ -84,7 +84,8 @@ class ContentAPI {
   ): Promise<ContentResponse> {
     try {
       // Get auth token
-      const token = await AsyncStorage.getItem('auth_token');
+      const { getAuthToken } = await import('./authHelper');
+      const token = await getAuthToken();
       console.log('🔑 ContentAPI: Auth token check:', {
         hasToken: !!token,
         tokenLength: token?.length,

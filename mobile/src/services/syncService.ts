@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, Platform } from 'react-native';
 import offlineStorageService from './offlineStorageService';
 import syncClientService from './syncClientService';
 import { compressionService } from './compressionService';
@@ -604,7 +604,7 @@ export class SyncService {
       const deviceId = await AsyncStorage.getItem('sync_device_id');
       if (!deviceId) {
         // Generate a device name
-        const { Platform } = await import('react-native');
+
         const deviceName = `${Platform.OS} Device (${new Date().toLocaleDateString()})`;
 
         const device = await syncClientService.registerDevice(deviceName);
@@ -656,7 +656,10 @@ export class SyncService {
         id: change.id,
         table_name: change.table_name,
         record_id: change.record_id,
-        operation: change.operation.toLowerCase() as 'insert' | 'update' | 'delete',
+        operation: change.operation.toLowerCase() as
+          | 'insert'
+          | 'update'
+          | 'delete',
         data: change.data,
         timestamp: change.timestamp,
         user_id: 'current_user', // TODO: Get from auth service

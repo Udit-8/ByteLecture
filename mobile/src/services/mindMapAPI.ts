@@ -94,7 +94,8 @@ class MindMapAPI {
    * Get authorization headers
    */
   private async getAuthHeaders(): Promise<Record<string, string>> {
-    const token = await AsyncStorage.getItem('auth_token');
+          const { getAuthToken } = await import('./authHelper');
+      const token = await getAuthToken();
     return {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,

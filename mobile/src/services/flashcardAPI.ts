@@ -85,7 +85,8 @@ class FlashcardAPI {
     body?: any
   ): Promise<any> {
     try {
-      const token = await AsyncStorage.getItem('auth_token');
+      const { getAuthToken } = await import('./authHelper');
+      const token = await getAuthToken();
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',

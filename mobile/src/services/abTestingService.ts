@@ -28,7 +28,8 @@ const PREMIUM_MESSAGE_TESTS: Record<string, ABTest> = {
   upsell_modal_messaging: {
     id: 'upsell_modal_messaging',
     name: 'Premium Upsell Modal Messaging',
-    description: 'Test different messaging approaches in the premium upsell modal',
+    description:
+      'Test different messaging approaches in the premium upsell modal',
     isActive: true,
     variants: [
       { id: 'control', name: 'Control (Feature Focus)', weight: 50 },
@@ -59,7 +60,10 @@ const PREMIUM_MESSAGE_TESTS: Record<string, ABTest> = {
 };
 
 // Premium message variants
-const PREMIUM_MESSAGES: Record<string, Record<string, PremiumMessageVariant>> = {
+const PREMIUM_MESSAGES: Record<
+  string,
+  Record<string, PremiumMessageVariant>
+> = {
   upsell_modal_messaging: {
     control: {
       headline: 'Upgrade to Premium',
@@ -162,7 +166,7 @@ class ABTestingService {
     // Persist the assignment
     try {
       await AsyncStorage.setItem(
-        this.AB_TEST_STORAGE_KEY, 
+        this.AB_TEST_STORAGE_KEY,
         JSON.stringify(this.userVariants)
       );
     } catch (error) {
@@ -175,10 +179,12 @@ class ABTestingService {
   /**
    * Get premium message variant for a specific test
    */
-  async getPremiumMessage(testId: string): Promise<PremiumMessageVariant | null> {
+  async getPremiumMessage(
+    testId: string
+  ): Promise<PremiumMessageVariant | null> {
     const variantId = await this.getVariant(testId);
     const messages = PREMIUM_MESSAGES[testId];
-    
+
     if (!messages || !messages[variantId]) {
       return null;
     }
@@ -191,22 +197,28 @@ class ABTestingService {
    */
   async getUpgradeButtonText(): Promise<string> {
     const variant = await this.getVariant('upgrade_button_text');
-    
+
     const buttonTexts = {
       upgrade_premium: 'Upgrade to Premium',
       unlock_unlimited: 'Unlock Unlimited',
       start_trial: 'Start Free Trial',
     };
 
-    return buttonTexts[variant as keyof typeof buttonTexts] || 'Upgrade to Premium';
+    return (
+      buttonTexts[variant as keyof typeof buttonTexts] || 'Upgrade to Premium'
+    );
   }
 
   /**
    * Track A/B test event (for analytics)
    */
-  async trackEvent(testId: string, event: 'view' | 'click' | 'convert', variantId?: string): Promise<void> {
-    const variant = variantId || await this.getVariant(testId);
-    
+  async trackEvent(
+    testId: string,
+    event: 'view' | 'click' | 'convert',
+    variantId?: string
+  ): Promise<void> {
+    const variant = variantId || (await this.getVariant(testId));
+
     // Log for development - in production this would go to analytics service
     console.log('AB Test Event:', {
       testId,
@@ -225,10 +237,10 @@ class ABTestingService {
   async setVariant(testId: string, variantId: string): Promise<void> {
     await this.initialize();
     this.userVariants[testId] = variantId;
-    
+
     try {
       await AsyncStorage.setItem(
-        this.AB_TEST_STORAGE_KEY, 
+        this.AB_TEST_STORAGE_KEY,
         JSON.stringify(this.userVariants)
       );
     } catch (error) {
@@ -251,12 +263,14 @@ class ABTestingService {
   /**
    * Get all active tests and user's variants
    */
-  async getActiveTests(): Promise<Array<{ test: ABTest; userVariant: string }>> {
+  async getActiveTests(): Promise<
+    Array<{ test: ABTest; userVariant: string }>
+  > {
     await this.initialize();
-    
+
     return Object.values(PREMIUM_MESSAGE_TESTS)
-      .filter(test => test.isActive)
-      .map(test => ({
+      .filter((test) => test.isActive)
+      .map((test) => ({
         test,
         userVariant: this.userVariants[test.id] || 'not_assigned',
       }));
@@ -281,4 +295,4 @@ class ABTestingService {
   }
 }
 
-export const abTestingService = new ABTestingService(); 
+export const abTestingService = new ABTestingService();

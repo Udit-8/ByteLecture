@@ -57,10 +57,10 @@ export class CompressionService {
     }
 
     try {
-              // Compress using pako (zlib)
-        const compressed = deflate(jsonString, {
-          level: this.config.level as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9,
-        });
+      // Compress using pako (zlib)
+      const compressed = deflate(jsonString, {
+        level: this.config.level as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9,
+      });
 
       // Convert to base64 for transport
       const base64 = this.arrayBufferToBase64(compressed);

@@ -13,7 +13,7 @@ import {
   SyncChange,
 } from '../types/sync';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 export class SyncClientService {
   private static instance: SyncClientService;
@@ -21,7 +21,9 @@ export class SyncClientService {
   private currentUserId: string | null = null;
 
   private constructor() {
-    this.baseURL = `${API_BASE_URL}/api/sync`;
+    // Remove /api from the base URL if it exists, then add /api/sync
+    const cleanBaseUrl = API_BASE_URL.replace(/\/api$/, '');
+    this.baseURL = `${cleanBaseUrl}/api/sync`;
   }
 
   public static getInstance(): SyncClientService {
@@ -354,8 +356,10 @@ export class SyncClientService {
     options: RequestInit = {}
   ): Promise<any> {
     try {
-      // Get auth token
-      const token = await AsyncStorage.getItem('auth_token');
+      // Get auth token using helper
+      const { getAuthToken } = await import('./authHelper');
+      const token = await getAuthToken();
+      
       if (!token) {
         throw new Error('Authentication token not found');
       }

@@ -1,9 +1,9 @@
 import { paymentService } from './paymentService';
 import { usageService } from './usageService';
 
-export type FeatureType = 
+export type FeatureType =
   | 'pdf_processing'
-  | 'youtube_processing' 
+  | 'youtube_processing'
   | 'audio_transcription'
   | 'flashcard_generation'
   | 'quiz_generation'
@@ -47,7 +47,10 @@ class PermissionService {
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   // Feature limits configuration
-  private readonly FEATURE_LIMITS: Record<PlanType, Record<FeatureType, FeatureLimits>> = {
+  private readonly FEATURE_LIMITS: Record<
+    PlanType,
+    Record<FeatureType, FeatureLimits>
+  > = {
     free: {
       pdf_processing: {
         daily_limit: 2,
@@ -234,10 +237,12 @@ class PermissionService {
    */
   async getUserPermissions(forceRefresh = false): Promise<UserPermissions> {
     const now = Date.now();
-    
-    if (!forceRefresh && 
-        this.cachedPermissions && 
-        (now - this.lastPermissionCheck) < this.CACHE_DURATION) {
+
+    if (
+      !forceRefresh &&
+      this.cachedPermissions &&
+      now - this.lastPermissionCheck < this.CACHE_DURATION
+    ) {
       return this.cachedPermissions;
     }
 
@@ -258,7 +263,7 @@ class PermissionService {
       return permissions;
     } catch (error) {
       console.error('Error getting user permissions:', error);
-      
+
       // Return safe defaults
       return {
         plan_type: 'free',
@@ -296,7 +301,7 @@ class PermissionService {
 
       // Check current usage
       const usageResult = await usageService.checkAIProcessingQuota();
-      
+
       if (!usageResult.allowed && usageResult.quota) {
         return {
           allowed: false,
@@ -305,7 +310,7 @@ class PermissionService {
           limit: usageResult.quota.daily_limit,
           remaining: usageResult.quota.remaining,
           requires_upgrade: !permissions.is_premium,
-          upgrade_message: permissions.is_premium 
+          upgrade_message: permissions.is_premium
             ? 'You have reached your daily limit. Try again tomorrow.'
             : 'Upgrade to Premium for unlimited access',
           plan_type: permissions.plan_type,
@@ -319,7 +324,6 @@ class PermissionService {
         remaining: usageResult.quota?.remaining || featureLimits.daily_limit,
         plan_type: permissions.plan_type,
       };
-
     } catch (error) {
       console.error('Error checking feature access:', error);
       return {
@@ -363,7 +367,7 @@ class PermissionService {
       // For features with usage tracking, check actual usage
       if (resourceType) {
         const usageResult = await usageService.checkAIProcessingQuota();
-        
+
         if (!usageResult.allowed && usageResult.quota) {
           return {
             allowed: false,
@@ -394,7 +398,6 @@ class PermissionService {
         limit: featureLimits.daily_limit,
         plan_type: permissions.plan_type,
       };
-
     } catch (error) {
       console.error(`Error checking ${feature} usage:`, error);
       return {
@@ -463,7 +466,7 @@ class PermissionService {
 
     const featureName = this.getFeatureName(feature);
     const remaining = Math.max(0, limit - current);
-    
+
     return `${current}/${limit} ${featureName.toLowerCase()} used today (${remaining} remaining)`;
   }
 

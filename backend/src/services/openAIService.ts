@@ -52,7 +52,7 @@ export class OpenAIService {
     // Set default configuration
     this.config = {
       apiKey: config.apiKey,
-      model: config.model || 'gpt-3.5-turbo',
+      model: config.model || 'gpt-4o-mini',
       maxTokens: config.maxTokens || 1000,
       temperature: config.temperature || 0.3,
       timeout: config.timeout || 60000, // 60 seconds
@@ -120,61 +120,58 @@ export class OpenAIService {
   }
 
   /**
-   * Generate a summary prompt based on content type and options
+   * Generate an optimized note-taking prompt for digestible, actionable content summaries
    */
   private generatePrompt(
     content: string,
     options: SummarizationOptions
   ): string {
-    const {
-      length = 'medium',
-      focusArea = 'general',
-      contentType = 'text',
-    } = options;
+    const { contentType = 'text' } = options;
 
-    // Base prompt templates for different content types
-    const contentTypePrompts = {
-      pdf: 'You are analyzing an academic or professional document.',
-      youtube: 'You are analyzing a YouTube video transcript.',
-      audio:
-        'You are analyzing an audio transcript from a lecture or recording.',
-      text: 'You are analyzing text content.',
+    // Content type context mapping
+    const contentTypeContext = {
+      pdf: 'PDF document',
+      youtube: 'YouTube video',
+      audio: 'audio recording or lecture',
+      text: 'text content',
+      lecture_recording: 'lecture recording',
     };
 
-    // Length specifications
-    const lengthSpecs = {
-      short: 'Create a concise summary in 2-3 sentences (50-100 words).',
-      medium:
-        'Create a comprehensive summary in 1-2 paragraphs (150-300 words).',
-      long: 'Create a detailed summary in 3-4 paragraphs (400-600 words).',
-    };
+    const contentTypeForPrompt = contentTypeContext[contentType as keyof typeof contentTypeContext] || 'content';
 
-    // Focus area specifications
-    const focusSpecs = {
-      concepts: 'Focus on key concepts, theories, and main ideas.',
-      examples: 'Focus on examples, case studies, and practical applications.',
-      applications: 'Focus on how the information can be applied practically.',
-      general:
-        'Provide a balanced overview covering main points and supporting details.',
-    };
+    return `You are an expert content summarizer for a note-taking app. Given a transcript from a ${contentTypeForPrompt}, your task is to extract key takeaways and present them in a clear, well-structured, visually appealing note format. Follow these strict rules:
 
-    return `${contentTypePrompts[contentType]}
+🔹 Structure:
+1. Break the summary into **dynamic section titles** that reflect the flow of content (not fixed titles like "Introduction" or "Conclusion").
+2. For each section, provide:
+   - A **bolded heading** using engaging, reader-friendly phrasing.
+   - **Concise, bullet-pointed explanations** under each heading.
+   - Use **bold** for important concepts, **italic** for examples, and emojis if appropriate for style.
+3. Add tables or diagrams if content naturally supports it (e.g., comparisons, financials).
+4. Ensure each section is **self-contained** and can be understood on its own.
 
-${lengthSpecs[length]}
+🔹 Style:
+- Use formatting like: \`**bold**\`, \`_italic_\`, bullet points (\`•\`), and numbered lists where needed.
+- No long paragraphs. Use bullet points and short phrases for **fast consumption**.
+- Focus on **clarity**, **completeness**, and **actionability**.
 
-${focusSpecs[focusArea]}
+🔹 Objective:
+Transform the content into **digestible notes** that a student or professional can quickly grasp and apply.
 
-Guidelines:
-- Use clear, professional language
-- Maintain the original meaning and context
-- Highlight the most important information
-- Structure the summary logically
-- Avoid unnecessary jargon unless essential
+🔹 Example Headings to inspire your flow (adjust based on context):
+- 💡 What This Is About
+- 🛠️ Step-by-Step Breakdown
+- 💰 Monetization Tactics
+- 🔍 Market Opportunity
+- 📊 Example Scenario
+- 🧠 Tips for Success
+- ⚠️ Common Pitfalls
 
-Content to summarize:
-${content}
+🔹 Final Output:
+Just return the formatted notes. No intro, no outro, no commentary. Format cleanly with markdown-ready text or simple HTML if applicable.
 
-Summary:`;
+INPUT:
+${content}`;
   }
 
   /**
@@ -237,15 +234,25 @@ Summary:`;
       temperature: options.temperature || this.config.temperature,
     };
 
-    const response = await this.makeAPICallWithRetry(params);
-    const endTime = Date.now();
+    try {
+      const response = await this.makeAPICallWithRetry(params);
+      const endTime = Date.now();
 
-    console.log(`⏱️ OpenAI API call completed in ${endTime - startTime}ms`);
+      console.log(`⏱️ OpenAI API call completed in ${endTime - startTime}ms`);
 
-    const summary = response.choices[0]?.message?.content || '';
-    const tokensUsed = response.usage?.total_tokens || 0;
+      const summary = response.choices[0]?.message?.content || '';
+      const tokensUsed = response.usage?.total_tokens || 0;
 
-    return { summary, tokensUsed };
+      // Validate response
+      if (!summary.trim()) {
+        throw new Error('OpenAI returned empty response');
+      }
+
+      return { summary, tokensUsed };
+    } catch (error: any) {
+      console.error(`❌ Chunk summarization failed:`, error.message);
+      throw new Error(`Failed to summarize content chunk: ${error.message}`);
+    }
   }
 
   /**
@@ -262,7 +269,7 @@ Summary:`;
 
     try {
       // Determine max tokens per chunk based on model and options
-      const maxTokensPerChunk = 3000; // Safe limit for most models
+      const maxTokensPerChunk = 3000; // Safe limit for GPT-3.5
       const { chunks, totalTokens } = this.chunkContent(
         content,
         maxTokensPerChunk
@@ -285,16 +292,34 @@ Summary:`;
         console.log(`🔄 Processing ${chunks.length} chunks...`);
 
         const chunkSummaries: string[] = [];
+        const failedChunks: number[] = [];
 
         for (let i = 0; i < chunks.length; i++) {
-          console.log(`📄 Processing chunk ${i + 1}/${chunks.length}`);
-          const result = await this.summarizeChunk(chunks[i], {
-            ...options,
-            length: 'short', // Keep chunk summaries short
-          });
+          try {
+            console.log(`📄 Processing chunk ${i + 1}/${chunks.length}`);
+            const result = await this.summarizeChunk(chunks[i], {
+              ...options,
+              length: 'short', // Keep chunk summaries short
+            });
 
-          chunkSummaries.push(result.summary);
-          totalTokensUsed += result.tokensUsed;
+            chunkSummaries.push(result.summary);
+            totalTokensUsed += result.tokensUsed;
+          } catch (error: any) {
+            console.error(`❌ Failed to process chunk ${i + 1}:`, error.message);
+            failedChunks.push(i + 1);
+            
+            // Add a fallback summary for failed chunks
+            chunkSummaries.push(`[Chunk ${i + 1} could not be processed due to technical issues]`);
+          }
+        }
+
+        // Check if too many chunks failed
+        if (failedChunks.length === chunks.length) {
+          throw new Error('All content chunks failed to process');
+        }
+
+        if (failedChunks.length > 0) {
+          console.warn(`⚠️ ${failedChunks.length} out of ${chunks.length} chunks failed to process`);
         }
 
         // Combine chunk summaries into final summary

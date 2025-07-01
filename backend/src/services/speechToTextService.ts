@@ -53,12 +53,14 @@ class OpenAIProvider implements SpeechProvider {
     options: TranscriptionOptions
   ): Promise<TranscriptionResult> {
     const startTime = Date.now();
+    const audioSizeMB = (audioBuffer.length / 1024 / 1024).toFixed(2);
+    console.log(`🎤 OpenAI transcription starting: ${audioSizeMB} MB audio buffer`);
 
     try {
       const formData = new FormData();
       formData.append('file', audioBuffer, {
-        filename: 'audio.m4a',
-        contentType: 'audio/m4a',
+        filename: 'audio.mp3',
+        contentType: 'audio/mpeg',
       });
       formData.append('model', 'whisper-1');
       formData.append('language', options.language || 'en');
@@ -72,7 +74,15 @@ class OpenAIProvider implements SpeechProvider {
         formData.append('temperature', options.temperature.toString());
       }
 
-      const response = await fetch(
+      // Add timeout to prevent hanging requests. Configurable via env, default 180 000 ms (3 min)
+      const TIMEOUT_MS = parseInt(process.env.OPENAI_TRANSCRIBE_TIMEOUT_MS || '180000', 10);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`OpenAI API request timed out after ${TIMEOUT_MS / 1000} seconds`));
+        }, TIMEOUT_MS);
+      });
+
+      const fetchPromise = fetch(
         'https://api.openai.com/v1/audio/transcriptions',
         {
           method: 'POST',
@@ -84,6 +94,9 @@ class OpenAIProvider implements SpeechProvider {
         }
       );
 
+      const response = await Promise.race([fetchPromise, timeoutPromise]) as any;
+      console.log(`📡 OpenAI API response received: ${response.status} ${response.statusText}`);
+
       if (!response.ok) {
         const errorData = await response.text();
         throw new Error(`OpenAI API error: ${response.status} - ${errorData}`);
@@ -91,6 +104,7 @@ class OpenAIProvider implements SpeechProvider {
 
       const result = (await response.json()) as any;
       const processingTime = Date.now() - startTime;
+      console.log(`✅ OpenAI transcription completed: ${(result.text?.length || 0)} chars in ${processingTime}ms`);
 
       // Extract word timestamps if available
       const wordTimestamps = result.words?.map((word: any) => ({
@@ -113,12 +127,13 @@ class OpenAIProvider implements SpeechProvider {
         processingTime,
       };
     } catch (error) {
-      console.error('OpenAI transcription error:', error);
+      const processingTime = Date.now() - startTime;
+      console.error(`❌ OpenAI transcription error after ${processingTime}ms:`, error instanceof Error ? error.message : error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown OpenAI error',
         provider: this.name,
-        processingTime: Date.now() - startTime,
+        processingTime,
       };
     }
   }
@@ -158,7 +173,15 @@ class GoogleProvider implements SpeechProvider {
         },
       };
 
-      const response = await fetch(
+      // Add timeout to prevent hanging requests (configurable via env, default 180s)
+      const TIMEOUT_MS = parseInt(process.env.GOOGLE_SPEECH_TIMEOUT_MS || '180000', 10);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Google Speech API request timed out after ${TIMEOUT_MS / 1000} seconds`));
+        }, TIMEOUT_MS);
+      });
+
+      const fetchPromise = fetch(
         `https://speech.googleapis.com/v1/speech:recognize?key=${this.apiKey}`,
         {
           method: 'POST',
@@ -168,6 +191,8 @@ class GoogleProvider implements SpeechProvider {
           body: JSON.stringify(requestBody),
         }
       );
+
+      const response = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -338,7 +363,7 @@ class SpeechToTextService {
     }
 
     try {
-      console.log(`Starting transcription with ${providerName} provider`);
+      console.log(`Starting transcription with ${providerName} provider (${(audioBuffer.length / 1024 / 1024).toFixed(2)} MB)`);
       const result = await provider.transcribe(audioBuffer, options);
 
       if (result.success) {

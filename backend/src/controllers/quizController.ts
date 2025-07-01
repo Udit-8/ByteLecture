@@ -17,8 +17,8 @@ export class QuizController {
     // Initialize OpenAI service with configuration
     const openAIService = new OpenAIService({
       apiKey: process.env.OPENAI_API_KEY!,
-      model: 'gpt-3.5-turbo',
-      maxTokens: 2500,
+      model: 'gpt-4-turbo-preview',
+      maxTokens: 3500,
       temperature: 0.7,
     });
 

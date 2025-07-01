@@ -7,6 +7,9 @@ import {
   getProcessedVideo,
   getCacheStats,
   clearVideoCache,
+  getProcessingLocks,
+  clearProcessingLocks,
+  getProcessingStatus,
 } from '../controllers/youtubeController';
 import { authenticateToken } from '../middleware/auth';
 
@@ -56,5 +59,23 @@ router.get('/cache/stats', getCacheStats);
  * Clear cache for a specific video
  */
 router.delete('/cache/:videoId', clearVideoCache);
+
+/**
+ * GET /api/youtube/debug/locks
+ * Get current processing locks (debug endpoint)
+ */
+router.get('/debug/locks', getProcessingLocks);
+
+/**
+ * DELETE /api/youtube/debug/locks
+ * Clear all processing locks (debug endpoint)
+ */
+router.delete('/debug/locks', clearProcessingLocks);
+
+/**
+ * GET /api/youtube/debug/status
+ * Get current processing status and temp files (debug endpoint)
+ */
+router.get('/debug/status', getProcessingStatus);
 
 export default router;

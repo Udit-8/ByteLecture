@@ -38,18 +38,56 @@ export const AISummary: React.FC<AISummaryProps> = ({
     summary,
     generateSummary,
     quickSummary,
+    getSummariesByContentItem,
     clearError,
     reset,
   } = useSummary();
 
-  const [showOptions, setShowOptions] = useState(false);
-  const [options, setOptions] = useState<SummaryOptions>(
-    initialOptions || {
-      length: 'medium',
-      focusArea: 'general',
-      temperature: 0.3,
-    }
-  );
+  // Local state to track if we've checked for existing summaries
+  const [hasCheckedForExisting, setHasCheckedForExisting] = useState(false);
+  // Local state for existing summary (since hook's summary is for newly generated ones)
+  const [existingSummary, setExistingSummary] = useState<Summary | null>(null);
+
+  // Check for existing summaries when component mounts or contentItemId changes
+  useEffect(() => {
+    const loadExistingSummary = async () => {
+      if (contentItemId && !summary && !existingSummary && !hasCheckedForExisting) {
+        console.log('🔍 Checking for existing summary for content item:', contentItemId);
+        setHasCheckedForExisting(true);
+        
+        try {
+          const existingSummaries = await getSummariesByContentItem(contentItemId);
+          if (existingSummaries && existingSummaries.length > 0) {
+            // Use the most recent summary (first in the array since they're sorted by created_at desc)
+            const latestSummary = existingSummaries[0];
+            console.log('✅ Found existing summary:', latestSummary.id);
+            
+            // Set the existing summary in local state
+            setExistingSummary(latestSummary);
+            
+            // Also notify the parent component
+            if (onSummaryGenerated) {
+              onSummaryGenerated(latestSummary);
+            }
+          } else {
+            console.log('📪 No existing summary found for this content item');
+          }
+        } catch (err) {
+          console.error('❌ Error checking for existing summary:', err);
+        }
+      }
+    };
+
+    loadExistingSummary();
+  }, [contentItemId, getSummariesByContentItem, summary, existingSummary, hasCheckedForExisting, onSummaryGenerated]);
+
+  // Reset states when contentItemId changes
+  useEffect(() => {
+    setHasCheckedForExisting(false);
+    setExistingSummary(null);
+  }, [contentItemId]);
+
+  // Simplified - no user options needed for comprehensive summaries
 
   const getContentTypeDisplay = () => {
     switch (contentType) {
@@ -73,15 +111,22 @@ export const AISummary: React.FC<AISummaryProps> = ({
     return `${(content.length / 1000000).toFixed(1)}M characters`;
   };
 
+  // Get the current summary to display (either newly generated or existing)
+  const currentSummary = summary || existingSummary;
+
   const handleGenerateSummary = async () => {
     try {
       clearError();
+      // Clear existing summary when generating a new one
+      setExistingSummary(null);
 
       const result = await generateSummary({
         content,
         contentType,
         contentItemId,
-        options,
+        options: {
+          temperature: 0.3,
+        },
       });
 
       if (result && onSummaryGenerated) {
@@ -92,43 +137,198 @@ export const AISummary: React.FC<AISummaryProps> = ({
     }
   };
 
-  const handleQuickSummary = async (length: 'short' | 'medium' | 'long') => {
-    try {
-      clearError();
+  // Removed metadata formatting functions - no longer needed
 
-      const result = await quickSummary(content, contentType, length);
+  const renderFormattedSummary = (text: string) => {
+    console.log('DEBUG: Full summary text:', text);
+    const lines = text.split('\n');
+    let hasSeenMainTitle = false;
+    // Buffer to accumulate table rows
+    let tableBuffer: string[] = [];
+    const renderedElements: React.ReactElement[] = [];
 
-      if (result && onSummaryGenerated) {
-        onSummaryGenerated(result);
+    const flushTable = (keyPrefix: string) => {
+      if (tableBuffer.length === 0) return;
+      // Drop separator row (---) if present
+      const cleanedRows = tableBuffer.filter(
+        (l) => !/^\s*\|?[-: ]+\|[-| :]+$/.test(l)
+      );
+      const parsedRows = cleanedRows.map((row) =>
+        row
+          .trim()
+          .replace(/^\|/, '')
+          .replace(/\|$/, '')
+          .split('|')
+          .map((cell) => cell.trim())
+      );
+
+      renderedElements.push(
+        <View key={`table-${keyPrefix}`} style={styles.tableContainer}>
+          {parsedRows.map((cells, rIdx) => (
+            <View
+              key={`tr-${keyPrefix}-${rIdx}`}
+              style={[styles.tableRow, rIdx === 0 && styles.tableHeaderRow]}
+            >
+              {cells.map((cell, cIdx) => (
+                <View key={`td-${keyPrefix}-${rIdx}-${cIdx}`} style={styles.tableCell}>
+                  <Text
+                    style={[
+                      styles.summaryText,
+                      rIdx === 0 ? styles.tableHeaderText : styles.tableCellText,
+                    ]}
+                  >
+                    {cell}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      );
+      tableBuffer = [];
+    };
+
+    lines.forEach((rawLine, lineIndex) => {
+      // Work on a mutable copy
+      let line = rawLine;
+      console.log(`DEBUG Line ${lineIndex}:`, line);
+
+      if (line.trim() === '') {
+        // Flush any pending table before spacer
+        flushTable(`${lineIndex}-blank`);
+        renderedElements.push(<View key={`spacer-${lineIndex}`} style={styles.spacer} />);
+        return;
       }
-    } catch (err) {
-      console.error('Error generating quick summary:', err);
-    }
-  };
 
-  const formatProcessingTime = (ms: number): string => {
-    if (ms < 1000) return `${ms}ms`;
-    return `${(ms / 1000).toFixed(1)}s`;
-  };
+      // Detect table pattern (starts with | and has another |)
+      if (/^\s*\|.*\|/.test(line)) {
+        tableBuffer.push(line);
+        return;
+      } else {
+        // If buffer has content and current line is not a table, flush
+        flushTable(`${lineIndex}-flush`);
+      }
 
-  const formatTokenCost = (tokens: number, cost: number): string => {
-    return `${tokens} tokens (~$${cost.toFixed(4)})`;
+      // Detect markdown heading levels (e.g., #, ##, ###)
+      const headingMatch = line.match(/^\s*(#{1,6})\s+(.*)$/);
+      let markdownHeadingLevel: number | null = null;
+      if (headingMatch) {
+        markdownHeadingLevel = headingMatch[1].length;
+        line = headingMatch[2]; // remove leading hashes for rendering
+      }
+
+      // Check for emojis that indicate titles/headers
+      const hasEmoji = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(line);
+
+      // Determine header types
+      const isMarkdownMain = markdownHeadingLevel === 1;
+      const isMarkdownSection = markdownHeadingLevel === 2;
+      const isMarkdownSub = markdownHeadingLevel === 3;
+
+      // Original emoji / pattern based detection
+      const isEmojiMain = !hasSeenMainTitle && hasEmoji && lineIndex === 0;
+      const isEmojiSection = !isEmojiMain && hasEmoji;
+
+      const isMainTitleLine = isMarkdownMain || isEmojiMain;
+      const isSectionHeaderLine = (isMarkdownSection || isEmojiSection) && !isMainTitleLine;
+      const isSubHeaderLine = isMarkdownSub && !isMainTitleLine && !isSectionHeaderLine;
+
+      if (isMainTitleLine) {
+        hasSeenMainTitle = true;
+        console.log('DEBUG: Found main title:', line);
+      }
+      
+      if (isSectionHeaderLine || isSubHeaderLine) {
+        console.log('DEBUG: Found section header:', line);
+      }
+      
+      // Check if line contains bold text (**text**)
+      const boldRegex = /\*\*(.*?)\*\*/g;
+      const parts = [];
+      let lastIndex = 0;
+      let match;
+      
+      // Process bold text if it exists
+      while ((match = boldRegex.exec(line)) !== null) {
+        // Add text before the bold text
+        if (match.index > lastIndex) {
+          parts.push({
+            text: line.substring(lastIndex, match.index),
+            isBold: false,
+            isMainTitle: isMainTitleLine,
+            isSectionHeader: isSectionHeaderLine,
+          });
+        }
+        
+        // Add the bold text (without the **)
+        parts.push({
+          text: match[1],
+          isBold: true,
+          isMainTitle: isMainTitleLine,
+          isSectionHeader: isSectionHeaderLine,
+        });
+        
+        lastIndex = match.index + match[0].length;
+      }
+      
+      // Add remaining text after last bold match
+      if (lastIndex < line.length) {
+        parts.push({
+          text: line.substring(lastIndex),
+          isBold: false,
+          isMainTitle: isMainTitleLine,
+          isSectionHeader: isSectionHeaderLine,
+        });
+      }
+      
+      // If no bold text found, treat the whole line
+      if (parts.length === 0) {
+        parts.push({
+          text: line,
+          isBold: false,
+          isMainTitle: isMainTitleLine,
+          isSectionHeader: isSectionHeaderLine,
+        });
+      }
+      
+      renderedElements.push(
+        <View key={`line-${lineIndex}`} style={[
+          isMainTitleLine && styles.mainTitleContainer,
+          isSectionHeaderLine && styles.sectionHeaderContainer,
+          isSubHeaderLine && styles.subHeaderContainer,
+          !isMainTitleLine && !isSectionHeaderLine && !isSubHeaderLine && styles.regularLineContainer,
+        ]}>
+          <Text style={styles.summaryLine}>
+            {parts.map((part, partIndex) => {
+              console.log(`DEBUG Part ${partIndex}:`, part);
+              return (
+                <Text
+                  key={partIndex}
+                  style={[
+                    styles.summaryText,
+                    part.isBold && styles.boldText,
+                    part.isMainTitle && styles.mainTitleText,
+                    part.isSectionHeader && styles.sectionHeaderText,
+                    isSubHeaderLine && styles.subHeaderText,
+                  ]}
+                >
+                  {part.text}
+                </Text>
+              );
+            })}
+          </Text>
+        </View>
+      );
+    });
+
+    // Flush remaining table at end
+    flushTable('end');
+
+    return <View style={styles.summaryTextContainer}>{renderedElements}</View>;
   };
 
   return (
     <View style={[styles.container, style]}>
-      <Card style={styles.card}>
-        <View style={styles.header}>
-          <View style={styles.titleContainer}>
-            <Ionicons name="sparkles" size={20} color="#6366f1" />
-            <Text style={styles.title}>AI Summary</Text>
-          </View>
-          <View style={styles.contentInfo}>
-            <Text style={styles.contentType}>{getContentTypeDisplay()}</Text>
-            <Text style={styles.contentLength}>{getContentLength()}</Text>
-          </View>
-        </View>
-
         {error && (
           <View style={styles.errorContainer}>
             <Ionicons name="warning" size={16} color="#ef4444" />
@@ -139,55 +339,18 @@ export const AISummary: React.FC<AISummaryProps> = ({
           </View>
         )}
 
-        {!summary && !loading && (
+      {!currentSummary && !loading && (
           <View style={styles.actionsContainer}>
             <Text style={styles.description}>
-              Generate an AI-powered summary of your {contentType} content
+            Generate a comprehensive AI-powered summary of your {contentType} content
             </Text>
 
-            <View style={styles.quickActions}>
               <Button
-                title="Quick Summary"
-                onPress={() => handleQuickSummary('medium')}
+            title="Generate Summary"
+            onPress={handleGenerateSummary}
                 style={styles.primaryButton}
                 disabled={loading}
               />
-
-              <TouchableOpacity
-                style={styles.optionsButton}
-                onPress={() => setShowOptions(true)}
-                disabled={loading}
-              >
-                <Ionicons name="settings" size={16} color="#6b7280" />
-                <Text style={styles.optionsButtonText}>Options</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.lengthButtons}>
-              <TouchableOpacity
-                style={styles.lengthButton}
-                onPress={() => handleQuickSummary('short')}
-                disabled={loading}
-              >
-                <Text style={styles.lengthButtonText}>Short</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.lengthButton}
-                onPress={() => handleQuickSummary('medium')}
-                disabled={loading}
-              >
-                <Text style={styles.lengthButtonText}>Medium</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.lengthButton}
-                onPress={() => handleQuickSummary('long')}
-                disabled={loading}
-              >
-                <Text style={styles.lengthButtonText}>Long</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         )}
 
@@ -199,166 +362,11 @@ export const AISummary: React.FC<AISummaryProps> = ({
           </View>
         )}
 
-        {summary && !loading && (
+      {currentSummary && !loading && (
           <View style={styles.summaryContainer}>
-            <View style={styles.summaryHeader}>
-              <View style={styles.summaryTitleContainer}>
-                <Ionicons name="document-text" size={16} color="#059669" />
-                <Text style={styles.summaryTitle}>Summary</Text>
-              </View>
-
-              {summary.metadata.cacheHit && (
-                <View style={styles.cacheIndicator}>
-                  <Ionicons name="flash" size={12} color="#f59e0b" />
-                  <Text style={styles.cacheText}>Cached</Text>
-                </View>
-              )}
-            </View>
-
-            <ScrollView style={styles.summaryScrollView}>
-              <Text style={styles.summaryText}>{summary.text}</Text>
-            </ScrollView>
-
-            <View style={styles.metadataContainer}>
-              <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>Processing Time:</Text>
-                <Text style={styles.metadataValue}>
-                  {formatProcessingTime(summary.metadata.processingTime)}
-                </Text>
-              </View>
-
-              <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>Token Usage:</Text>
-                <Text style={styles.metadataValue}>
-                  {formatTokenCost(
-                    summary.metadata.tokensUsed,
-                    summary.metadata.estimatedCost
-                  )}
-                </Text>
-              </View>
-
-              <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>Compression:</Text>
-                <Text style={styles.metadataValue}>
-                  {summary.metadata.compressionRatio.toFixed(1)}:1
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.summaryActions}>
-              <Button
-                title="New Summary"
-                onPress={reset}
-                style={styles.secondaryButton}
-                variant="outline"
-              />
-            </View>
+          {renderFormattedSummary(currentSummary.text)}
           </View>
         )}
-
-        {/* Options Modal */}
-        <Modal
-          visible={showOptions}
-          animationType="slide"
-          presentationStyle="pageSheet"
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Summary Options</Text>
-              <TouchableOpacity onPress={() => setShowOptions(false)}>
-                <Ionicons name="close" size={24} color="#6b7280" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.optionGroup}>
-                <Text style={styles.optionLabel}>Summary Length</Text>
-                <View style={styles.optionSelector}>
-                  {['short', 'medium', 'long'].map((length) => (
-                    <TouchableOpacity
-                      key={length}
-                      style={[
-                        styles.optionItem,
-                        options.length === length && styles.optionItemSelected,
-                      ]}
-                      onPress={() =>
-                        setOptions((prev) => ({
-                          ...prev,
-                          length: length as 'short' | 'medium' | 'long',
-                        }))
-                      }
-                    >
-                      <Text
-                        style={[
-                          styles.optionItemText,
-                          options.length === length &&
-                            styles.optionItemTextSelected,
-                        ]}
-                      >
-                        {length === 'short' && 'Short (2-3 sentences)'}
-                        {length === 'medium' && 'Medium (1-2 paragraphs)'}
-                        {length === 'long' && 'Long (3-4 paragraphs)'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.optionGroup}>
-                <Text style={styles.optionLabel}>Focus Area</Text>
-                <View style={styles.optionSelector}>
-                  {['general', 'concepts', 'examples', 'applications'].map(
-                    (focus) => (
-                      <TouchableOpacity
-                        key={focus}
-                        style={[
-                          styles.optionItem,
-                          options.focusArea === focus &&
-                            styles.optionItemSelected,
-                        ]}
-                        onPress={() =>
-                          setOptions((prev) => ({
-                            ...prev,
-                            focusArea: focus as
-                              | 'general'
-                              | 'concepts'
-                              | 'examples'
-                              | 'applications',
-                          }))
-                        }
-                      >
-                        <Text
-                          style={[
-                            styles.optionItemText,
-                            options.focusArea === focus &&
-                              styles.optionItemTextSelected,
-                          ]}
-                        >
-                          {focus === 'general' && 'General Overview'}
-                          {focus === 'concepts' && 'Key Concepts'}
-                          {focus === 'examples' && 'Examples & Applications'}
-                          {focus === 'applications' && 'Practical Applications'}
-                        </Text>
-                      </TouchableOpacity>
-                    )
-                  )}
-                </View>
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalActions}>
-              <Button
-                title="Generate Summary"
-                onPress={() => {
-                  setShowOptions(false);
-                  handleGenerateSummary();
-                }}
-                style={styles.primaryButton}
-              />
-            </View>
-          </View>
-        </Modal>
-      </Card>
     </View>
   );
 };
@@ -366,38 +374,7 @@ export const AISummary: React.FC<AISummaryProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  card: {
-    margin: 16,
     padding: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginLeft: 8,
-  },
-  contentInfo: {
-    alignItems: 'flex-end',
-  },
-  contentType: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  contentLength: {
-    fontSize: 10,
-    color: '#9ca3af',
   },
   errorContainer: {
     flexDirection: 'row',
@@ -425,46 +402,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
-  quickActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
-  },
   primaryButton: {
     backgroundColor: '#6366f1',
+    marginTop: 8,
   },
   secondaryButton: {
     backgroundColor: 'transparent',
     borderColor: '#d1d5db',
     borderWidth: 1,
-  },
-  optionsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: '#f3f4f6',
-  },
-  optionsButtonText: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginLeft: 4,
-  },
-  lengthButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  lengthButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 6,
-  },
-  lengthButtonText: {
-    fontSize: 12,
-    color: '#374151',
-    fontWeight: '500',
   },
   loadingContainer: {
     alignItems: 'center',
@@ -484,126 +429,102 @@ const styles = StyleSheet.create({
   summaryContainer: {
     flex: 1,
   },
-  summaryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+  summaryTextContainer: {
+    marginBottom: 24,
   },
-  summaryTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  summaryTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#059669',
-    marginLeft: 6,
-  },
-  cacheIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  cacheText: {
-    fontSize: 10,
-    color: '#f59e0b',
-    fontWeight: '500',
-    marginLeft: 2,
-  },
-  summaryScrollView: {
-    maxHeight: 200,
-    marginBottom: 16,
-  },
-  summaryText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#374151',
-  },
-  metadataContainer: {
-    backgroundColor: '#f9fafb',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  metadataRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  summaryLine: {
     marginBottom: 4,
   },
-  metadataLabel: {
-    fontSize: 12,
-    color: '#6b7280',
+  summaryText: {
+    fontSize: 16,
+    lineHeight: 26,
+    color: '#111827',
+    textAlign: 'left',
   },
-  metadataValue: {
-    fontSize: 12,
-    color: '#374151',
-    fontWeight: '500',
+  boldText: {
+    fontWeight: 'bold',
+    color: '#111827',
+    fontSize: 17,
+  },
+  mainTitleText: {
+    fontWeight: '900',
+    color: '#111827',
+    fontSize: 28,
+    lineHeight: 36,
+    marginBottom: 16,
+    textShadowColor: 'rgba(139, 92, 246, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  sectionHeaderText: {
+    fontWeight: '800',
+    color: '#111827',
+    fontSize: 22,
+    lineHeight: 30,
+    marginTop: 24,
+    marginBottom: 12,
+    textShadowColor: 'rgba(29, 78, 216, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
+  },
+  mainTitleContainer: {
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  sectionHeaderContainer: {
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  subHeaderContainer: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  regularLineContainer: {
+    marginBottom: 4,
+  },
+  spacer: {
+    height: 12,
   },
   summaryActions: {
     alignItems: 'center',
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
   },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
+  tableContainer: {
+    marginVertical: 12,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 4,
   },
-  modalHeader: {
+  tableRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+  tableHeaderRow: {
+    backgroundColor: '#f3f4f6',
+  },
+  tableCell: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRightWidth: 1,
+    borderRightColor: '#d1d5db',
+  },
+  tableCellText: {
     color: '#111827',
   },
-  modalContent: {
-    flex: 1,
-    padding: 16,
+  tableHeaderText: {
+    fontWeight: '700',
+    color: '#111827',
   },
-  optionGroup: {
-    marginBottom: 24,
-  },
-  optionLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  optionSelector: {
-    flexDirection: 'column',
-    gap: 8,
-  },
-  optionItem: {
-    padding: 12,
-    borderRadius: 6,
-    backgroundColor: '#f3f4f6',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  optionItemSelected: {
-    backgroundColor: '#6366f1',
-    borderColor: '#6366f1',
-  },
-  optionItemText: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  optionItemTextSelected: {
-    color: '#fff',
-  },
-  modalActions: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+  subHeaderText: {
+    fontWeight: '700',
+    color: '#111827',
+    fontSize: 18,
+    lineHeight: 26,
+    marginTop: 8,
+    marginBottom: 6,
   },
 });
 

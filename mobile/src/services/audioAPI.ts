@@ -24,6 +24,7 @@ export interface TranscriptionResult {
   processingTime?: number;
   error?: string;
   cached?: boolean;
+  contentItemId?: string;
 }
 
 export interface AudioAPIResponse<T = any> {
@@ -126,7 +127,8 @@ class AudioAPI {
         return {
           ...result.data,
           success: true,
-        };
+          contentItemId: (result.data as any).contentItemId,
+        } as TranscriptionResult;
       } else {
         return {
           success: false,

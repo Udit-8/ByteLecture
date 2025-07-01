@@ -196,9 +196,25 @@ export const processYouTubeVideo = async (
     }
 
     try {
-      // Process the video
-      console.log(`Starting video processing for: ${videoId}`);
-      const result = await youtubeService.processVideo(url);
+      // Process the video with progress updates
+      console.log(`🚀 Starting video processing for: ${videoId}`);
+      
+      // First check if yt-dlp is working
+      const { audioExtractionService } = await import('../services/audioExtractionService');
+      const healthCheck = await audioExtractionService.healthCheck();
+      
+      if (!healthCheck.available) {
+        throw new Error(`Video processing service is unavailable: ${healthCheck.error}`);
+      }
+      
+      const result = await youtubeService.processVideo(url, userId, {
+        onProgress: (stage, progress) => {
+          console.log(`📊 Processing progress: ${stage} (${progress}%)`);
+          // TODO: Send real-time progress updates to client via WebSocket if needed
+        },
+        tryYouTubeFirst: true, // Try YouTube transcript first for speed
+        useCache: true, // Use cache to avoid reprocessing
+      });
 
       console.log(`Video processing completed for: ${videoId}`);
       console.log(
@@ -274,7 +290,7 @@ export const processYouTubeVideo = async (
             youtube_video_id: videoId,
             duration: parseDurationToSeconds(result.videoInfo.duration),
             processed: true,
-            summary: result.fullTranscriptText.substring(0, 500) + '...', // First 500 chars as preview
+            summary: result.fullTranscriptText, // Store full transcript for flashcard generation and AI features
           });
           console.log(`Created content item for YouTube video: ${videoId}`);
         } catch (contentError) {
@@ -459,7 +475,7 @@ export const getCacheStats = async (
 };
 
 /**
- * Clear cache for a specific video (admin/debug endpoint)
+ * Clear video cache for a specific video (admin/debug endpoint)
  */
 export const clearVideoCache = async (
   req: AuthenticatedRequest,
@@ -488,6 +504,106 @@ export const clearVideoCache = async (
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to clear cache',
+    });
+  }
+};
+
+/**
+ * Get processing locks status (debug endpoint)
+ */
+export const getProcessingLocks = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const locks = youtubeService.getProcessingLocks();
+
+    res.json({
+      success: true,
+      data: {
+        currentLocks: locks,
+        lockCount: locks.length,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error getting processing locks:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get processing locks',
+    });
+  }
+};
+
+/**
+ * Clear all processing locks (debug endpoint)
+ */
+export const clearProcessingLocks = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    youtubeService.clearAllProcessingLocks();
+
+    res.json({
+      success: true,
+      message: 'All processing locks cleared',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('Error clearing processing locks:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to clear processing locks',
+    });
+  }
+};
+
+/**
+ * Get current processing status (debug endpoint)
+ */
+export const getProcessingStatus = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const locks = youtubeService.getProcessingLocks();
+    
+    // Get temp directory status (match audioExtractionService)
+    const path = require('path');
+    const tempDir = path.join(process.cwd(), 'temp'); // Use same temp dir as audioExtractionService
+    let tempFiles: string[] = [];
+    try {
+      const fs = require('fs');
+      tempFiles = fs.readdirSync(tempDir)
+        .filter((file: string) => file.includes('audio') || file.includes('chunks'))
+        .map((file: string) => {
+          const stats = fs.statSync(`${tempDir}/${file}`);
+          return {
+            name: file,
+            size: `${(stats.size / 1024 / 1024).toFixed(2)} MB`,
+            modified: stats.mtime.toISOString(),
+          };
+        });
+    } catch (e) {
+      // Ignore temp file errors
+    }
+
+    res.json({
+      success: true,
+      data: {
+        currentLocks: locks,
+        lockCount: locks.length,
+        tempFiles: tempFiles.slice(0, 10), // Show only recent 10
+        timestamp: new Date().toISOString(),
+        serverUptime: process.uptime(),
+      },
+    });
+  } catch (error) {
+    console.error('Error getting processing status:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get processing status',
     });
   }
 };

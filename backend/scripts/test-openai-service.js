@@ -10,7 +10,7 @@ async function testOpenAIService() {
     console.log('\n1. Initializing OpenAI Service...');
     const openAIService = new OpenAIService({
       apiKey: process.env.OPENAI_API_KEY,
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       maxTokens: 500,
       temperature: 0.3,
     });

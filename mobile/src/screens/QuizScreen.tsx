@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation as useReactNavigation } from '@react-navigation/native';
-import { Header, Card, Button, LoadingIndicator } from '../components';
+import { Header, Card, Button, LoadingIndicator, PremiumUpsellModal } from '../components';
 import { theme } from '../constants/theme';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useQuiz } from '../hooks/useQuiz';
@@ -62,13 +62,14 @@ export const QuizScreen: React.FC = () => {
       focusArea: 'general',
       questionTypes: ['multiple_choice'],
     });
-  
+
   // Quota state
   const [quotaInfo, setQuotaInfo] = useState<{
     remaining?: number;
     limit?: number;
     isPremium?: boolean;
   }>({});
+  const [showPremiumUpsell, setShowPremiumUpsell] = useState(false);
 
   // Load quiz sets when screen mounts or selectedNote changes
   useEffect(() => {
@@ -91,7 +92,8 @@ export const QuizScreen: React.FC = () => {
   useEffect(() => {
     const checkQuota = async () => {
       try {
-        const permissionResult = await permissionService.checkFeatureUsage('quiz_generation');
+        const permissionResult =
+          await permissionService.checkFeatureUsage('quiz_generation');
         if (permissionResult.limit !== undefined) {
           setQuotaInfo({
             remaining: permissionResult.remaining,
@@ -122,22 +124,11 @@ export const QuizScreen: React.FC = () => {
 
     // Check permissions before generating quiz
     try {
-      const permissionResult = await permissionService.checkFeatureUsage('quiz_generation');
-      
+      const permissionResult =
+        await permissionService.checkFeatureUsage('quiz_generation');
+
       if (!permissionResult.allowed) {
-        const alertTitle = 'Generation Limit Reached';
-        const alertMessage = permissionResult.upgrade_message || 
-          'You have reached your daily quiz generation limit. Please try again tomorrow or upgrade your plan for unlimited quiz generation.';
-        
-        Alert.alert(alertTitle, alertMessage, [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Upgrade Plan',
-            style: 'default',
-            onPress: () => (navigation as any).navigate('Subscription', { from: 'quiz-quota' }),
-          },
-        ]);
-        
+        setShowPremiumUpsell(true);
         return;
       }
     } catch (error) {
@@ -718,6 +709,22 @@ export const QuizScreen: React.FC = () => {
           </Card>
         )}
       </ScrollView>
+
+      <PremiumUpsellModal
+        visible={showPremiumUpsell}
+        onClose={() => setShowPremiumUpsell(false)}
+        onUpgrade={() => {
+          setShowPremiumUpsell(false);
+          (navigation as any).navigate('Subscription', { from: 'quiz-quota' });
+        }}
+        featureType="quiz-generation"
+        currentUsage={
+          quotaInfo.limit && quotaInfo.remaining !== undefined
+            ? quotaInfo.limit - quotaInfo.remaining
+            : undefined
+        }
+        limit={quotaInfo.limit}
+      />
     </SafeAreaView>
   );
 };

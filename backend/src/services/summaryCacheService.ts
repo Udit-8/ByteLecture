@@ -185,24 +185,31 @@ export class SummaryCacheService {
     } = options;
 
     try {
-      const summaryRecord: Omit<SummaryRecord, 'id'> = {
-        userId,
-        contentItemId: contentItemId || null,
-        contentHash,
-        contentType,
-        contentLength: content.length,
-        summaryLength: length,
-        focusArea,
-        aiModel: result.model,
-        promptVersion: '1.0',
-        summaryText: result.summary,
-        summaryStatus: 'completed',
-        tokensUsed: result.tokensUsed,
-        processingTimeMs: result.processingTime,
-        compressionRatio: result.metadata.compressionRatio,
-        estimatedCost: this.estimateCost(result.tokensUsed, result.model),
-        cacheHit: false,
-        accessCount: 1,
+      // Validate content_item_id (must be a valid UUID for Supabase)
+      const isValidUUID = (id: string | undefined): boolean => {
+        if (!id) return false;
+        // Basic UUID v4 regex (accepts lowercase, uppercase, and without strict version bits)
+        return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id);
+      };
+
+      const summaryRecord = {
+        user_id: userId,
+        content_item_id: isValidUUID(contentItemId) ? contentItemId : null,
+        content_hash: contentHash,
+        content_type: contentType,
+        content_length: content.length,
+        summary_length: length,
+        focus_area: focusArea,
+        ai_model: result.model,
+        prompt_version: '1.0',
+        summary_text: result.summary,
+        summary_status: 'completed',
+        tokens_used: result.tokensUsed,
+        processing_time_ms: result.processingTime,
+        compression_ratio: result.metadata.compressionRatio,
+        estimated_cost: this.estimateCost(result.tokensUsed, result.model),
+        cache_hit: false,
+        access_count: 1,
       };
 
       const { data, error } = await this.supabase
@@ -227,7 +234,7 @@ export class SummaryCacheService {
         processingTimeMs: result.processingTime,
         compressionRatio: result.metadata.compressionRatio,
         aiModel: result.model,
-        estimatedCost: summaryRecord.estimatedCost,
+        estimatedCost: summaryRecord.estimated_cost,
         accessCount: 1,
         createdAt: new Date().toISOString(),
         lastAccessedAt: new Date().toISOString(),
@@ -239,7 +246,7 @@ export class SummaryCacheService {
       await this.updateCacheStats(
         false,
         result.tokensUsed,
-        summaryRecord.estimatedCost,
+        summaryRecord.estimated_cost,
         result.processingTime
       );
 
@@ -415,11 +422,13 @@ export class SummaryCacheService {
     // Approximate costs per 1000 tokens (as of 2024)
     const costPer1kTokens: { [key: string]: number } = {
       'gpt-3.5-turbo': 0.002, // $0.002 per 1K tokens
+      'gpt-4o-mini': 0.0003, // $0.0003 per 1K tokens (average of input/output)
       'gpt-4': 0.03, // $0.03 per 1K tokens
       'gpt-4-turbo': 0.01, // $0.01 per 1K tokens
+      'gpt-4-turbo-preview': 0.01, // $0.01 per 1K tokens
     };
 
-    const rate = costPer1kTokens[model] || costPer1kTokens['gpt-3.5-turbo'];
+    const rate = costPer1kTokens[model] || costPer1kTokens['gpt-4o-mini'];
     return (tokensUsed / 1000) * rate;
   }
 

@@ -68,10 +68,13 @@ export interface ProcessedVideo {
 }
 
 class YouTubeAPI {
+  private processingVideos: Set<string> = new Set(); // Track videos currently being processed
+
   private async makeRequest(
     endpoint: string,
     method: 'GET' | 'POST' | 'DELETE' = 'GET',
-    body?: any
+    body?: any,
+    options: { timeout?: number } = {}
   ): Promise<any> {
     try {
       const { getAuthToken } = await import('./authHelper');
@@ -85,13 +88,62 @@ class YouTubeAPI {
         headers.Authorization = `Bearer ${token}`;
       }
 
+      // Set timeout based on operation type
+      const timeout = options.timeout || (endpoint.includes('/process') ? 300000 : 30000); // 5 minutes for processing, 30s for others
+      
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, timeout);
+
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
       });
 
-      const data = await response.json();
+      // Clear timeout if request completes
+      clearTimeout(timeoutId);
+
+      // Check if response is JSON and parse safely
+      const contentType = response.headers.get('content-type');
+      const isJson = contentType && contentType.includes('application/json');
+
+      let data;
+      let responseText = '';
+      
+      try {
+        if (isJson) {
+          data = await response.json();
+        } else {
+          // If not JSON, get text and create error response
+          responseText = await response.text();
+          console.error('Non-JSON response received:', responseText);
+          data = {
+            success: false,
+            error: 'Invalid response format',
+            message: `Server returned ${response.status}: ${responseText.substring(0, 200)}...`,
+          };
+        }
+      } catch (parseError) {
+        // If JSON parsing fails, try to get text (if not already retrieved)
+        try {
+          if (!responseText) {
+            responseText = await response.text();
+          }
+        } catch (textError) {
+          responseText = 'Unable to read response';
+        }
+        
+        console.error('Response parsing failed:', parseError);
+        data = {
+          success: false,
+          error: 'Response parsing failed',
+          message: `Failed to parse response. Status: ${response.status}. Content: ${responseText.substring(0, 200)}...`,
+        };
+      }
 
       if (!response.ok) {
         throw new Error(
@@ -101,6 +153,11 @@ class YouTubeAPI {
 
       return data;
     } catch (error) {
+      // Handle timeout errors specifically
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timed out. This usually happens with very long videos. Please try again or contact support if the issue persists.');
+      }
+      
       console.error('YouTube API request failed:', error);
       throw error;
     }
@@ -135,10 +192,41 @@ class YouTubeAPI {
    * Process a YouTube video completely (extract transcript, store in DB)
    */
   async processVideo(url: string): Promise<YouTubeProcessingResult> {
-    const response = await this.makeRequest('/youtube/process', 'POST', {
-      url,
-    });
-    return response.data;
+    // Extract video ID for deduplication
+    const videoId = this.extractVideoId(url);
+    if (!videoId) {
+      throw new Error('Invalid YouTube URL');
+    }
+
+    // Check if this video is already being processed
+    if (this.processingVideos.has(videoId)) {
+      throw new Error('This video is already being processed. Please wait for the current processing to complete.');
+    }
+
+    // Add to processing set
+    this.processingVideos.add(videoId);
+    console.log(`🔒 Mobile: Added processing lock for video: ${videoId}`);
+
+    try {
+      const response = await this.makeRequest('/youtube/process', 'POST', {
+        url,
+      }, { timeout: 300000 }); // 5 minutes timeout for video processing
+      
+      return response.data;
+    } finally {
+      // Always remove from processing set when done
+      this.processingVideos.delete(videoId);
+      console.log(`🔓 Mobile: Removed processing lock for video: ${videoId}`);
+    }
+  }
+
+  /**
+   * Extract video ID from YouTube URL (helper method)
+   */
+  private extractVideoId(url: string): string | null {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
   }
 
   /**

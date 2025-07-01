@@ -93,28 +93,68 @@ class SummaryAPI {
         headers.Authorization = `Bearer ${token}`;
       }
 
+      // Create AbortController for timeout handling
+      const timeoutMs = method === 'POST' && endpoint === '/generate' ? 300000 : 30000; // 5 min for generation, 30s for others
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
+
       const response = await fetch(`${API_BASE_URL}/summaries${endpoint}`, {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
+        signal: abortController.signal,
       });
 
-      const data = await response.json();
+      clearTimeout(timeoutId);
+
+      let data;
+      try {
+        const text = await response.text();
+        if (!text.trim()) {
+          throw new Error('Empty response from server');
+        }
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Failed to parse response as JSON:', parseError);
+        return {
+          success: false,
+          error: 'Invalid server response',
+          message: 'The server returned an invalid response. Please try again.',
+        };
+      }
 
       if (!response.ok) {
         return {
           success: false,
           error: data.error || 'Request failed',
-          message: data.message,
+          message: data.message || `HTTP ${response.status}: ${response.statusText}`,
         };
       }
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Summary API request failed:', error);
+      
+      // Handle specific error types
+      if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+        return {
+          success: false,
+          error: 'Request timeout',
+          message: 'The request took too long to process. Please try again.',
+        };
+      }
+      
+      if (error.message?.includes('fetch')) {
+        return {
+          success: false,
+          error: 'Network error',
+          message: 'Failed to connect to the server. Please check your internet connection.',
+        };
+      }
+
       return {
         success: false,
-        error: 'Network error occurred',
+        error: error.message || 'Network error occurred',
         message: 'Failed to connect to the summarization service',
       };
     }

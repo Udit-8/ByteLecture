@@ -57,12 +57,15 @@ export const SyncSettingsScreen: React.FC<SyncSettingsScreenProps> = ({
     setLoadingDevices(true);
     try {
       const result = await getDevices();
-      setDevices(result.devices);
+      setDevices(result.devices || []);
       setCurrentDeviceId(result.current_device_id);
-      setMaxDevices(result.max_devices);
+      setMaxDevices(result.max_devices || 0);
     } catch (error) {
       console.error('Error loading devices:', error);
       Alert.alert('Error', 'Failed to load devices');
+      // Set safe defaults on error
+      setDevices([]);
+      setMaxDevices(0);
     } finally {
       setLoadingDevices(false);
     }
@@ -100,7 +103,7 @@ export const SyncSettingsScreen: React.FC<SyncSettingsScreenProps> = ({
   };
 
   const handleAddDevice = () => {
-    if (maxDevices !== -1 && devices.length >= maxDevices) {
+    if (maxDevices !== -1 && (devices || []).length >= maxDevices) {
       Alert.alert(
         'Device Limit Reached',
         `You have reached the maximum number of devices (${maxDevices}) for your plan. ${!isPremium ? 'Upgrade to Premium for unlimited devices.' : ''}`
@@ -454,14 +457,14 @@ export const SyncSettingsScreen: React.FC<SyncSettingsScreenProps> = ({
           {/* Device limits info */}
           <View style={styles.deviceLimitsInfo}>
             <Text style={styles.deviceLimitsText}>
-              {devices.length} of {maxDevices === -1 ? '∞' : maxDevices} devices
+              {(devices || []).length} of {maxDevices === -1 ? '∞' : maxDevices} devices
               {!isPremium && maxDevices !== -1 && (
                 <Text style={styles.freeUserText}> (Free Plan)</Text>
               )}
             </Text>
             {!isPremium &&
               maxDevices !== -1 &&
-              devices.length >= maxDevices && (
+              (devices || []).length >= maxDevices && (
                 <TouchableOpacity
                   style={styles.upgradePrompt}
                   onPress={() =>
@@ -477,7 +480,7 @@ export const SyncSettingsScreen: React.FC<SyncSettingsScreenProps> = ({
               )}
           </View>
 
-          {devices.map((device) => (
+          {(devices || []).map((device) => (
             <View key={device.id} style={styles.deviceItem}>
               <View style={styles.deviceIcon}>
                 <Ionicons

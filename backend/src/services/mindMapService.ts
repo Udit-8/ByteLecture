@@ -22,7 +22,7 @@ import {
 // Create service instances
 const openAIService = new OpenAIService({
   apiKey: process.env.OPENAI_API_KEY || '',
-  model: 'gpt-3.5-turbo',
+        model: 'gpt-4o-mini',
   maxTokens: 4000,
   temperature: 0.7,
 });
@@ -81,7 +81,7 @@ class MindMapService {
         mind_map_data: mindMapData,
         node_count: mindMapData.total_nodes,
         max_depth: mindMapData.max_depth,
-        ai_model: 'gpt-3.5-turbo',
+        ai_model: 'gpt-4o-mini',
         tokens_used: analysisResult.complexity_score * 100, // Estimate
         processing_time_ms: Date.now() - startTime,
       });

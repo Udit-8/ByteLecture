@@ -32,6 +32,7 @@ export const RecentNotesScreen: React.FC = () => {
     fetchRecentItems,
     refresh,
     clearError,
+    deleteContent,
   } = useContent();
 
   // Load content items on component mount
@@ -147,6 +148,30 @@ export const RecentNotesScreen: React.FC = () => {
 
   const handleErrorDismiss = () => {
     clearError();
+  };
+
+  const handleDeleteNote = (itemId: string, title: string) => {
+    Alert.alert(
+      'Delete Note',
+      `Are you sure you want to delete "${title}"?`,
+      [
+        {
+          text: 'No',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteContent(itemId);
+            } catch (err) {
+              Alert.alert('Error', 'Failed to delete note. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Show loading on first load
@@ -283,6 +308,21 @@ export const RecentNotesScreen: React.FC = () => {
                         </View>
                       )}
                     </View>
+
+                    {/* Delete note icon */}
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDeleteNote(contentItem.id, contentItem.title);
+                      }}
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={20}
+                        color={theme.colors.error[600]}
+                      />
+                    </TouchableOpacity>
                   </View>
 
                   {contentItem.processed && (
@@ -571,5 +611,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight:
       theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+  },
+  deleteButton: {
+    marginLeft: 'auto',
+    padding: 4,
   },
 });

@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as MediaLibrary from 'expo-media-library';
-import { Header, Button, Card } from '../components';
+import { Header, Button, Card, PremiumUpsellModal } from '../components';
 import {
   getAudioFileInfo,
   uploadAudioToSupabase,
@@ -37,6 +37,7 @@ import {
   Note,
 } from '../contexts/NavigationContext';
 import { ContentItem } from '../services/contentAPI';
+import { contentAPI } from '../services/contentAPI';
 
 interface AudioRecordingScreenProps {
   navigation: any;
@@ -73,6 +74,7 @@ export const AudioRecordingScreen: React.FC<AudioRecordingScreenProps> = ({
   const [transcriptionResult, setTranscriptionResult] =
     useState<TranscriptionResult | null>(null);
   const [quotaInfo, setQuotaInfo] = useState<QuotaInfo | null>(null);
+  const [showPremiumUpsell, setShowPremiumUpsell] = useState(false);
 
   // Helper function to navigate to summary screen with processed audio content
   const navigateToSummary = (audioData: {
@@ -292,32 +294,40 @@ export const AudioRecordingScreen: React.FC<AudioRecordingScreenProps> = ({
       }
 
       console.log('✅ Authentication verified, checking quota...');
-      
+
       // Use permission service for unified quota checking
       try {
-        const permissionResult = await permissionService.checkFeatureUsage('audio_transcription');
+        const permissionResult = await permissionService.checkFeatureUsage(
+          'audio_transcription'
+        );
         if (permissionResult.limit !== undefined) {
-                     // Convert permission result to legacy quota format for backward compatibility
-           const legacyQuota = {
-             allowed: permissionResult.allowed,
-             current_usage: permissionResult.current_usage || 0,
-             daily_limit: permissionResult.limit,
-             remaining: permissionResult.remaining || 0,
-             plan_type: permissionResult.plan_type || 'free',
-           };
+          // Convert permission result to legacy quota format for backward compatibility
+          const legacyQuota = {
+            allowed: permissionResult.allowed,
+            current_usage: permissionResult.current_usage || 0,
+            daily_limit: permissionResult.limit,
+            remaining: permissionResult.remaining || 0,
+            plan_type: permissionResult.plan_type || 'free',
+          };
           setQuotaInfo(legacyQuota);
           console.log('✅ Permission-based quota loaded successfully');
         }
       } catch (permissionError) {
-        console.error('Permission service quota check failed:', permissionError);
-        
+        console.error(
+          'Permission service quota check failed:',
+          permissionError
+        );
+
         // Fallback to legacy quota check
         const quotaCheck = await audioAPI.getQuotaInfo();
         if (quotaCheck.success && quotaCheck.quota) {
           setQuotaInfo(quotaCheck.quota);
           console.log('✅ Legacy quota loaded successfully');
         } else {
-          console.log('❌ Both permission and legacy quota checks failed:', quotaCheck.error);
+          console.log(
+            '❌ Both permission and legacy quota checks failed:',
+            quotaCheck.error
+          );
         }
       }
     } catch (error) {
@@ -509,38 +519,25 @@ export const AudioRecordingScreen: React.FC<AudioRecordingScreenProps> = ({
       setUploadProgress(null);
 
       // Step 3: Check quota before transcription
-      const permissionResult = await permissionService.checkFeatureUsage('audio_transcription');
+      const permissionResult = await permissionService.checkFeatureUsage(
+        'audio_transcription'
+      );
       if (!permissionResult.allowed) {
         await usageService.logError({
           error_type: 'quota_exceeded',
-          error_message: permissionResult.reason || 'AI processing quota exceeded',
-          error_details: { 
+          error_message:
+            permissionResult.reason || 'AI processing quota exceeded',
+          error_details: {
             quota: {
               current_usage: permissionResult.current_usage || 0,
               daily_limit: permissionResult.limit || 0,
               remaining: permissionResult.remaining || 0,
-              plan_type: permissionResult.plan_type || 'free'
-            }
+              plan_type: permissionResult.plan_type || 'free',
+            },
           },
         });
 
-        const alertMessage = permissionResult.upgrade_message || 
-          `Daily limit reached: ${permissionResult.current_usage}/${permissionResult.limit} AI processing requests used.`;
-
-        Alert.alert(
-          'Quota Exceeded',
-          alertMessage,
-          [
-            { text: 'Cancel' },
-            { text: 'View Usage', onPress: showUsageStats },
-            {
-              text: 'Upgrade Plan',
-              style: 'default',
-              onPress: () =>
-                navigation.navigate('Subscription', { from: 'audio-quota' }),
-            },
-          ]
-        );
+        setShowPremiumUpsell(true);
         return;
       }
 
@@ -594,13 +591,58 @@ export const AudioRecordingScreen: React.FC<AudioRecordingScreenProps> = ({
             // Don't fail the whole operation for usage tracking errors
           }
 
-          // Step 6: Refresh content list immediately after successful transcription
+          // Step 6: Refresh content list and navigate using real contentItemId if provided
+          let contentItemId: string | undefined = transcription.contentItemId;
+
           try {
             await refreshContent();
             console.log('✅ Content refreshed after audio transcription');
           } catch (error) {
             console.error('❌ Failed to refresh content:', error);
           }
+
+          if (!contentItemId) {
+            // Fallback: try to locate the newest item by title
+            try {
+              const itemsResponse = await contentAPI.getRecentItems();
+              if (itemsResponse.success && itemsResponse.contentItems && itemsResponse.contentItems.length > 0) {
+                contentItemId = itemsResponse.contentItems[0].id;
+              }
+            } catch (e) {}
+          }
+
+          const onViewSummary = async () => {
+            if (contentItemId) {
+              // Fetch full content item to build note
+              try {
+                const contentResponse = await contentAPI.getContentItem(contentItemId);
+                if (contentResponse.success && contentResponse.contentItem) {
+                  const item = contentResponse.contentItem;
+                  const note: Note = {
+                    id: item.id,
+                    title: item.title,
+                    type: 'Audio',
+                    date: item.createdAt,
+                    progress: 100,
+                    content: { contentItem: item, processed: true, summary: item.summary },
+                  };
+                  setNoteDetailMode(note);
+                  return;
+                }
+              } catch (e) {
+                console.warn('Failed to fetch content item, will fallback');
+              }
+            }
+
+            // Fallback to temp
+            const audioTitle = `Audio Recording ${new Date().toLocaleDateString()}`;
+            navigateToSummary({
+              title: audioTitle,
+              description: `Lecture recording transcribed (${Math.round((transcription.duration || 0) / 60)} minutes)`,
+              summary: transcription.transcript,
+              duration: transcription.duration,
+            });
+          };
 
           Alert.alert(
             'Transcription Complete!',
@@ -620,15 +662,7 @@ export const AudioRecordingScreen: React.FC<AudioRecordingScreenProps> = ({
               {
                 text: 'View Summary',
                 style: 'default',
-                onPress: () => {
-                  const audioTitle = `Audio Recording ${new Date().toLocaleDateString()}`;
-                  navigateToSummary({
-                    title: audioTitle,
-                    description: `Lecture recording transcribed (${Math.round((transcription.duration || 0) / 60)} minutes)`,
-                    summary: transcription.transcript,
-                    duration: transcription.duration,
-                  });
-                },
+                onPress: onViewSummary,
               },
             ]
           );
@@ -1295,6 +1329,18 @@ export const AudioRecordingScreen: React.FC<AudioRecordingScreenProps> = ({
           </Card>
         )}
       </ScrollView>
+
+      <PremiumUpsellModal
+        visible={showPremiumUpsell}
+        onClose={() => setShowPremiumUpsell(false)}
+        onUpgrade={() => {
+          setShowPremiumUpsell(false);
+          navigation.navigate('Subscription', { from: 'audio-quota' });
+        }}
+        featureType="audio-transcription"
+        currentUsage={quotaInfo?.current_usage}
+        limit={quotaInfo?.daily_limit}
+      />
     </SafeAreaView>
   );
 };

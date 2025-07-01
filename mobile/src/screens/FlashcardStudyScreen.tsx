@@ -6,34 +6,17 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Animated,
-  Alert,
   Dimensions,
+  PanResponder,
+  Alert,
 } from 'react-native';
-// import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
-import { Header, Card, Button, LoadingIndicator } from '../components';
+import { Header, LoadingIndicator } from '../components';
 import { theme } from '../constants/theme';
 import { useNavigation } from '../contexts/NavigationContext';
-import { useFlashcards } from '../hooks/useFlashcards';
 import { Flashcard, FlashcardSet } from '../services/flashcardAPI';
 
-interface StudySession {
-  flashcardSetId: string;
-  totalCards: number;
-  currentCardIndex: number;
-  correctAnswers: number;
-  incorrectAnswers: number;
-  skippedCards: number;
-  startTime: Date;
-  cardResults: CardResult[];
-}
-
-interface CardResult {
-  cardId: string;
-  difficulty: 'easy' | 'medium' | 'hard' | 'again';
-  responseTime: number;
-  timestamp: Date;
-}
+// Removed StudySession and CardResult interfaces - not needed for simplified design
 
 interface StudyProps {
   flashcardSet?: FlashcardSet;
@@ -46,12 +29,8 @@ export const FlashcardStudyScreen: React.FC<StudyProps> = ({
   flashcardSet,
   onExit,
 }) => {
-  const { setMainMode } = useNavigation();
-  const [session, setSession] = useState<StudySession | null>(null);
-  const [currentCard, setCurrentCard] = useState<Flashcard | null>(null);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [cardStartTime, setCardStartTime] = useState<Date>(new Date());
-  const [showResults, setShowResults] = useState(false);
 
   // Animation values
   const [flipAnim] = useState(new Animated.Value(0));
@@ -59,149 +38,103 @@ export const FlashcardStudyScreen: React.FC<StudyProps> = ({
 
   // Get flashcards from the set
   const flashcards = flashcardSet?.flashcards || [];
-
-  // Initialize study session
-  useEffect(() => {
-    if (flashcardSet && flashcards.length > 0) {
-      const newSession: StudySession = {
-        flashcardSetId: flashcardSet.id,
-        totalCards: flashcards.length,
-        currentCardIndex: 0,
-        correctAnswers: 0,
-        incorrectAnswers: 0,
-        skippedCards: 0,
-        startTime: new Date(),
-        cardResults: [],
-      };
-      setSession(newSession);
-      setCurrentCard(flashcards[0]);
-      setCardStartTime(new Date());
-    }
-  }, [flashcardSet, flashcards]);
+  const currentCard = flashcards[currentCardIndex] || null;
 
   // Handle card flip animation
   const flipCard = useCallback(() => {
-    if (isFlipped) return;
-
-    Animated.timing(flipAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
-    setIsFlipped(true);
+    if (isFlipped) {
+      // Flip back to question
+      Animated.timing(flipAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }).start();
+      setIsFlipped(false);
+    } else {
+      // Flip to answer
+      Animated.timing(flipAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }).start();
+      setIsFlipped(true);
+    }
   }, [flipAnim, isFlipped]);
 
-  // Handle next card with slide animation
-  const nextCard = useCallback(
-    (difficulty: 'easy' | 'medium' | 'hard' | 'again') => {
-      if (!session || !currentCard) return;
+  // Handle swipe navigation
+  const goToNextCard = useCallback(() => {
+    const nextIndex = currentCardIndex >= flashcards.length - 1 ? 0 : currentCardIndex + 1;
+    
+    Animated.sequence([
+      Animated.timing(slideAnim, {
+        toValue: -screenWidth,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 0,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-      const responseTime = Date.now() - cardStartTime.getTime();
-      const cardResult: CardResult = {
-        cardId: currentCard.id || `card-${session.currentCardIndex}`,
-        difficulty,
-        responseTime,
-        timestamp: new Date(),
-      };
+    flipAnim.setValue(0);
+    setIsFlipped(false);
+    setCurrentCardIndex(nextIndex);
+  }, [currentCardIndex, flashcards.length, slideAnim, flipAnim]);
 
-      // Update session stats
-      const updatedSession = {
-        ...session,
-        cardResults: [...session.cardResults, cardResult],
-        correctAnswers:
-          session.correctAnswers +
-          (difficulty === 'easy' || difficulty === 'medium' ? 1 : 0),
-        incorrectAnswers:
-          session.incorrectAnswers +
-          (difficulty === 'hard' || difficulty === 'again' ? 1 : 0),
-      };
+  const goToPrevCard = useCallback(() => {
+    const prevIndex = currentCardIndex <= 0 ? flashcards.length - 1 : currentCardIndex - 1;
+    
+    Animated.sequence([
+      Animated.timing(slideAnim, {
+        toValue: screenWidth,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 0,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-      // Check if this is the last card
-      if (session.currentCardIndex >= flashcards.length - 1) {
-        setSession(updatedSession);
-        setShowResults(true);
-        return;
-      }
-
-      // Animate card slide out and next card slide in
-      Animated.sequence([
-        Animated.timing(slideAnim, {
-          toValue: -screenWidth,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      // Reset animations and move to next card
-      flipAnim.setValue(0);
-      setIsFlipped(false);
-
-      const nextIndex = session.currentCardIndex + 1;
-      setSession({
-        ...updatedSession,
-        currentCardIndex: nextIndex,
-      });
-      setCurrentCard(flashcards[nextIndex]);
-      setCardStartTime(new Date());
-    },
-    [session, currentCard, cardStartTime, flashcards, flipAnim, slideAnim]
-  );
-
-  // Handle study completion
-  const completeStudy = useCallback(() => {
-    if (!session) return;
-
-    Alert.alert(
-      'Study Session Complete!',
-      `Great job! You studied ${session.totalCards} cards.\n\nCorrect: ${session.correctAnswers}\nIncorrect: ${session.incorrectAnswers}`,
-      [
-        {
-          text: 'Study Again',
-          onPress: () => {
-            setShowResults(false);
-            setSession(null);
-            setCurrentCard(null);
-            setIsFlipped(false);
-            flipAnim.setValue(0);
-            slideAnim.setValue(0);
-          },
-        },
-        {
-          text: 'Exit',
-          onPress: onExit,
-        },
-      ]
-    );
-  }, [session, onExit, flipAnim, slideAnim]);
-
-  // Show results when study is complete
-  useEffect(() => {
-    if (showResults && session) {
-      completeStudy();
-    }
-  }, [showResults, session, completeStudy]);
+    flipAnim.setValue(0);
+    setIsFlipped(false);
+    setCurrentCardIndex(prevIndex);
+  }, [currentCardIndex, flashcards.length, slideAnim, flipAnim]);
 
   // Handle back press
   const handleBackPress = () => {
-    Alert.alert(
-      'Exit Study Session?',
-      'Your progress will be lost if you exit now.',
-      [
-        { text: 'Continue Studying', style: 'cancel' },
-        { text: 'Exit', style: 'destructive', onPress: onExit },
-      ]
-    );
+    onExit();
   };
 
-  // Calculate progress
-  const progress = session
-    ? (session.currentCardIndex / session.totalCards) * 100
-    : 0;
+  // Create swipe gesture responder
+  const panResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (evt, gestureState) => {
+      return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 20;
+    },
+    onPanResponderMove: (evt, gestureState) => {
+      slideAnim.setValue(gestureState.dx);
+    },
+    onPanResponderRelease: (evt, gestureState) => {
+      const swipeThreshold = 50; // Much more sensitive - just 50 pixels
+      
+      if (gestureState.dx > swipeThreshold) {
+        // Swipe right - go to previous card
+        goToPrevCard();
+      } else if (gestureState.dx < -swipeThreshold) {
+        // Swipe left - go to next card
+        goToNextCard();
+      } else {
+        // Snap back
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+        }).start();
+      }
+    },
+  });
 
   // Animation interpolations
   const frontAnimatedStyle = {
@@ -234,7 +167,7 @@ export const FlashcardStudyScreen: React.FC<StudyProps> = ({
     return (
       <SafeAreaView style={styles.container}>
         <Header
-          title="Study Session"
+          title="Flashcards"
           leftAction={{
             icon: (
               <Ionicons
@@ -256,21 +189,22 @@ export const FlashcardStudyScreen: React.FC<StudyProps> = ({
           <Text style={styles.emptyDescription}>
             The selected flashcard set is empty or unavailable.
           </Text>
-          <Button
-            title="Go Back"
+          <TouchableOpacity
             onPress={onExit}
             style={styles.actionButton}
-          />
+          >
+            <Text style={styles.actionButtonText}>Go Back</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (!session || !currentCard) {
+  if (!currentCard) {
     return (
       <SafeAreaView style={styles.container}>
         <Header
-          title="Study Session"
+          title="Flashcards"
           leftAction={{
             icon: (
               <Ionicons
@@ -285,7 +219,7 @@ export const FlashcardStudyScreen: React.FC<StudyProps> = ({
         <View style={styles.loadingContainer}>
           <LoadingIndicator size="large" color={theme.colors.primary[600]} />
           <Text style={styles.loadingText}>
-            Preparing your study session...
+            Loading flashcards...
           </Text>
         </View>
       </SafeAreaView>
@@ -295,7 +229,7 @@ export const FlashcardStudyScreen: React.FC<StudyProps> = ({
   return (
     <SafeAreaView style={styles.container}>
       <Header
-        title={`Study: ${flashcardSet.title}`}
+        title="Flashcards"
         leftAction={{
           icon: (
             <Ionicons
@@ -308,42 +242,8 @@ export const FlashcardStudyScreen: React.FC<StudyProps> = ({
         }}
       />
 
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${progress}%` }]} />
-        </View>
-        <Text style={styles.progressText}>
-          {session.currentCardIndex + 1} of {session.totalCards}
-        </Text>
-      </View>
-
-      {/* Study Stats */}
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text
-            style={[styles.statNumber, { color: theme.colors.success[600] }]}
-          >
-            {session.correctAnswers}
-          </Text>
-          <Text style={styles.statLabel}>Correct</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: theme.colors.error[600] }]}>
-            {session.incorrectAnswers}
-          </Text>
-          <Text style={styles.statLabel}>Incorrect</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statNumber, { color: theme.colors.gray[600] }]}>
-            {session.skippedCards}
-          </Text>
-          <Text style={styles.statLabel}>Skipped</Text>
-        </View>
-      </View>
-
       {/* Main Study Card */}
-      <View style={styles.cardContainer}>
+      <View style={styles.cardContainer} {...panResponder.panHandlers}>
         <Animated.View style={[styles.studyCard, slideAnimatedStyle]}>
           {!isFlipped ? (
             // Front of card (Question)
@@ -355,19 +255,9 @@ export const FlashcardStudyScreen: React.FC<StudyProps> = ({
               >
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardType}>Question</Text>
-                  <View style={styles.difficultyBadge}>
-                    <Text style={styles.difficultyText}>
-                      Level {currentCard.difficulty_level}
-                    </Text>
-                  </View>
                 </View>
                 <Text style={styles.cardText}>{currentCard.question}</Text>
                 <View style={styles.tapHint}>
-                  <Ionicons
-                    name="finger-print-outline"
-                    size={24}
-                    color={theme.colors.gray[400]}
-                  />
                   <Text style={styles.tapHintText}>Tap to reveal answer</Text>
                 </View>
               </TouchableOpacity>
@@ -375,7 +265,11 @@ export const FlashcardStudyScreen: React.FC<StudyProps> = ({
           ) : (
             // Back of card (Answer)
             <Animated.View style={[styles.cardSide, backAnimatedStyle]}>
-              <View style={styles.cardContent}>
+              <TouchableOpacity
+                style={styles.cardContent}
+                onPress={flipCard}
+                activeOpacity={0.9}
+              >
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardType}>Answer</Text>
                 </View>
@@ -385,67 +279,29 @@ export const FlashcardStudyScreen: React.FC<StudyProps> = ({
                     {currentCard.explanation}
                   </Text>
                 )}
-              </View>
+              </TouchableOpacity>
             </Animated.View>
           )}
         </Animated.View>
       </View>
 
-      {/* Study Controls */}
-      {isFlipped && (
-        <View style={styles.controlsContainer}>
-          <Text style={styles.controlsTitle}>How well did you know this?</Text>
-          <View style={styles.controlsRow}>
-            <TouchableOpacity
-              style={[styles.controlButton, styles.againButton]}
-              onPress={() => nextCard('again')}
-            >
-              <Ionicons
-                name="refresh-outline"
-                size={20}
-                color={theme.colors.white}
-              />
-              <Text style={styles.controlButtonText}>Again</Text>
-            </TouchableOpacity>
+      {/* Dot Indicators */}
+      <View style={styles.dotContainer}>
+        {flashcards.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.dot,
+              index === currentCardIndex ? styles.activeDot : styles.inactiveDot,
+            ]}
+          />
+        ))}
+      </View>
 
-            <TouchableOpacity
-              style={[styles.controlButton, styles.hardButton]}
-              onPress={() => nextCard('hard')}
-            >
-              <Ionicons
-                name="close-outline"
-                size={20}
-                color={theme.colors.white}
-              />
-              <Text style={styles.controlButtonText}>Hard</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.controlButton, styles.mediumButton]}
-              onPress={() => nextCard('medium')}
-            >
-              <Ionicons
-                name="remove-outline"
-                size={20}
-                color={theme.colors.white}
-              />
-              <Text style={styles.controlButtonText}>Good</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.controlButton, styles.easyButton]}
-              onPress={() => nextCard('easy')}
-            >
-              <Ionicons
-                name="checkmark-outline"
-                size={20}
-                color={theme.colors.white}
-              />
-              <Text style={styles.controlButtonText}>Easy</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+      {/* Report Issue Button */}
+      <TouchableOpacity style={styles.reportButton}>
+        <Text style={styles.reportButtonText}>Report an issue</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -454,52 +310,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.gray[50],
-  },
-  progressContainer: {
-    paddingHorizontal: theme.spacing.base,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray[200],
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: theme.colors.gray[200],
-    borderRadius: 4,
-    marginBottom: theme.spacing.xs,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: theme.colors.primary[600],
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.gray[600],
-    textAlign: 'center',
-    fontWeight: theme.typography.fontWeight.medium,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.white,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.base,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray[200],
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold,
-    marginBottom: theme.spacing.xs,
-  },
-  statLabel: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.gray[600],
-    fontWeight: theme.typography.fontWeight.medium,
   },
   cardContainer: {
     flex: 1,
@@ -520,12 +330,16 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.lg,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   cardHeader: {
+    position: 'absolute',
+    top: theme.spacing.lg,
+    left: theme.spacing.lg,
+    right: theme.spacing.lg,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
   },
   cardType: {
     fontSize: theme.typography.fontSize.sm,
@@ -534,24 +348,14 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  difficultyBadge: {
-    backgroundColor: theme.colors.gray[100],
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-  },
-  difficultyText: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.gray[700],
-    fontWeight: theme.typography.fontWeight.medium,
-  },
   cardText: {
-    fontSize: theme.typography.fontSize.lg,
+    fontSize: theme.typography.fontSize.xl,
     color: theme.colors.gray[900],
     lineHeight:
-      theme.typography.lineHeight.relaxed * theme.typography.fontSize.lg,
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.xl,
     textAlign: 'center',
-    marginBottom: theme.spacing.lg,
+    fontWeight: theme.typography.fontWeight.medium,
+    paddingHorizontal: theme.spacing.md,
   },
   explanationText: {
     fontSize: theme.typography.fontSize.base,
@@ -563,58 +367,17 @@ const styles = StyleSheet.create({
       theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
   },
   tapHint: {
+    position: 'absolute',
+    bottom: theme.spacing.lg,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    marginTop: 'auto',
   },
   tapHintText: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[500],
     marginTop: theme.spacing.xs,
     fontWeight: theme.typography.fontWeight.medium,
-  },
-  controlsContainer: {
-    backgroundColor: theme.colors.white,
-    paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.base,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.gray[200],
-  },
-  controlsTitle: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.gray[900],
-    textAlign: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  controlsRow: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-  },
-  controlButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    gap: theme.spacing.xs,
-  },
-  controlButtonText: {
-    color: theme.colors.white,
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semibold,
-  },
-  againButton: {
-    backgroundColor: theme.colors.error[600],
-  },
-  hardButton: {
-    backgroundColor: theme.colors.warning[600],
-  },
-  mediumButton: {
-    backgroundColor: theme.colors.primary[600],
-  },
-  easyButton: {
-    backgroundColor: theme.colors.success[600],
   },
   emptyContainer: {
     flex: 1,
@@ -650,5 +413,45 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     marginTop: theme.spacing.md,
+    backgroundColor: theme.colors.primary[600],
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    color: theme.colors.white,
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.semibold,
+  },
+  dotContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.base,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 4,
+  },
+  activeDot: {
+    backgroundColor: theme.colors.primary[600],
+  },
+  inactiveDot: {
+    backgroundColor: theme.colors.gray[300],
+  },
+  reportButton: {
+    alignSelf: 'center',
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.base,
+    marginBottom: theme.spacing.lg,
+  },
+  reportButtonText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[500],
+    textAlign: 'center',
   },
 });

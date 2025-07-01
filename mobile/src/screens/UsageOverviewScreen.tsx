@@ -29,7 +29,9 @@ interface UsageOverviewScreenProps {
   navigation: any;
 }
 
-export const UsageOverviewScreen: React.FC<UsageOverviewScreenProps> = ({ navigation }) => {
+export const UsageOverviewScreen: React.FC<UsageOverviewScreenProps> = ({
+  navigation,
+}) => {
   const [usage, setUsage] = useState<FeatureUsage[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -86,12 +88,16 @@ export const UsageOverviewScreen: React.FC<UsageOverviewScreenProps> = ({ naviga
 
       for (const config of featureConfigs) {
         try {
-          const permissionResult = await permissionService.checkFeatureUsage(config.feature as any);
-          
-          const current = permissionResult.limit !== undefined && permissionResult.remaining !== undefined 
-            ? permissionResult.limit - permissionResult.remaining 
-            : 0;
-          
+          const permissionResult = await permissionService.checkFeatureUsage(
+            config.feature as any
+          );
+
+          const current =
+            permissionResult.limit !== undefined &&
+            permissionResult.remaining !== undefined
+              ? permissionResult.limit - permissionResult.remaining
+              : 0;
+
           const status = getUsageStatus(current, permissionResult.limit || 0);
 
           usageData.push({
@@ -132,7 +138,10 @@ export const UsageOverviewScreen: React.FC<UsageOverviewScreenProps> = ({ naviga
     }
   };
 
-  const getUsageStatus = (current: number, limit: number): 'normal' | 'warning' | 'exceeded' | 'unlimited' => {
+  const getUsageStatus = (
+    current: number,
+    limit: number
+  ): 'normal' | 'warning' | 'exceeded' | 'unlimited' => {
     if (limit === -1) return 'unlimited';
     if (current >= limit) return 'exceeded';
     if (current >= limit * 0.8) return 'warning';
@@ -141,19 +150,27 @@ export const UsageOverviewScreen: React.FC<UsageOverviewScreenProps> = ({ naviga
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'unlimited': return theme.colors.success[500];
-      case 'exceeded': return theme.colors.error[500];
-      case 'warning': return theme.colors.warning[500];
-      default: return theme.colors.primary[500];
+      case 'unlimited':
+        return theme.colors.success[500];
+      case 'exceeded':
+        return theme.colors.error[500];
+      case 'warning':
+        return theme.colors.warning[500];
+      default:
+        return theme.colors.primary[500];
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'unlimited': return 'Unlimited';
-      case 'exceeded': return 'Limit Reached';
-      case 'warning': return 'Near Limit';
-      default: return 'Available';
+      case 'unlimited':
+        return 'Unlimited';
+      case 'exceeded':
+        return 'Limit Reached';
+      case 'warning':
+        return 'Near Limit';
+      default:
+        return 'Available';
     }
   };
 
@@ -172,19 +189,29 @@ export const UsageOverviewScreen: React.FC<UsageOverviewScreenProps> = ({ naviga
 
   // Calculate overall statistics
   const totalFeatures = usage.length;
-  const premiumFeatures = usage.filter(u => u.isPremium).length;
-  const nearLimitFeatures = usage.filter(u => u.status === 'warning' || u.status === 'exceeded').length;
+  const premiumFeatures = usage.filter((u) => u.isPremium).length;
+  const nearLimitFeatures = usage.filter(
+    (u) => u.status === 'warning' || u.status === 'exceeded'
+  ).length;
 
   return (
     <SafeAreaView style={styles.container}>
       <Header
         title="Usage Overview"
         leftAction={{
-          icon: <Ionicons name="arrow-back" size={24} color={theme.colors.gray[600]} />,
+          icon: (
+            <Ionicons
+              name="arrow-back"
+              size={24}
+              color={theme.colors.gray[600]}
+            />
+          ),
           onPress: () => navigation.goBack(),
         }}
         rightAction={{
-          icon: <Ionicons name="refresh" size={24} color={theme.colors.gray[600]} />,
+          icon: (
+            <Ionicons name="refresh" size={24} color={theme.colors.gray[600]} />
+          ),
           onPress: handleRefresh,
         }}
       />
@@ -217,13 +244,23 @@ export const UsageOverviewScreen: React.FC<UsageOverviewScreenProps> = ({ naviga
                   <Text style={styles.statLabel}>Features</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={[styles.statNumber, { color: theme.colors.success[600] }]}>
+                  <Text
+                    style={[
+                      styles.statNumber,
+                      { color: theme.colors.success[600] },
+                    ]}
+                  >
                     {premiumFeatures}
                   </Text>
                   <Text style={styles.statLabel}>Unlimited</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={[styles.statNumber, { color: theme.colors.warning[600] }]}>
+                  <Text
+                    style={[
+                      styles.statNumber,
+                      { color: theme.colors.warning[600] },
+                    ]}
+                  >
                     {nearLimitFeatures}
                   </Text>
                   <Text style={styles.statLabel}>Near Limit</Text>
@@ -240,12 +277,28 @@ export const UsageOverviewScreen: React.FC<UsageOverviewScreenProps> = ({ naviga
                 <Card key={item.feature} style={styles.featureCard}>
                   <View style={styles.featureHeader}>
                     <View style={styles.featureInfo}>
-                      <View style={[styles.featureIcon, { backgroundColor: item.color + '20' }]}>
-                        <Ionicons name={item.icon as any} size={24} color={item.color} />
+                      <View
+                        style={[
+                          styles.featureIcon,
+                          { backgroundColor: item.color + '20' },
+                        ]}
+                      >
+                        <Ionicons
+                          name={item.icon as any}
+                          size={24}
+                          color={item.color}
+                        />
                       </View>
                       <View style={styles.featureDetails}>
-                        <Text style={styles.featureName}>{item.displayName}</Text>
-                        <Text style={[styles.featureStatus, { color: getStatusColor(item.status) }]}>
+                        <Text style={styles.featureName}>
+                          {item.displayName}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.featureStatus,
+                            { color: getStatusColor(item.status) },
+                          ]}
+                        >
                           {getStatusText(item.status)}
                         </Text>
                       </View>
@@ -292,17 +345,29 @@ export const UsageOverviewScreen: React.FC<UsageOverviewScreenProps> = ({ naviga
             {nearLimitFeatures > 0 && premiumFeatures < totalFeatures && (
               <Card style={styles.upgradeCard}>
                 <View style={styles.upgradeContent}>
-                  <Ionicons name="star" size={32} color={theme.colors.warning[500]} />
+                  <Ionicons
+                    name="star"
+                    size={32}
+                    color={theme.colors.warning[500]}
+                  />
                   <View style={styles.upgradeText}>
                     <Text style={styles.upgradeTitle}>Upgrade to Premium</Text>
                     <Text style={styles.upgradeDescription}>
-                      Get unlimited access to all features and never worry about daily limits again.
+                      Get unlimited access to all features and never worry about
+                      daily limits again.
                     </Text>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.upgradeButton} onPress={navigateToUpgrade}>
+                <TouchableOpacity
+                  style={styles.upgradeButton}
+                  onPress={navigateToUpgrade}
+                >
                   <Text style={styles.upgradeButtonText}>View Plans</Text>
-                  <Ionicons name="arrow-forward" size={16} color={theme.colors.white} />
+                  <Ionicons
+                    name="arrow-forward"
+                    size={16}
+                    color={theme.colors.white}
+                  />
                 </TouchableOpacity>
               </Card>
             )}
@@ -310,12 +375,17 @@ export const UsageOverviewScreen: React.FC<UsageOverviewScreenProps> = ({ naviga
             {/* Reset Information */}
             <Card style={styles.infoCard}>
               <View style={styles.infoHeader}>
-                <Ionicons name="information-circle" size={20} color={theme.colors.primary[600]} />
+                <Ionicons
+                  name="information-circle"
+                  size={20}
+                  color={theme.colors.primary[600]}
+                />
                 <Text style={styles.infoTitle}>About Daily Limits</Text>
               </View>
               <Text style={styles.infoText}>
-                Daily usage limits reset automatically at midnight (12:00 AM) each day. 
-                Your usage counters will return to zero, giving you a fresh start for the next day.
+                Daily usage limits reset automatically at midnight (12:00 AM)
+                each day. Your usage counters will return to zero, giving you a
+                fresh start for the next day.
               </Text>
             </Card>
           </>
@@ -492,7 +562,8 @@ const styles = StyleSheet.create({
   upgradeDescription: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[600],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
   upgradeButton: {
     flexDirection: 'row',
@@ -529,6 +600,7 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.primary[700],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
   },
-}); 
+});

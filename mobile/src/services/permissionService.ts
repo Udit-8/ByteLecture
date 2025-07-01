@@ -364,11 +364,14 @@ class PermissionService {
         };
       }
 
-      // For features with usage tracking, check actual usage
-      if (resourceType) {
-        const usageResult = await usageService.checkAIProcessingQuota();
+      // For features that have daily limits, check actual usage
+      if (featureLimits.daily_limit > 0) {
+        console.log(`🔍 Checking usage for feature: ${feature} (limit: ${featureLimits.daily_limit})`);
+        
+        const usageResult = await this.checkFeatureUsageWithBackend(feature);
 
         if (!usageResult.allowed && usageResult.quota) {
+          console.log(`❌ Feature ${feature} usage exceeded:`, usageResult.quota);
           return {
             allowed: false,
             reason: `Daily ${feature.replace('_', ' ')} limit reached`,
@@ -383,6 +386,7 @@ class PermissionService {
           };
         }
 
+        console.log(`✅ Feature ${feature} usage allowed:`, usageResult.quota);
         return {
           allowed: true,
           current_usage: usageResult.quota?.current_usage || 0,
@@ -392,7 +396,7 @@ class PermissionService {
         };
       }
 
-      // For features without usage tracking, just check limits
+      // For features without limits, just check basic permissions
       return {
         allowed: true,
         limit: featureLimits.daily_limit,
@@ -404,6 +408,81 @@ class PermissionService {
         allowed: false,
         reason: 'Error checking feature usage',
         plan_type: 'free',
+      };
+    }
+  }
+
+  /**
+   * Check feature usage with backend (supports specific resource types)
+   */
+  private async checkFeatureUsageWithBackend(
+    feature: FeatureType
+  ): Promise<{
+    allowed: boolean;
+    reason?: string;
+    quota?: any;
+  }> {
+    try {
+      // Get current user from Supabase auth
+      const { supabase } = await import('../config/supabase');
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        return {
+          allowed: false,
+          reason: 'Authentication required to check quota',
+        };
+      }
+
+      // Map feature to resource type for backend
+      const resourceTypeMap: Record<FeatureType, string> = {
+        pdf_processing: 'pdf_processing',
+        youtube_processing: 'youtube_processing', 
+        audio_transcription: 'audio_transcription',
+        flashcard_generation: 'flashcard_generation',
+        quiz_generation: 'quiz_generation',
+        ai_tutor_questions: 'ai_tutor_questions',
+        mind_map_generation: 'mind_map_generation',
+        multi_device_sync: 'multi_device_sync',
+        lecture_recording: 'lecture_recording',
+        full_audio_summary: 'full_audio_summary',
+      };
+
+      const resourceType = resourceTypeMap[feature] || feature;
+      console.log(`🔄 Calling backend check_user_quota for: ${resourceType}`);
+
+      // Call the backend function to check quota for specific resource type
+      const { data, error } = await supabase.rpc('check_user_quota', {
+        p_user_id: user.id,
+        p_resource_type: resourceType,
+      });
+
+      if (error) {
+        console.error(`❌ Backend quota check error for ${feature}:`, error);
+        throw new Error(`Failed to check quota: ${error.message}`);
+      }
+
+      const quota = data;
+      console.log(`📊 Backend quota result for ${feature}:`, quota);
+
+      if (!quota.allowed) {
+        return {
+          allowed: false,
+          reason: `Daily ${feature.replace('_', ' ')} limit reached (${quota.current_usage}/${quota.daily_limit})`,
+          quota,
+        };
+      }
+
+      return { allowed: true, quota };
+    } catch (error) {
+      console.error(`Error checking ${feature} usage with backend:`, error);
+      return {
+        allowed: false,
+        reason:
+          error instanceof Error ? error.message : 'Failed to check quota',
       };
     }
   }

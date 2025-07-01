@@ -12,7 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Header, Button, Card, LoadingIndicator } from '../components';
+import { Header, Button, Card, LoadingIndicator, PremiumUpsellModal } from '../components';
 import { theme } from '../constants/theme';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useChat } from '../hooks/useChat';
@@ -55,6 +55,8 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({
   } = useChat();
 
   const [inputText, setInputText] = useState('');
+  const [typingDots, setTypingDots] = useState('');
+  const [showPremiumUpsell, setShowPremiumUpsell] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
 
@@ -90,9 +92,6 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({
         }
 
         await createSession(sessionTitle, contextContentIds);
-
-        // Refresh usage information
-        await getUsage();
       } catch (error) {
         console.error('Failed to initialize chat session:', error);
         Alert.alert('Error', 'Failed to start chat session. Please try again.');
@@ -109,27 +108,28 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({
     }, 100);
   }, [messages]);
 
+  // Animate "..." typing indicator
+  useEffect(() => {
+    if (isTyping) {
+      const id = setInterval(() => {
+        setTypingDots((prev) => (prev.length >= 3 ? '' : prev + '.'));
+      }, 450);
+      return () => clearInterval(id);
+    }
+    // Reset when not typing
+    setTypingDots('');
+  }, [isTyping]);
+
   const handleSendMessage = async () => {
     if (!inputText.trim() || !currentSession) return;
 
     // Check permissions before sending message
     try {
-      const permissionResult = await permissionService.checkFeatureUsage('ai_tutor_questions');
-      
+      const permissionResult =
+        await permissionService.checkFeatureUsage('ai_tutor_questions');
+
       if (!permissionResult.allowed) {
-        const alertTitle = 'Daily Limit Reached';
-        const alertMessage = permissionResult.upgrade_message || 
-          `You've used all ${permissionResult.current_usage}/${permissionResult.limit} daily questions. Please upgrade your plan or try again tomorrow.`;
-        
-        Alert.alert(alertTitle, alertMessage, [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Upgrade Plan',
-            style: 'default',
-            onPress: () => navigation.navigate('Subscription' as any, { from: 'ai-tutor-quota' }),
-          },
-        ]);
-        
+        setShowPremiumUpsell(true);
         return;
       }
     } catch (error) {
@@ -149,7 +149,6 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({
     try {
       setInputText('');
       await sendMessage(currentSession.id, inputText.trim());
-      await getUsage(); // Update usage after sending message
     } catch (error) {
       console.error('Failed to send message:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
@@ -162,21 +161,51 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({
     inputRef.current?.focus();
   };
 
+  /**
+   * Build context-aware quick questions so the suggestions feel relevant to the
+   * opened note.  We only need a handful of strings – no extra API calls.
+   */
   const getQuickQuestions = () => {
-    if (isFromNote) {
+    if (!isFromNote || !selectedNote) {
       return [
-        'Explain this concept in simple terms',
-        'Give me examples of this',
-        'Create a practice question',
+        'Can you explain this concept?',
+        'Help me understand this formula',
+        'Give me a practice problem',
         'Summarize the key points',
       ];
     }
-    return [
-      'Can you explain this concept?',
-      'Help me understand this formula',
-      'Give me a practice problem',
-      'Summarize the key points',
+
+    const { title, type } = selectedNote;
+
+    const generic = [
+      `Summarize "${title}"`,
+      `Explain the main idea of "${title}" in simple terms`,
+      `Give me 3 key takeaways from "${title}"`,
+      'Generate a practice question based on this content',
     ];
+
+    switch (type) {
+      case 'PDF':
+        return [
+          ...generic.slice(0, 2),
+          'Outline the structure of the document',
+          'Provide an example that illustrates a key concept',
+        ];
+      case 'YouTube':
+        return [
+          ...generic.slice(0, 2),
+          'What are the main arguments presented in the video?',
+          'Can you create a short quiz from the video content?',
+        ];
+      case 'Audio':
+        return [
+          ...generic.slice(0, 2),
+          'List actionable insights from this lecture',
+          'Create flashcards for important terms mentioned',
+        ];
+      default:
+        return generic;
+    }
   };
 
   const quickQuestions = getQuickQuestions();
@@ -253,8 +282,7 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({
           {message.content}
         </Text>
 
-        {message.role === 'assistant' &&
-          renderContextSources(message.context_sources)}
+        {/* No inline source list – removed per UX request */}
 
         <Text
           style={[
@@ -327,15 +355,11 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({
             />
           ),
           onPress: () => {
-            const usageText = usage
-              ? `\n\nUsage: ${usage.questionsUsed}/${usage.dailyLimit} questions today`
-              : '';
-
             Alert.alert(
               isFromNote ? 'Note Chat' : 'AI Tutor',
               isFromNote
-                ? `Chat about "${noteTitle}". Ask questions about this specific content and get detailed explanations.${usageText}`
-                : `Your personal AI tutor is here to help explain concepts, answer questions, and provide additional practice problems based on your learning materials.${usageText}`
+                ? `Chat about "${noteTitle}". Ask questions about this specific content and get detailed explanations.`
+                : `Your personal AI tutor is here to help explain concepts, answer questions, and provide additional practice problems based on your learning materials.`
             );
           },
         }}
@@ -347,17 +371,10 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({
         </View>
       )}
 
-      {usage && (
-        <View style={styles.usageContainer}>
-          <Text style={styles.usageText}>
-            {usage.remaining} questions remaining today
-          </Text>
-        </View>
-      )}
-
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={30}
       >
         <ScrollView
           ref={scrollViewRef}
@@ -377,29 +394,29 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({
                 />
               </View>
               <View style={styles.typingBubble}>
-                <LoadingIndicator size="small" />
-                <Text style={styles.typingText}>AI is typing...</Text>
+                <Text style={styles.typingDots}>{typingDots || '...'}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Quick questions: render inside scroll area so they collapse under keyboard */}
+          {messages.length === 0 && !loading && (
+            <View style={styles.quickQuestionsContainer}>
+              <Text style={styles.quickQuestionsTitle}>Quick Questions</Text>
+              <View style={styles.quickQuestionsGrid}>
+                {quickQuestions.map((question, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.quickQuestionButton}
+                    onPress={() => handleQuickQuestion(question)}
+                  >
+                    <Text style={styles.quickQuestionText}>{question}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
           )}
         </ScrollView>
-
-        {messages.length === 0 && !loading && (
-          <View style={styles.quickQuestionsContainer}>
-            <Text style={styles.quickQuestionsTitle}>Quick Questions</Text>
-            <View style={styles.quickQuestionsGrid}>
-              {quickQuestions.map((question, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.quickQuestionButton}
-                  onPress={() => handleQuickQuestion(question)}
-                >
-                  <Text style={styles.quickQuestionText}>{question}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
 
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
@@ -442,6 +459,18 @@ export const AITutorScreen: React.FC<AITutorScreenProps> = ({
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      <PremiumUpsellModal
+        visible={showPremiumUpsell}
+        onClose={() => setShowPremiumUpsell(false)}
+        onUpgrade={() => {
+          setShowPremiumUpsell(false);
+          navigation.navigate('Subscription', { from: 'ai-tutor-quota' });
+        }}
+        featureType="ai-tutor"
+        currentUsage={usage?.questionsUsed}
+        limit={usage?.dailyLimit}
+      />
     </SafeAreaView>
   );
 };
@@ -476,16 +505,6 @@ const styles = StyleSheet.create({
     color: theme.colors.error[700],
     fontSize: theme.typography.fontSize.sm,
     textAlign: 'center',
-  },
-  usageContainer: {
-    backgroundColor: theme.colors.primary[50],
-    padding: theme.spacing.sm,
-    alignItems: 'center',
-  },
-  usageText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.primary[700],
-    fontWeight: theme.typography.fontWeight.medium,
   },
   messagesContainer: {
     flex: 1,
@@ -599,19 +618,19 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.base,
   },
   typingBubble: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: theme.colors.white,
     borderRadius: theme.borderRadius.lg,
-    paddingHorizontal: theme.spacing.base,
-    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.spacing.sm,
-    ...theme.shadow.sm,
   },
-  typingText: {
-    fontSize: theme.typography.fontSize.sm,
+  typingDots: {
+    fontSize: theme.typography.fontSize.lg,
     color: theme.colors.gray[600],
-    fontStyle: 'italic',
+    letterSpacing: 1,
+    fontWeight: '600',
   },
   quickQuestionsContainer: {
     padding: theme.spacing.base,

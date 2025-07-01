@@ -13,7 +13,7 @@ import { Button } from './Button';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-export type FeatureType = 
+export type FeatureType =
   | 'pdf-processing'
   | 'youtube-processing'
   | 'flashcard-generation'
@@ -45,12 +45,13 @@ const featureConfigs: Record<FeatureType, FeatureConfig> = {
   'pdf-processing': {
     title: 'PDF Processing Limit Reached',
     subtitle: 'Unlock unlimited PDF uploads',
-    description: 'You\'ve reached your daily limit of 2 PDF uploads. Upgrade to premium for unlimited document processing.',
+    description:
+      "You've reached your daily limit of 2 PDF uploads. Upgrade to premium for unlimited document processing.",
     benefits: [
       'Unlimited PDF uploads per day',
       'Advanced AI summarization',
       'Enhanced text extraction',
-      'Priority processing speed'
+      'Priority processing speed',
     ],
     icon: '📄',
     color: theme.colors.primary[500],
@@ -58,12 +59,13 @@ const featureConfigs: Record<FeatureType, FeatureConfig> = {
   'youtube-processing': {
     title: 'YouTube Processing Limit Reached',
     subtitle: 'Unlock unlimited YouTube learning',
-    description: 'You\'ve reached your daily limit of 2 YouTube video processing. Upgrade to premium for unlimited video learning.',
+    description:
+      "You've reached your daily limit of 2 YouTube video processing. Upgrade to premium for unlimited video learning.",
     benefits: [
       'Unlimited YouTube video processing',
       'Advanced transcript analysis',
       'Multi-language support',
-      'Video bookmark features'
+      'Video bookmark features',
     ],
     icon: '📺',
     color: theme.colors.error[500],
@@ -71,12 +73,13 @@ const featureConfigs: Record<FeatureType, FeatureConfig> = {
   'flashcard-generation': {
     title: 'Flashcard Generation Limit Reached',
     subtitle: 'Unlock unlimited flashcard creation',
-    description: 'You\'ve reached your daily limit of 3 flashcard sets. Upgrade to premium for unlimited study materials.',
+    description:
+      "You've reached your daily limit of 3 flashcard sets. Upgrade to premium for unlimited study materials.",
     benefits: [
       'Unlimited flashcard generation',
       'Advanced spaced repetition',
       'Custom card templates',
-      'Progress analytics'
+      'Progress analytics',
     ],
     icon: '🃏',
     color: theme.colors.warning[500],
@@ -84,12 +87,13 @@ const featureConfigs: Record<FeatureType, FeatureConfig> = {
   'quiz-generation': {
     title: 'Quiz Generation Limit Reached',
     subtitle: 'Unlock unlimited quiz creation',
-    description: 'You\'ve reached your daily limit of 3 quiz generations. Upgrade to premium for unlimited practice tests.',
+    description:
+      "You've reached your daily limit of 3 quiz generations. Upgrade to premium for unlimited practice tests.",
     benefits: [
       'Unlimited quiz generation',
       'Custom difficulty levels',
       'Detailed explanations',
-      'Performance tracking'
+      'Performance tracking',
     ],
     icon: '📝',
     color: theme.colors.primary[600],
@@ -97,12 +101,13 @@ const featureConfigs: Record<FeatureType, FeatureConfig> = {
   'ai-tutor': {
     title: 'AI Tutor Questions Limit Reached',
     subtitle: 'Unlock unlimited AI assistance',
-    description: 'You\'ve reached your daily limit of 10 AI tutor questions. Upgrade to premium for unlimited learning support.',
+    description:
+      "You've reached your daily limit of 10 AI tutor questions. Upgrade to premium for unlimited learning support.",
     benefits: [
       'Unlimited AI tutor conversations',
       'Advanced context understanding',
       'Personalized learning paths',
-      'Priority response times'
+      'Priority response times',
     ],
     icon: '🤖',
     color: theme.colors.success[500],
@@ -110,12 +115,13 @@ const featureConfigs: Record<FeatureType, FeatureConfig> = {
   'mind-map': {
     title: 'Mind Map Generation Limit Reached',
     subtitle: 'Unlock unlimited mind maps',
-    description: 'You\'ve reached your daily limit of 2 mind map generations. Upgrade to premium for unlimited visual learning.',
+    description:
+      "You've reached your daily limit of 2 mind map generations. Upgrade to premium for unlimited visual learning.",
     benefits: [
       'Unlimited mind map creation',
       'Advanced visualization options',
       'Export to multiple formats',
-      'Collaborative features'
+      'Collaborative features',
     ],
     icon: '🧠',
     color: theme.colors.primary[700],
@@ -123,25 +129,27 @@ const featureConfigs: Record<FeatureType, FeatureConfig> = {
   'audio-transcription': {
     title: 'Audio Transcription Limit Reached',
     subtitle: 'Unlock unlimited audio processing',
-    description: 'You\'ve reached your daily limit of 3 audio transcriptions. Upgrade to premium for unlimited lecture processing.',
+    description:
+      "You've reached your daily limit of 3 audio transcriptions. Upgrade to premium for unlimited lecture processing.",
     benefits: [
       'Unlimited audio transcription',
       'Enhanced accuracy',
       'Speaker identification',
-      'Automatic summaries'
+      'Automatic summaries',
     ],
     icon: '🎵',
     color: theme.colors.warning[600],
   },
-  'general': {
+  general: {
     title: 'Upgrade to Premium',
     subtitle: 'Unlock all premium features',
-    description: 'Get unlimited access to all ByteLecture features and enhance your learning experience.',
+    description:
+      'Get unlimited access to all ByteLecture features and enhance your learning experience.',
     benefits: [
       'Unlimited access to all features',
       'Priority customer support',
       'Advanced AI capabilities',
-      'Export and sharing options'
+      'Export and sharing options',
     ],
     icon: '⭐',
     color: theme.colors.primary[600],
@@ -166,14 +174,14 @@ export const PremiumUpsellModal: React.FC<PremiumUpsellModalProps> = ({
             Daily Usage: {currentUsage} / {limit}
           </Text>
           <View style={styles.progressBar}>
-            <View 
+            <View
               style={[
-                styles.progressFill, 
-                { 
+                styles.progressFill,
+                {
                   width: `${Math.min((currentUsage / limit) * 100, 100)}%`,
-                  backgroundColor: config.color 
-                }
-              ]} 
+                  backgroundColor: config.color,
+                },
+              ]}
             />
           </View>
         </View>
@@ -191,13 +199,13 @@ export const PremiumUpsellModal: React.FC<PremiumUpsellModalProps> = ({
     >
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
-          <ScrollView 
+          <ScrollView
             style={styles.content}
             showsVerticalScrollIndicator={false}
           >
             {/* Close button */}
-            <TouchableOpacity 
-              style={styles.closeButton} 
+            <TouchableOpacity
+              style={styles.closeButton}
               onPress={onClose}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
@@ -206,7 +214,12 @@ export const PremiumUpsellModal: React.FC<PremiumUpsellModalProps> = ({
 
             {/* Header */}
             <View style={styles.header}>
-              <View style={[styles.iconContainer, { backgroundColor: config.color + '20' }]}>
+              <View
+                style={[
+                  styles.iconContainer,
+                  { backgroundColor: config.color + '20' },
+                ]}
+              >
                 <Text style={styles.icon}>{config.icon}</Text>
               </View>
               <Text style={styles.title}>{config.title}</Text>
@@ -224,7 +237,12 @@ export const PremiumUpsellModal: React.FC<PremiumUpsellModalProps> = ({
               <Text style={styles.benefitsTitle}>Premium Benefits:</Text>
               {config.benefits.map((benefit, index) => (
                 <View key={index} style={styles.benefitItem}>
-                  <View style={[styles.checkmark, { backgroundColor: config.color }]}>
+                  <View
+                    style={[
+                      styles.checkmark,
+                      { backgroundColor: config.color },
+                    ]}
+                  >
                     <Text style={styles.checkmarkText}>✓</Text>
                   </View>
                   <Text style={styles.benefitText}>{benefit}</Text>
@@ -237,7 +255,9 @@ export const PremiumUpsellModal: React.FC<PremiumUpsellModalProps> = ({
               <Text style={styles.pricingText}>
                 Starting at <Text style={styles.priceHighlight}>₹99/month</Text>
               </Text>
-              <Text style={styles.pricingSubtext}>7-day free trial • Cancel anytime</Text>
+              <Text style={styles.pricingSubtext}>
+                7-day free trial • Cancel anytime
+              </Text>
             </View>
           </ScrollView>
 
@@ -247,7 +267,10 @@ export const PremiumUpsellModal: React.FC<PremiumUpsellModalProps> = ({
               title="Upgrade to Premium"
               onPress={onUpgrade}
               variant="primary"
-              style={[styles.upgradeButton, { backgroundColor: config.color }]}
+              style={StyleSheet.flatten([
+                styles.upgradeButton,
+                { backgroundColor: config.color },
+              ])}
             />
             <TouchableOpacity onPress={onClose} style={styles.notNowButton}>
               <Text style={styles.notNowText}>Not now</Text>
@@ -347,7 +370,8 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.gray[700],
     textAlign: 'center',
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
     marginBottom: theme.spacing.xl,
   },
   benefitsContainer: {
@@ -419,4 +443,4 @@ const styles = StyleSheet.create({
     color: theme.colors.gray[600],
     fontWeight: theme.typography.fontWeight.medium,
   },
-}); 
+});

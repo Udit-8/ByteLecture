@@ -16,6 +16,7 @@ export interface PDFProcessingResult {
   fileSize?: number;
   processingTime?: number;
   metadata?: any;
+  contentItemId?: string;
   error?: string;
   message?: string;
 }
@@ -76,7 +77,10 @@ class PDFAPIService {
       }
 
       console.log('✅ PDF processing completed:', result);
-      return result;
+      if (result?.data?.contentItemId) {
+        result.contentItemId = result.data.contentItemId;
+      }
+      return result as PDFProcessingResult;
     } catch (error) {
       console.error('❌ PDF processing error:', error);
       throw error;

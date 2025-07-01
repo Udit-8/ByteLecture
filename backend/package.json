@@ -16,7 +16,9 @@
     "test:upload": "node ../mobile/test-upload-service.js",
     "test:openai": "node scripts/test-openai-service.js",
     "test:summary": "node scripts/test-summary-api.js",
-    "test:all": "npm run test:pdf && npm run test:api && npm run test:upload && npm run test:openai && npm run test:summary"
+    "test:youtube": "node scripts/test-youtube-processing.js",
+    "test:all": "npm run test:pdf && npm run test:api && npm run test:upload && npm run test:openai && npm run test:summary",
+    "setup:youtube": "./scripts/setup-yt-dlp.sh"
   },
   "keywords": [],
   "author": "",
@@ -33,6 +35,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^4.21.2",
+    "fluent-ffmpeg": "^2.1.3",
     "form-data": "^4.0.3",
     "googleapis": "^149.0.0",
     "helmet": "^8.1.0",
@@ -47,11 +50,13 @@
     "pdfjs-dist": "^5.2.133",
     "puppeteer": "^24.10.2",
     "sharp": "^0.34.2",
-    "youtube-transcript": "^1.2.1"
+    "youtube-transcript": "^1.2.1",
+    "yt-dlp-wrap": "^2.1.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.18",
+    "@types/fluent-ffmpeg": "^2.1.27",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/morgan": "^1.9.9",
     "@types/multer": "^1.4.12",

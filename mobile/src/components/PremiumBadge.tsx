@@ -1,15 +1,14 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-} from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 
-export type PremiumBadgeVariant = 'pill' | 'compact' | 'icon' | 'banner' | 'corner';
+export type PremiumBadgeVariant =
+  | 'pill'
+  | 'compact'
+  | 'icon'
+  | 'banner'
+  | 'corner';
 export type PremiumBadgeSize = 'xs' | 'sm' | 'md' | 'lg';
 
 interface PremiumBadgeProps {
@@ -58,9 +57,13 @@ export const PremiumBadge: React.FC<PremiumBadgeProps> = ({
       },
       icon: {
         backgroundColor: theme.colors.warning[500],
-        width: size === 'xs' ? 16 : size === 'sm' ? 20 : size === 'md' ? 24 : 28,
-        height: size === 'xs' ? 16 : size === 'sm' ? 20 : size === 'md' ? 24 : 28,
-        borderRadius: (size === 'xs' ? 16 : size === 'sm' ? 20 : size === 'md' ? 24 : 28) / 2,
+        width:
+          size === 'xs' ? 16 : size === 'sm' ? 20 : size === 'md' ? 24 : 28,
+        height:
+          size === 'xs' ? 16 : size === 'sm' ? 20 : size === 'md' ? 24 : 28,
+        borderRadius:
+          (size === 'xs' ? 16 : size === 'sm' ? 20 : size === 'md' ? 24 : 28) /
+          2,
         justifyContent: 'center',
         alignItems: 'center',
       },
@@ -113,7 +116,8 @@ export const PremiumBadge: React.FC<PremiumBadgeProps> = ({
       },
       icon: {
         color: theme.colors.white,
-        fontSize: size === 'xs' ? 8 : size === 'sm' ? 10 : size === 'md' ? 12 : 14,
+        fontSize:
+          size === 'xs' ? 8 : size === 'sm' ? 10 : size === 'md' ? 12 : 14,
         fontWeight: theme.typography.fontWeight.bold,
       },
       banner: {
@@ -160,38 +164,38 @@ export const PremiumBadge: React.FC<PremiumBadgeProps> = ({
         <Ionicons
           name={getIconName() as any}
           size={getIconSize()}
-          color={variant === 'pill' ? theme.colors.warning[600] : theme.colors.white}
+          color={
+            variant === 'pill' ? theme.colors.warning[600] : theme.colors.white
+          }
           style={shouldShowText ? { marginRight: 4 } : undefined}
         />
       )}
       {shouldShowText && (
-        <Text style={[getTextStyle(), textStyle]}>
-          {text}
-        </Text>
+        <Text style={[getTextStyle(), textStyle]}>{text}</Text>
       )}
     </View>
   );
 };
 
 // Specialized premium badge variants for common use cases
-export const PremiumPillBadge: React.FC<Omit<PremiumBadgeProps, 'variant'>> = (props) => (
-  <PremiumBadge {...props} variant="pill" />
-);
+export const PremiumPillBadge: React.FC<Omit<PremiumBadgeProps, 'variant'>> = (
+  props
+) => <PremiumBadge {...props} variant="pill" />;
 
-export const PremiumIconBadge: React.FC<Omit<PremiumBadgeProps, 'variant'>> = (props) => (
-  <PremiumBadge {...props} variant="icon" />
-);
+export const PremiumIconBadge: React.FC<Omit<PremiumBadgeProps, 'variant'>> = (
+  props
+) => <PremiumBadge {...props} variant="icon" />;
 
-export const PremiumCornerBadge: React.FC<Omit<PremiumBadgeProps, 'variant'>> = (props) => (
-  <PremiumBadge {...props} variant="corner" />
-);
+export const PremiumCornerBadge: React.FC<
+  Omit<PremiumBadgeProps, 'variant'>
+> = (props) => <PremiumBadge {...props} variant="corner" />;
 
-export const PremiumBannerBadge: React.FC<Omit<PremiumBadgeProps, 'variant'>> = (props) => (
-  <PremiumBadge {...props} variant="banner" />
-);
+export const PremiumBannerBadge: React.FC<
+  Omit<PremiumBadgeProps, 'variant'>
+> = (props) => <PremiumBadge {...props} variant="banner" />;
 
 const styles = StyleSheet.create({
   animated: {
     // Could add animation styles here
   },
-}); 
+});

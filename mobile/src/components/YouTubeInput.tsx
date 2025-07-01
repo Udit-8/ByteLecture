@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -65,11 +65,31 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
   }>({});
   const [showPremiumUpsell, setShowPremiumUpsell] = useState(false);
 
+  /**
+   * Ref holding the interval that drives faux progress updates between
+   * real backend progress events. This helps keep the UI feeling responsive
+   * even when a long-running step (e.g. AI transcription/analysis) provides
+   * no intermediate updates.
+   */
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
+
+  // Clear any running interval when the component unmounts to avoid leaks
+  useEffect(() => {
+    return () => {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+    };
+  }, []);
+
   // Check quota on component mount
   React.useEffect(() => {
     const checkQuota = async () => {
       try {
-        const permissionResult = await permissionService.checkFeatureUsage('youtube_processing');
+        const permissionResult =
+          await permissionService.checkFeatureUsage('youtube_processing');
         if (permissionResult.limit !== undefined) {
           setQuotaInfo({
             remaining: permissionResult.remaining,
@@ -130,10 +150,45 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
     }
   }, [handleValidation]);
 
+  /**
+   * Updates the visible progress **and** starts a gentle simulated increment
+   * so the bar continues to move if the backend step takes a long time.
+   * The simulated increment tops out a bit above the supplied `step` but
+   * never exceeds 95 % to leave room for the next real update.
+   */
   const updateProgress = (step: number, message: string) => {
+    // Always clear any previous simulation interval when receiving a new step
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+
     setProgress(step);
     setProgressMessage(message);
     onProcessingProgress?.(step);
+
+    // No need to simulate once we hit completion
+    if (step >= 1) return;
+
+    // Determine a ceiling for the faux progress (max 15% above current step, never >95%)
+    const simulatedCeiling = Math.min(step + 0.5, 0.95);
+    let current = step;
+
+    progressIntervalRef.current = setInterval(() => {
+      current = parseFloat((current + 0.01).toFixed(4)); // increment by 1%
+
+      // Stop when we reach the ceiling – the next real update will take over
+      if (current >= simulatedCeiling) {
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+        return;
+      }
+
+      setProgress(current);
+      onProcessingProgress?.(current);
+    }, 5000); // smooth ~1% every 5s ⇒ ~250 s for full 50 %
   };
 
   const handleProcess = useCallback(async () => {
@@ -142,8 +197,9 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
 
     // Check permissions before processing
     try {
-      const permissionResult = await permissionService.checkFeatureUsage('youtube_processing');
-      
+      const permissionResult =
+        await permissionService.checkFeatureUsage('youtube_processing');
+
       if (!permissionResult.allowed) {
         setShowPremiumUpsell(true);
         return;
@@ -198,6 +254,13 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
       }
     } finally {
       setIsProcessing(false);
+
+      // Ensure any running simulated interval is stopped when processing ends
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+
       setProgress(0);
       setProgressMessage('');
     }
@@ -244,10 +307,11 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
           ? ' (retrieved from cache)'
           : ' (newly processed and stored)';
         Alert.alert('Success', `Video processed successfully${cacheMessage}!`);
-        
+
         // Refresh quota info after successful processing
         try {
-          const updatedPermission = await permissionService.checkFeatureUsage('youtube_processing');
+          const updatedPermission =
+            await permissionService.checkFeatureUsage('youtube_processing');
           if (updatedPermission.limit !== undefined) {
             setQuotaInfo({
               remaining: updatedPermission.remaining,
@@ -313,10 +377,10 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
       ) : null}
 
       <Text style={styles.hint}>
-        Supports YouTube videos with captions/transcripts. 
-        {quotaInfo.limit !== undefined && !quotaInfo.isPremium && (
-          ` Daily limit: ${quotaInfo.remaining} of ${quotaInfo.limit} videos remaining.`
-        )}
+        Supports YouTube videos with captions/transcripts.
+        {quotaInfo.limit !== undefined &&
+          !quotaInfo.isPremium &&
+          ` Daily limit: ${quotaInfo.remaining} of ${quotaInfo.limit} videos remaining.`}
         {quotaInfo.isPremium && ' ✨ Unlimited processing.'}
       </Text>
 
@@ -360,10 +424,10 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
             <TouchableOpacity
               style={[
                 styles.processButton,
-                disabled && styles.processButtonDisabled,
+                (disabled || isProcessing) && styles.processButtonDisabled,
               ]}
               onPress={handleProcess}
-              disabled={disabled}
+              disabled={disabled || isProcessing}
             >
               <Ionicons
                 name="play-circle"
@@ -402,7 +466,11 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
           navigation?.navigate('Subscription', { from: 'youtube-quota' });
         }}
         featureType="youtube-processing"
-        currentUsage={quotaInfo.limit && quotaInfo.remaining !== undefined ? (quotaInfo.limit - quotaInfo.remaining) : undefined}
+        currentUsage={
+          quotaInfo.limit && quotaInfo.remaining !== undefined
+            ? quotaInfo.limit - quotaInfo.remaining
+            : undefined
+        }
         limit={quotaInfo.limit}
       />
     </View>

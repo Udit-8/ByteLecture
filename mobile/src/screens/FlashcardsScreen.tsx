@@ -11,7 +11,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Header, Card, Button, LoadingIndicator, PremiumUpsellModal } from '../components';
+import {
+  Header,
+  Card,
+  Button,
+  LoadingIndicator,
+  PremiumUpsellModal,
+} from '../components';
 import { theme } from '../constants/theme';
 import { useNavigation } from '../contexts/NavigationContext';
 import { useFlashcards } from '../hooks/useFlashcards';
@@ -24,7 +30,9 @@ interface FlashcardsScreenProps {
   navigation: any;
 }
 
-export const FlashcardsScreen: React.FC<FlashcardsScreenProps> = ({ navigation }) => {
+export const FlashcardsScreen: React.FC<FlashcardsScreenProps> = ({
+  navigation,
+}) => {
   const { selectedNote, setMainMode } = useNavigation();
   const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
   const [selectedSetId, setSelectedSetId] = useState<string | null>(null);
@@ -66,8 +74,10 @@ export const FlashcardsScreen: React.FC<FlashcardsScreenProps> = ({ navigation }
   const autoGenerateFlashcards = async (contentItemId: string) => {
     try {
       // Check permissions before generating flashcards
-      const permissionResult = await permissionService.checkFeatureUsage('flashcard_generation');
-      
+      const permissionResult = await permissionService.checkFeatureUsage(
+        'flashcard_generation'
+      );
+
       if (!permissionResult.allowed) {
         setShowPremiumUpsell(true);
         setGenerationError('Daily flashcard generation limit reached');
@@ -117,10 +127,12 @@ export const FlashcardsScreen: React.FC<FlashcardsScreenProps> = ({ navigation }
         );
         setSelectedSetId(flashcardSet.id);
         // The generateFlashcards hook already updates the sets and currentSet
-        
+
         // Refresh quota info after successful generation
         try {
-          const updatedPermission = await permissionService.checkFeatureUsage('flashcard_generation');
+          const updatedPermission = await permissionService.checkFeatureUsage(
+            'flashcard_generation'
+          );
           if (updatedPermission.limit !== undefined) {
             setQuotaInfo({
               remaining: updatedPermission.remaining,
@@ -153,7 +165,9 @@ export const FlashcardsScreen: React.FC<FlashcardsScreenProps> = ({ navigation }
   useEffect(() => {
     const checkQuota = async () => {
       try {
-        const permissionResult = await permissionService.checkFeatureUsage('flashcard_generation');
+        const permissionResult = await permissionService.checkFeatureUsage(
+          'flashcard_generation'
+        );
         if (permissionResult.limit !== undefined) {
           setQuotaInfo({
             remaining: permissionResult.remaining,
@@ -365,8 +379,8 @@ export const FlashcardsScreen: React.FC<FlashcardsScreenProps> = ({ navigation }
           </Text>
           {quotaInfo.limit !== undefined && (
             <Text style={styles.quotaText}>
-              {quotaInfo.isPremium 
-                ? '✨ Unlimited flashcard generation' 
+              {quotaInfo.isPremium
+                ? '✨ Unlimited flashcard generation'
                 : `${quotaInfo.remaining} of ${quotaInfo.limit} generations remaining today`}
             </Text>
           )}
@@ -512,7 +526,11 @@ export const FlashcardsScreen: React.FC<FlashcardsScreenProps> = ({ navigation }
           navigation.navigate('Subscription', { from: 'flashcard-quota' });
         }}
         featureType="flashcard-generation"
-        currentUsage={quotaInfo.limit && quotaInfo.remaining !== undefined ? (quotaInfo.limit - quotaInfo.remaining) : undefined}
+        currentUsage={
+          quotaInfo.limit && quotaInfo.remaining !== undefined
+            ? quotaInfo.limit - quotaInfo.remaining
+            : undefined
+        }
         limit={quotaInfo.limit}
       />
     </SafeAreaView>

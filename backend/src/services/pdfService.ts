@@ -1,5 +1,6 @@
 import pdfParse from 'pdf-parse';
 import { supabaseAdmin } from '../config/supabase';
+import { OpenAIService } from './openAIService';
 import {
   PDFProcessingResult,
   PDFMetadata,
@@ -13,6 +14,12 @@ import {
 
 export class PDFProcessingService {
   private readonly bucketName = 'pdfs';
+  private readonly openAIService = new OpenAIService({
+    apiKey: process.env.OPENAI_API_KEY || '',
+    model: 'gpt-4o-mini',
+    maxTokens: 150, // Keep title generation short and cost-effective
+    temperature: 0.3,
+  });
   private readonly defaultOptions: Required<PDFProcessingOptions> = {
     extractImages: false,
     generateThumbnail: true,
@@ -64,6 +71,21 @@ export class PDFProcessingService {
           })
         : extractedText;
 
+      // Generate smart title using AI
+      const originalFileName = this.extractFileName(filePath);
+      const smartTitle = await this.generateSmartTitle(
+        cleanedText || extractedText,
+        metadata,
+        originalFileName
+      );
+
+      // Update metadata with the smart title
+      const enhancedMetadata = {
+        ...metadata,
+        title: smartTitle,
+        aiGeneratedTitle: true, // Flag to indicate this title was AI-generated
+      };
+
       // Detect sections if enabled
       const sections = processingOptions.detectSections
         ? this.detectSections(cleanedText, metadata.pageCount)
@@ -74,13 +96,13 @@ export class PDFProcessingService {
 
       // Create processed content object
       const processedContent: ProcessedPDFContent = {
-        originalFileName: this.extractFileName(filePath),
+        originalFileName,
         filePath,
         publicUrl,
         extractedText,
         cleanedText,
         sections,
-        metadata,
+        metadata: enhancedMetadata,
         processingStatus: 'completed',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -92,17 +114,18 @@ export class PDFProcessingService {
       const processingTime = Date.now() - startTime;
 
       console.log(
-        `PDF processing completed in ${processingTime}ms for: ${filePath}`
+        `PDF processing completed in ${processingTime}ms for: ${filePath} with title: "${smartTitle}"`
       );
 
       return {
         success: true,
         documentId,
         extractedText,
-        pageCount: metadata.pageCount,
-        fileSize: metadata.fileSize,
+        pageCount: enhancedMetadata.pageCount,
+        fileSize: enhancedMetadata.fileSize,
         processingTime,
-        metadata,
+        metadata: enhancedMetadata,
+        smartTitle, // Include the AI-generated title in the response
       };
     } catch (error) {
       const processingTime = Date.now() - startTime;
@@ -310,6 +333,92 @@ export class PDFProcessingService {
   }
 
   /**
+   * Generate smart title using AI from document content
+   */
+  private async generateSmartTitle(
+    content: string,
+    metadata: PDFMetadata,
+    originalFileName: string
+  ): Promise<string> {
+    try {
+      // First check if metadata has a good title
+      if (metadata.title && metadata.title.length > 3 && !metadata.title.match(/untitled|document|pdf/i)) {
+        console.log(`📄 Using PDF metadata title: ${metadata.title}`);
+        return metadata.title;
+      }
+
+      // Extract the first 1000 characters for AI analysis (cost-effective)
+      const contentPreview = content.substring(0, 1000).trim();
+      
+      // Skip AI generation if content is too short or not meaningful
+      if (contentPreview.length < 100) {
+        console.log('📄 Content too short for AI title generation, using filename');
+        return this.generateFallbackTitle(originalFileName);
+      }
+
+      console.log('🤖 Generating smart title using AI...');
+
+      const prompt = `Analyze this document excerpt and generate a concise, descriptive title (maximum 60 characters) that captures the main topic or purpose. 
+
+Important guidelines:
+- Be specific and informative
+- Use title case (capitalize main words)
+- Avoid generic words like "Document", "PDF", "Report" unless essential
+- Focus on the subject matter, not the document type
+- Keep it under 60 characters
+
+Document excerpt:
+${contentPreview}
+
+Generate only the title, nothing else:`;
+
+      const response = await this.openAIService.createChatCompletion({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 50, // Short response for just the title
+        temperature: 0.3, // Low temperature for consistent, factual titles
+      });
+
+      const generatedTitle = response.choices[0]?.message?.content?.trim() || '';
+      
+      if (generatedTitle && generatedTitle.length > 3 && generatedTitle.length <= 60) {
+        console.log(`✨ AI-generated title: ${generatedTitle}`);
+        return generatedTitle;
+      } else {
+        console.log('🤖 AI title generation failed, using fallback');
+        return this.generateFallbackTitle(originalFileName);
+      }
+
+    } catch (error) {
+      console.warn('⚠️ AI title generation failed:', error);
+      return this.generateFallbackTitle(originalFileName);
+    }
+  }
+
+  /**
+   * Generate a fallback title from filename
+   */
+  private generateFallbackTitle(originalFileName: string): string {
+    let title = originalFileName.replace(/\.pdf$/i, '');
+    
+    // Remove timestamp and random suffix patterns
+    title = title.replace(/\s+\d{13}\s+[a-zA-Z0-9]+$/, '');
+    title = title.replace(/\d{13}\s+[a-zA-Z0-9]+$/, '');
+    title = title.replace(/\s+\d{13}$/, '');
+    
+    if (!title || title.length < 2) {
+      title = `PDF Document ${new Date().toLocaleDateString()}`;
+    } else {
+      title = title.replace(/[-_]/g, ' ')
+                   .replace(/\s+/g, ' ')
+                   .replace(/\b\w/g, (l: string) => l.toUpperCase())
+                   .trim();
+    }
+    
+    return title;
+  }
+
+  /**
    * Estimate page number based on text position
    */
   private estimatePageNumber(
@@ -426,8 +535,8 @@ export class PDFProcessingService {
           original_file_name: content.originalFileName,
           file_path: content.filePath,
           public_url: content.publicUrl,
-          extracted_text: content.extractedText,
-          cleaned_text: content.cleanedText,
+          extracted_text: this.sanitizeText(content.extractedText),
+          cleaned_text: this.sanitizeText(content.cleanedText),
           metadata: content.metadata,
           thumbnail_url: content.thumbnailUrl,
           processing_status: content.processingStatus,
@@ -536,6 +645,30 @@ export class PDFProcessingService {
       .eq('file_path', filePath);
 
     return this.processPDFFromStorage(filePath);
+  }
+
+  /**
+   * Sanitize text so it is safe for Postgres insertion.
+   * Removes null bytes and lone surrogate pairs that can trigger
+   * "unsupported Unicode escape sequence" errors when the SQL engine
+   * tries to interpret the string literal. Also trims excessive
+   * whitespace at the ends.
+   */
+  private sanitizeText(text: string): string {
+    if (!text) return text;
+
+    // 1. Remove NULL characters which Postgres cannot store in TEXT columns
+    let cleaned = text.replace(/\u0000/g, '');
+
+    // 2. Remove lone surrogates (high or low) that are not part of valid pairs
+    //    These often appear in malformed PDF text extraction results.
+    cleaned = cleaned.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '') // high without following low
+                     .replace(/(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, ''); // low without preceding high
+
+    // 3. Optionally collapse excessive control chars (except tab/newline)
+    cleaned = cleaned.replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+
+    return cleaned.trim();
   }
 }
 

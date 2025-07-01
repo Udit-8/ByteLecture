@@ -8,7 +8,14 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Header, Button, Card, FeatureCard, PremiumBenefitsModal, PremiumCornerBadge } from '../components';
+import {
+  Header,
+  Button,
+  Card,
+  FeatureCard,
+  PremiumBenefitsModal,
+  PremiumCornerBadge,
+} from '../components';
 import SyncStatusIndicator from '../components/SyncStatusIndicator';
 import { theme } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContextFallback';
@@ -198,8 +205,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               />
               {/* Add premium indicator to premium features */}
               {(feature.id === 'flashcards' || feature.id === 'tutor') && (
-                <PremiumCornerBadge 
-                  size="sm" 
+                <PremiumCornerBadge
+                  size="sm"
                   text="Pro"
                   style={styles.featureCornerBadge}
                 />

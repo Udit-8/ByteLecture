@@ -32,6 +32,29 @@ app.use(morgan('combined')); // Logging
 app.use(express.json({ limit: '50mb' })); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true, limit: '50mb' })); // Parse URL-encoded bodies
 
+// Request timeout middleware
+app.use((req, res, next) => {
+  // Set timeout for all requests (5 minutes for AI operations)
+  const timeout = req.path.includes('/summaries/generate') || 
+                 req.path.includes('/flashcards/generate') || 
+                 req.path.includes('/quizzes/generate') ||
+                 req.path.includes('/youtube/process') ||
+                 req.path.includes('/audio/transcribe') ? 300000 : 30000;
+  
+  req.setTimeout(timeout, () => {
+    if (!res.headersSent) {
+      res.status(408).json({
+        success: false,
+        error: 'Request timeout',
+        message: 'The request took too long to process. Please try again.',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+  
+  next();
+});
+
 // Basic health check endpoint
 app.get('/', (req, res) => {
   res.json({
@@ -68,14 +91,28 @@ app.use(
     res: express.Response,
     _next: express.NextFunction
   ) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Something went wrong!' });
+    console.error('❌ Unhandled server error:', err.stack);
+    
+    // Ensure we always send JSON responses
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        success: false,
+        error: 'Internal server error',
+        message: 'An unexpected error occurred. Please try again.',
+        timestamp: new Date().toISOString()
+      });
+    }
   }
 );
 
 // 404 handler
 app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ 
+    success: false,
+    error: 'Route not found',
+    message: `The requested endpoint ${req.originalUrl} does not exist.`,
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.listen(PORT, () => {

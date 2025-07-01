@@ -9,9 +9,8 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { ImportScreen } from '../screens/ImportScreen';
 import { RecentNotesScreen } from '../screens/RecentNotesScreen';
 import { SummaryScreen } from '../screens/SummaryScreen';
-import { FlashcardsScreen } from '../screens/FlashcardsScreen';
+import { SmartFlashcardsScreen } from '../screens/SmartFlashcardsScreen';
 import { QuizScreen } from '../screens/QuizScreen';
-import { MindMapScreen } from '../screens/MindMapScreen';
 import { AITutorScreen } from '../screens/AITutorScreen';
 
 const Tab = createBottomTabNavigator();
@@ -38,6 +37,7 @@ export const BottomTabNavigator: React.FC = () => {
             fontSize: 12,
             fontWeight: '500',
           },
+          tabBarHideOnKeyboard: true,
         }}
       >
         <Tab.Screen
@@ -55,7 +55,7 @@ export const BottomTabNavigator: React.FC = () => {
         />
         <Tab.Screen
           name="Cards"
-          component={FlashcardsScreen}
+          component={SmartFlashcardsScreen}
           options={{
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="library-outline" size={size} color={color} />
@@ -68,15 +68,6 @@ export const BottomTabNavigator: React.FC = () => {
           options={{
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="help-circle-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Mind Map"
-          component={MindMapScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="git-network-outline" size={size} color={color} />
             ),
           }}
         />
@@ -111,6 +102,7 @@ export const BottomTabNavigator: React.FC = () => {
           fontSize: 12,
           fontWeight: '500',
         },
+        tabBarHideOnKeyboard: true,
       }}
     >
       <Tab.Screen

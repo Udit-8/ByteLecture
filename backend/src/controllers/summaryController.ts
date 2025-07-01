@@ -12,8 +12,8 @@ export class SummaryController {
     // Initialize OpenAI service with configuration
     this.openAIService = new OpenAIService({
       apiKey: process.env.OPENAI_API_KEY!,
-      model: 'gpt-3.5-turbo',
-      maxTokens: 1000,
+      model: 'gpt-4o-mini',
+      maxTokens: Number(process.env.SUMMARY_MAX_TOKENS ?? 2500),
       temperature: 0.3,
     });
 
@@ -98,15 +98,23 @@ export class SummaryController {
 
       // Generate new summary
       console.log('📝 Generating new summary with OpenAI');
-      const result = await this.openAIService.generateSummary(
-        content,
-        summaryOptions
-      );
+      let result;
+      
+      try {
+        result = await this.openAIService.generateSummary(
+          content,
+          summaryOptions
+        );
 
-      if (!result) {
+        if (!result || !result.summary || !result.summary.trim()) {
+          throw new Error('OpenAI returned empty or invalid summary');
+        }
+      } catch (aiError: any) {
+        console.error('❌ OpenAI summary generation failed:', aiError.message);
         res.status(500).json({
           error: 'Summary generation failed',
-          message: 'Failed to generate summary. Please try again.',
+          message: `AI service error: ${aiError.message}`,
+          details: 'The AI service encountered an issue processing your content. Please try again or contact support if the problem persists.',
         });
         return;
       }
@@ -121,8 +129,14 @@ export class SummaryController {
         contentItemId
       );
 
-      // Update content item with summary if contentItemId provided
-      if (contentItemId && summaryId) {
+      // Update content item with summary if contentItemId is a valid UUID
+      if (
+        summaryId &&
+        contentItemId &&
+        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+          contentItemId
+        )
+      ) {
         await this.updateContentItemSummary(
           contentItemId,
           result.summary,

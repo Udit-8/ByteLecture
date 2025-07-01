@@ -21,6 +21,7 @@ export const authenticateToken = async (
 
     if (!token) {
       res.status(401).json({
+        success: false,
         error: 'Access denied',
         message: 'No token provided',
       });
@@ -32,6 +33,7 @@ export const authenticateToken = async (
 
     if (!verification.valid || !verification.userId) {
       res.status(403).json({
+        success: false,
         error: 'Invalid token',
         message: 'Token is not valid',
       });
@@ -43,6 +45,7 @@ export const authenticateToken = async (
 
     if (userResponse.error || !userResponse.user) {
       res.status(403).json({
+        success: false,
         error: 'User not found',
         message: 'User associated with token not found',
       });
@@ -60,6 +63,7 @@ export const authenticateToken = async (
   } catch (error) {
     console.error('Authentication middleware error:', error);
     res.status(500).json({
+      success: false,
       error: 'Authentication error',
       message: 'Internal server error during authentication',
     });
@@ -77,6 +81,7 @@ export const requirePlan = (
   ): void => {
     if (!req.user) {
       res.status(401).json({
+        success: false,
         error: 'Unauthorized',
         message: 'User not authenticated',
       });
@@ -89,6 +94,7 @@ export const requirePlan = (
 
     if (userPlanLevel < requiredPlanLevel) {
       res.status(403).json({
+        success: false,
         error: 'Insufficient plan',
         message: `This feature requires ${requiredPlan} plan or higher`,
       });

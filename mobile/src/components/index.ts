@@ -12,11 +12,11 @@ export type { FeatureType } from './PremiumUpsellModal';
 export { PremiumBenefitsModal } from './PremiumBenefitsModal';
 export { UsageCounter } from './UsageCounter';
 export type { UsageCounterProps } from './UsageCounter';
-export { 
-  PremiumBadge, 
-  PremiumPillBadge, 
-  PremiumIconBadge, 
-  PremiumCornerBadge, 
-  PremiumBannerBadge 
+export {
+  PremiumBadge,
+  PremiumPillBadge,
+  PremiumIconBadge,
+  PremiumCornerBadge,
+  PremiumBannerBadge,
 } from './PremiumBadge';
 export type { PremiumBadgeVariant, PremiumBadgeSize } from './PremiumBadge';

@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../constants/theme';
 import { Card } from './Card';
@@ -73,7 +68,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
             </View>
           )}
         </View>
-        
+
         {isPremium ? (
           <Text style={styles.compactUnlimited}>Unlimited</Text>
         ) : (
@@ -99,14 +94,13 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
   }
 
   return (
-    <Component
-      activeOpacity={onPress ? 0.7 : 1}
-      onPress={onPress}
-    >
-      <Card style={[styles.container, style]}>
+    <Component activeOpacity={onPress ? 0.7 : 1} onPress={onPress}>
+      <Card style={StyleSheet.flatten([styles.container, style])}>
         <View style={styles.header}>
           <View style={styles.titleSection}>
-            <View style={[styles.iconContainer, { backgroundColor: color + '20' }]}>
+            <View
+              style={[styles.iconContainer, { backgroundColor: color + '20' }]}
+            >
               <Ionicons name={icon as any} size={24} color={color} />
             </View>
             <View style={styles.titleText}>
@@ -116,7 +110,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
               </Text>
             </View>
           </View>
-          
+
           {isPremium && (
             <View style={styles.premiumBadge}>
               <Text style={styles.premiumText}>✨ Pro</Text>
@@ -173,7 +167,11 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
         {onPress && (
           <View style={styles.footer}>
             <Text style={styles.tapHint}>Tap for details</Text>
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.gray[400]} />
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={theme.colors.gray[400]}
+            />
           </View>
         )}
       </Card>
@@ -360,4 +358,4 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 2,
   },
-}); 
+});

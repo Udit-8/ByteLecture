@@ -14,9 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useMindMap } from '../hooks/useMindMap';
 import { useContent } from '../hooks/useContent';
+import { useNavigation } from '../contexts/NavigationContext';
 import { MindMapViewer } from '../components/MindMapViewer';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
+import { PremiumUpsellModal } from '../components/PremiumUpsellModal';
 import { theme } from '../constants/theme';
 import {
   MindMap,
@@ -48,6 +50,7 @@ export const MindMapScreen: React.FC<MindMapScreenProps> = ({ navigation }) => {
   } = useMindMap();
 
   const { contentItems, fetchContentItems } = useContent();
+  const { mode, selectedNote } = useNavigation();
 
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedContentId, setSelectedContentId] = useState<string>('');
@@ -59,10 +62,68 @@ export const MindMapScreen: React.FC<MindMapScreenProps> = ({ navigation }) => {
   // Export state
   const [exporting, setExporting] = useState(false);
 
+  // Context-aware state
+  const [contextMindMap, setContextMindMap] = useState<MindMap | null>(null);
+  const [showPremiumUpsell, setShowPremiumUpsell] = useState(false);
+
   useEffect(() => {
     loadMindMaps();
     fetchContentItems();
   }, [loadMindMaps, fetchContentItems]);
+
+  // Effect to check for context-specific mind map
+  useEffect(() => {
+    if (mode === 'note-detail' && selectedNote && mindMaps.length > 0) {
+      // Look for a mind map for the current selected note
+      const existingMindMap = mindMaps.find(
+        (mindMap) => mindMap.content_item_id === selectedNote.id
+      );
+      
+      if (existingMindMap) {
+        setContextMindMap(existingMindMap);
+        // Auto-load the mind map for this note
+        loadMindMap(existingMindMap.id);
+      } else {
+        setContextMindMap(null);
+        clearCurrentMindMap();
+      }
+    }
+  }, [mode, selectedNote, mindMaps, loadMindMap, clearCurrentMindMap]);
+
+  const handleGenerateContextMindMap = async () => {
+    if (!selectedNote) {
+      Alert.alert('Error', 'No note selected for mind map generation');
+      return;
+    }
+
+    // Check permissions before generating mind map
+    try {
+      const permissionResult = await permissionService.checkFeatureUsage(
+        'mind_map_generation'
+      );
+
+      if (!permissionResult.allowed) {
+        setShowPremiumUpsell(true);
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking mind map permissions:', error);
+    }
+
+    const request: CreateMindMapRequest = {
+      content_item_id: selectedNote.id,
+      title: selectedNote.title,
+      style: 'hierarchical',
+      max_nodes: 20,
+      depth_preference: 'balanced',
+    };
+
+    const result = await generateMindMap(request);
+    if (result) {
+      setContextMindMap(result);
+      loadMindMap(result.id);
+    }
+  };
 
   const handleGenerateMindMap = async () => {
     if (!selectedContentId) {
@@ -72,22 +133,12 @@ export const MindMapScreen: React.FC<MindMapScreenProps> = ({ navigation }) => {
 
     // Check permissions before generating mind map
     try {
-      const permissionResult = await permissionService.checkFeatureUsage('mind_map_generation');
-      
+      const permissionResult = await permissionService.checkFeatureUsage(
+        'mind_map_generation'
+      );
+
       if (!permissionResult.allowed) {
-        const alertTitle = 'Generation Limit Reached';
-        const alertMessage = permissionResult.upgrade_message || 
-          'You have reached your daily mind map generation limit. Please try again tomorrow or upgrade your plan for unlimited mind map generation.';
-        
-        Alert.alert(alertTitle, alertMessage, [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Upgrade Plan',
-            style: 'default',
-            onPress: () => navigation.navigate('Subscription', { from: 'mindmap-quota' }),
-          },
-        ]);
-        
+        setShowPremiumUpsell(true);
         return;
       }
     } catch (error) {
@@ -407,6 +458,122 @@ export const MindMapScreen: React.FC<MindMapScreenProps> = ({ navigation }) => {
     );
   }
 
+  // Context-aware rendering for note-detail mode
+  if (mode === 'note-detail' && selectedNote) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>
+            Mind Map - {selectedNote.title}
+          </Text>
+        </View>
+
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+            <Text style={styles.loadingText}>Loading mind map...</Text>
+          </View>
+        ) : contextMindMap ? (
+          <View style={styles.contextContainer}>
+            <Text style={styles.contextInfo}>
+              Mind map already exists for this note
+            </Text>
+            <Card style={styles.mindMapCard}>
+              <TouchableOpacity
+                style={styles.mindMapContent}
+                onPress={() => handleMindMapPress(contextMindMap)}
+              >
+                <View style={styles.mindMapHeader}>
+                  <Text style={styles.mindMapTitle}>{contextMindMap.title}</Text>
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      onPress={() => handleExportMindMap(contextMindMap)}
+                      style={styles.actionButton}
+                      disabled={exporting}
+                    >
+                      <Ionicons
+                        name="download-outline"
+                        size={20}
+                        color={
+                          exporting
+                            ? theme.colors.textSecondary
+                            : theme.colors.primary[500]
+                        }
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.mindMapMeta}>
+                  <View style={styles.metaItem}>
+                    <Ionicons
+                      name="git-network-outline"
+                      size={16}
+                      color={theme.colors.textSecondary}
+                    />
+                    <Text style={styles.metaText}>{contextMindMap.node_count} nodes</Text>
+                  </View>
+
+                  <View style={styles.metaItem}>
+                    <Ionicons
+                      name="layers-outline"
+                      size={16}
+                      color={theme.colors.textSecondary}
+                    />
+                    <Text style={styles.metaText}>{contextMindMap.max_depth} levels</Text>
+                  </View>
+
+                  <View style={styles.metaItem}>
+                    <Ionicons
+                      name="shapes-outline"
+                      size={16}
+                      color={theme.colors.textSecondary}
+                    />
+                    <Text style={styles.metaText}>{contextMindMap.style}</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.mindMapDate}>
+                  Created {new Date(contextMindMap.created_at).toLocaleDateString()}
+                </Text>
+              </TouchableOpacity>
+            </Card>
+            <Button
+              title="View Mind Map"
+              onPress={() => handleMindMapPress(contextMindMap)}
+              style={styles.contextButton}
+            />
+          </View>
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Ionicons
+              name="git-network-outline"
+              size={64}
+              color={theme.colors.textSecondary}
+            />
+            <Text style={styles.emptyTitle}>No Mind Map Yet</Text>
+            <Text style={styles.emptyDescription}>
+              Generate a mind map for "{selectedNote.title}"
+            </Text>
+            <Button
+              title={generating ? 'Generating...' : 'Generate Mind Map'}
+              onPress={handleGenerateContextMindMap}
+              disabled={generating}
+              style={styles.emptyButton}
+            />
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  // Default view for main mode - show all mind maps
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -458,6 +625,18 @@ export const MindMapScreen: React.FC<MindMapScreenProps> = ({ navigation }) => {
       )}
 
       {renderGenerateModal()}
+
+      <PremiumUpsellModal
+        visible={showPremiumUpsell}
+        onClose={() => setShowPremiumUpsell(false)}
+        onUpgrade={() => {
+          setShowPremiumUpsell(false);
+          navigation.navigate('Subscription', { from: 'mindmap-quota' });
+        }}
+        featureType="mind-map"
+        currentUsage={undefined}
+        limit={undefined}
+      />
     </SafeAreaView>
   );
 };
@@ -720,5 +899,18 @@ const styles = StyleSheet.create({
     color: theme.colors.warning[600],
     marginTop: theme.spacing.xs,
     fontStyle: 'italic',
+  },
+  contextContainer: {
+    flex: 1,
+    padding: theme.spacing.base,
+  },
+  contextInfo: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  contextButton: {
+    marginTop: theme.spacing.md,
   },
 });

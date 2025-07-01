@@ -105,6 +105,19 @@ class FlashcardAPI {
       const data = await response.json();
 
       if (!response.ok) {
+        // Handle quota exceeded errors specifically
+        if (response.status === 429) {
+          console.log('⚠️ Quota exceeded error from backend:', data);
+          return {
+            success: false,
+            error: data.error || 'Quota exceeded',
+            message: data.message || 'Daily flashcard generation limit reached',
+            quota_exceeded: true,
+            quota_info: data.quota_info,
+            requires_upgrade: data.requires_upgrade,
+          };
+        }
+
         return {
           success: false,
           error: data.error || 'Request failed',

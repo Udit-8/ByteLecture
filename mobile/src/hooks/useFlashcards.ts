@@ -114,6 +114,17 @@ export const useFlashcards = (): UseFlashcardsReturn => {
 
           return response.flashcardSet;
         } else {
+          // Handle quota exceeded specifically
+          if ((response as any).quota_exceeded) {
+            const quotaError = new Error(
+              response.message || 'Daily flashcard generation limit reached'
+            );
+            (quotaError as any).quota_exceeded = true;
+            (quotaError as any).quota_info = (response as any).quota_info;
+            (quotaError as any).requires_upgrade = (response as any).requires_upgrade;
+            throw quotaError;
+          }
+
           throw new Error(
             response.error ||
               response.message ||

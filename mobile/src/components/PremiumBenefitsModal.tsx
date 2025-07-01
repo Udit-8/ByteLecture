@@ -58,7 +58,8 @@ const benefits: BenefitItem[] = [
   {
     id: 'ai-tutor',
     title: 'AI Tutor Chat',
-    description: 'Get instant answers and explanations from your personal AI tutor',
+    description:
+      'Get instant answers and explanations from your personal AI tutor',
     icon: 'chatbubbles',
     color: theme.colors.success[600],
     freeFeature: '10 questions per day',
@@ -118,13 +119,27 @@ export const PremiumBenefitsModal: React.FC<PremiumBenefitsModalProps> = ({
   showUpgradeButton = false,
   variant = 'showcase',
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'comparison'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'comparison'>(
+    'overview'
+  );
 
   const renderBenefitCard = (benefit: BenefitItem) => (
-    <View key={benefit.id} style={[styles.benefitCard, benefit.highlight && styles.highlightCard]}>
+    <View
+      key={benefit.id}
+      style={[styles.benefitCard, benefit.highlight && styles.highlightCard]}
+    >
       <View style={styles.benefitHeader}>
-        <View style={[styles.benefitIcon, { backgroundColor: benefit.color + '20' }]}>
-          <Ionicons name={benefit.icon as any} size={24} color={benefit.color} />
+        <View
+          style={[
+            styles.benefitIcon,
+            { backgroundColor: benefit.color + '20' },
+          ]}
+        >
+          <Ionicons
+            name={benefit.icon as any}
+            size={24}
+            color={benefit.color}
+          />
         </View>
         <View style={styles.benefitTitleContainer}>
           <Text style={styles.benefitTitle}>{benefit.title}</Text>
@@ -134,7 +149,7 @@ export const PremiumBenefitsModal: React.FC<PremiumBenefitsModalProps> = ({
         </View>
       </View>
       <Text style={styles.benefitDescription}>{benefit.description}</Text>
-      
+
       {variant === 'comparison' && (
         <View style={styles.comparisonContainer}>
           <View style={styles.comparisonRow}>
@@ -153,34 +168,53 @@ export const PremiumBenefitsModal: React.FC<PremiumBenefitsModalProps> = ({
   const renderOverviewTab = () => (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
       <View style={styles.heroSection}>
-        <PremiumBadge variant="banner" text="Premium Learning Experience" size="lg" />
+        <PremiumBadge
+          variant="banner"
+          text="Premium Learning Experience"
+          size="lg"
+        />
         <Text style={styles.heroTitle}>Unlock Your Full Potential</Text>
         <Text style={styles.heroSubtitle}>
-          Transform how you learn with unlimited access to all ByteLecture features
+          Transform how you learn with unlimited access to all ByteLecture
+          features
         </Text>
       </View>
 
-      <View style={styles.benefitsGrid}>
-        {benefits.map(renderBenefitCard)}
-      </View>
+      <View style={styles.benefitsGrid}>{benefits.map(renderBenefitCard)}</View>
 
       <View style={styles.additionalBenefits}>
         <Text style={styles.additionalTitle}>Plus Premium Perks:</Text>
         <View style={styles.perksList}>
           <View style={styles.perkItem}>
-            <Ionicons name="checkmark-circle" size={20} color={theme.colors.success[600]} />
+            <Ionicons
+              name="checkmark-circle"
+              size={20}
+              color={theme.colors.success[600]}
+            />
             <Text style={styles.perkText}>Priority customer support</Text>
           </View>
           <View style={styles.perkItem}>
-            <Ionicons name="checkmark-circle" size={20} color={theme.colors.success[600]} />
+            <Ionicons
+              name="checkmark-circle"
+              size={20}
+              color={theme.colors.success[600]}
+            />
             <Text style={styles.perkText}>Early access to new features</Text>
           </View>
           <View style={styles.perkItem}>
-            <Ionicons name="checkmark-circle" size={20} color={theme.colors.success[600]} />
+            <Ionicons
+              name="checkmark-circle"
+              size={20}
+              color={theme.colors.success[600]}
+            />
             <Text style={styles.perkText}>Enhanced performance & speed</Text>
           </View>
           <View style={styles.perkItem}>
-            <Ionicons name="checkmark-circle" size={20} color={theme.colors.success[600]} />
+            <Ionicons
+              name="checkmark-circle"
+              size={20}
+              color={theme.colors.success[600]}
+            />
             <Text style={styles.perkText}>No daily limits or restrictions</Text>
           </View>
         </View>
@@ -190,9 +224,13 @@ export const PremiumBenefitsModal: React.FC<PremiumBenefitsModalProps> = ({
         <Text style={styles.testimonialTitle}>💬 What Premium Users Say</Text>
         <View style={styles.testimonial}>
           <Text style={styles.testimonialText}>
-            "ByteLecture Premium completely transformed my study routine. Unlimited access to all features means I can learn at my own pace without hitting daily limits."
+            "ByteLecture Premium completely transformed my study routine.
+            Unlimited access to all features means I can learn at my own pace
+            without hitting daily limits."
           </Text>
-          <Text style={styles.testimonialAuthor}>— Sarah K., Medical Student</Text>
+          <Text style={styles.testimonialAuthor}>
+            — Sarah K., Medical Student
+          </Text>
         </View>
       </View>
     </ScrollView>
@@ -232,7 +270,11 @@ export const PremiumBenefitsModal: React.FC<PremiumBenefitsModalProps> = ({
   );
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+    >
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -247,7 +289,12 @@ export const PremiumBenefitsModal: React.FC<PremiumBenefitsModalProps> = ({
             style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
             onPress={() => setActiveTab('overview')}
           >
-            <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'overview' && styles.activeTabText,
+              ]}
+            >
               Overview
             </Text>
           </TouchableOpacity>
@@ -255,7 +302,12 @@ export const PremiumBenefitsModal: React.FC<PremiumBenefitsModalProps> = ({
             style={[styles.tab, activeTab === 'comparison' && styles.activeTab]}
             onPress={() => setActiveTab('comparison')}
           >
-            <Text style={[styles.tabText, activeTab === 'comparison' && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === 'comparison' && styles.activeTabText,
+              ]}
+            >
               Compare Plans
             </Text>
           </TouchableOpacity>
@@ -349,7 +401,8 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.gray[600],
     textAlign: 'center',
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
   },
   benefitsGrid: {
     gap: theme.spacing.md,
@@ -365,7 +418,7 @@ const styles = StyleSheet.create({
   },
   highlightCard: {
     borderColor: theme.colors.primary[300],
-    backgroundColor: theme.colors.primary[25],
+    backgroundColor: theme.colors.primary[50],
   },
   benefitHeader: {
     flexDirection: 'row',
@@ -394,7 +447,8 @@ const styles = StyleSheet.create({
   benefitDescription: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.gray[600],
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
   },
   comparisonContainer: {
     marginTop: theme.spacing.md,
@@ -463,7 +517,8 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.primary[700],
     fontStyle: 'italic',
-    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
+    lineHeight:
+      theme.typography.lineHeight.relaxed * theme.typography.fontSize.base,
     marginBottom: theme.spacing.sm,
   },
   testimonialAuthor: {
@@ -535,4 +590,4 @@ const styles = StyleSheet.create({
   upgradeButton: {
     backgroundColor: theme.colors.primary[600],
   },
-}); 
+});

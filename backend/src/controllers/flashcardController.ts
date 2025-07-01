@@ -4,6 +4,7 @@ import { OpenAIService } from '../services/openAIService';
 import { FlashcardService } from '../services/flashcardService';
 import { FlashcardGenerationOptions } from '../types/flashcard';
 import { createClient } from '@supabase/supabase-js';
+import { usageTrackingService } from '../services/usageTrackingService';
 
 export class FlashcardController {
   private flashcardService: FlashcardService;
@@ -13,7 +14,7 @@ export class FlashcardController {
     // Initialize OpenAI service with configuration
     const openAIService = new OpenAIService({
       apiKey: process.env.OPENAI_API_KEY!,
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       maxTokens: 2000,
       temperature: 0.7,
     });
@@ -76,10 +77,26 @@ export class FlashcardController {
         temperature: options?.temperature,
       };
 
+      // Check usage quota before generating flashcards
+      console.log(`🔍 Checking flashcard generation quota for user ${userId}`);
+      const quotaCheck = await usageTrackingService.canGenerateFlashcards(userId);
+      
+      if (!quotaCheck.allowed) {
+        console.log(`❌ Flashcard generation quota exceeded for user ${userId}:`, quotaCheck.quota);
+        res.status(429).json({
+          error: 'Quota exceeded',
+          message: quotaCheck.reason || 'Daily flashcard generation limit reached',
+          quota_info: quotaCheck.quota,
+          requires_upgrade: quotaCheck.quota?.plan_type === 'free',
+        });
+        return;
+      }
+
       console.log(
         `🃏 Generating flashcards from ${contentType} content for user ${userId}`
       );
       console.log(`📊 Options:`, flashcardOptions);
+      console.log(`📊 Current usage: ${quotaCheck.quota?.current_usage}/${quotaCheck.quota?.daily_limit}`);
 
       // Generate flashcards
       const result = await this.flashcardService.generateFlashcards(
@@ -103,6 +120,17 @@ export class FlashcardController {
         contentItemId
       );
 
+      // Record usage after successful generation and saving
+      console.log(`📊 Recording flashcard generation usage for user ${userId}`);
+      const usageResult = await usageTrackingService.incrementUsage(userId, 'flashcard_generation');
+      
+      if (!usageResult.success) {
+        console.warn(`⚠️ Failed to record flashcard generation usage: ${usageResult.error}`);
+        // Don't fail the request if usage tracking fails, just log it
+      } else {
+        console.log(`✅ Successfully recorded flashcard generation usage, new count: ${usageResult.new_count}`);
+      }
+
       res.json({
         success: true,
         flashcardSet: {
@@ -121,6 +149,10 @@ export class FlashcardController {
           createdAt: savedSet.created_at,
         },
         options: flashcardOptions,
+        usage_info: usageResult.success ? {
+          current_usage: usageResult.new_count,
+          quota_info: usageResult.quota_info
+        } : undefined,
       });
     } catch (error) {
       console.error('❌ Error generating flashcards:', error);

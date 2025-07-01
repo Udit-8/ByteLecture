@@ -17,7 +17,7 @@ import {
   useNavigation,
   Note,
 } from '../contexts/NavigationContext';
-import { ContentItem } from '../services/contentAPI';
+import { ContentItem, contentAPI } from '../services/contentAPI';
 import pdfAPI from '../services/pdfAPI';
 
 interface ImportScreenProps {
@@ -49,8 +49,49 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
         '✅ Content refreshed, attempting to find processed content...'
       );
 
-      // For now, create a content item with the available data
-      // In the future, we could fetch the specific content item by matching title/URL
+      // Try to find the real content item that was just created
+      const allContentResponse = await contentAPI.getContentItems({ limit: 50 });
+      
+      if (allContentResponse.success && allContentResponse.contentItems) {
+        // Look for recently created content that matches our processed data
+        const matchingItem = allContentResponse.contentItems.find(
+          (item: ContentItem) => {
+            // For YouTube videos, match by video ID or URL
+            if (contentData.contentType === 'youtube' && contentData.videoId) {
+              return item.youtubeVideoId === contentData.videoId || 
+                     item.youtubeUrl === contentData.url ||
+                     item.title.toLowerCase() === contentData.title.toLowerCase();
+            }
+            // For other content types, match by URL and title
+            return (contentData.url && item.fileUrl === contentData.url) || 
+                   item.title.toLowerCase() === contentData.title.toLowerCase();
+          }
+        );
+
+        if (matchingItem) {
+          console.log('✅ Found real content item:', matchingItem.id);
+          // Use the real content item instead of creating a temporary one
+          const note: Note = {
+            id: matchingItem.id,
+            title: matchingItem.title,
+            type: mapContentTypeToNoteType(matchingItem.contentType),
+            date: matchingItem.createdAt,
+            progress: 100,
+            content: {
+              contentItem: matchingItem,
+              processed: true,
+              summary: matchingItem.summary,
+            },
+          };
+
+          setNoteDetailMode(note);
+          return;
+        }
+      }
+
+      console.log('⚠️ Could not find real content item, using fallback approach');
+      
+      // Fallback: create a content item with the available data
       const contentItem: ContentItem = {
         id: `temp-${Date.now()}`, // Temporary ID until we get the real one from the API
         title: contentData.title,
@@ -168,6 +209,17 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
         await refreshContent();
         console.log('✅ Content refreshed after PDF processing');
 
+        let contentItemId: string | undefined = processingResult.contentItemId;
+
+        if (!contentItemId) {
+          try {
+            const recent = await contentAPI.getRecentItems();
+            if (recent.success && recent.contentItems && recent.contentItems.length > 0) {
+              contentItemId = recent.contentItems[0].id;
+            }
+          } catch {}
+        }
+
         Alert.alert(
           'PDF Processed Successfully!',
           'Your PDF has been processed and is ready for AI analysis.',
@@ -186,12 +238,24 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
                 setShowPDFUpload(false);
 
                 try {
-                  // Step 3: Find the actual content item that was created
-                  console.log('🔍 Looking for newly created content item...');
-                  await refreshContent(); // Refresh again to ensure we have the latest data
+                  if (contentItemId) {
+                    const contentResp = await contentAPI.getContentItem(contentItemId);
+                    if (contentResp.success && contentResp.contentItem) {
+                      const item = contentResp.contentItem;
+                      const note: Note = {
+                        id: item.id,
+                        title: item.title,
+                        type: 'PDF',
+                        date: item.createdAt,
+                        progress: 100,
+                        content: { contentItem: item, processed: true, summary: item.summary },
+                      };
+                      setNoteDetailMode(note);
+                      return;
+                    }
+                  }
 
-                  // For now, we'll still use temp content and let the SummaryScreen handle fetching the real content
-                  // The key is to ensure we pass a proper content identifier so it can find the real content
+                  // fallback as before
                   navigateToSummary({
                     title:
                       result.path?.split('/').pop()?.replace('.pdf', '') ||
@@ -291,6 +355,9 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
         },
       ]
     );
+
+    // Reset processing state so user can process another video
+    setIsProcessingVideo(false);
   };
 
   const handleVideoProcessingStart = (videoId: string) => {

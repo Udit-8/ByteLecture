@@ -113,7 +113,10 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
   React.useEffect(() => {
     const checkQuota = async () => {
       try {
-        const permissionResult = await permissionService.checkFeatureUsage('pdf_processing', 'pdf_upload');
+        const permissionResult = await permissionService.checkFeatureUsage(
+          'pdf_processing',
+          'pdf_upload'
+        );
         if (permissionResult.limit !== undefined) {
           setQuotaInfo({
             remaining: permissionResult.remaining,
@@ -166,16 +169,24 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
 
     try {
       // Check permissions before allowing file selection
-      const permissionResult = await permissionService.checkFeatureUsage('pdf_processing', 'pdf_upload');
-      
+      const permissionResult = await permissionService.checkFeatureUsage(
+        'pdf_processing',
+        'pdf_upload'
+      );
+
       if (!permissionResult.allowed) {
         setShowPremiumUpsell(true);
         return;
       }
 
       // Show remaining quota if not unlimited
-      if (permissionResult.remaining !== undefined && permissionResult.limit !== -1) {
-        console.log(`PDF uploads remaining today: ${permissionResult.remaining}`);
+      if (
+        permissionResult.remaining !== undefined &&
+        permissionResult.limit !== -1
+      ) {
+        console.log(
+          `PDF uploads remaining today: ${permissionResult.remaining}`
+        );
       }
 
       const result = await DocumentPicker.getDocumentAsync({
@@ -277,10 +288,13 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
 
           onUploadComplete?.(uploadResult);
           Alert.alert('Success', '✅ PDF uploaded successfully!');
-          
+
           // Refresh quota info after successful upload
           try {
-            const updatedPermission = await permissionService.checkFeatureUsage('pdf_processing', 'pdf_upload');
+            const updatedPermission = await permissionService.checkFeatureUsage(
+              'pdf_processing',
+              'pdf_upload'
+            );
             if (updatedPermission.limit !== undefined) {
               setQuotaInfo({
                 remaining: updatedPermission.remaining,
@@ -452,7 +466,8 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
               </Text>
               {quotaInfo.limit !== undefined && !quotaInfo.isPremium && (
                 <Text style={styles.quotaText}>
-                  {quotaInfo.remaining} of {quotaInfo.limit} uploads remaining today
+                  {quotaInfo.remaining} of {quotaInfo.limit} uploads remaining
+                  today
                 </Text>
               )}
               {quotaInfo.isPremium && (
@@ -567,7 +582,11 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
           navigation?.navigate('Subscription', { from: 'pdf-quota' });
         }}
         featureType="pdf-processing"
-        currentUsage={quotaInfo.limit && quotaInfo.remaining !== undefined ? (quotaInfo.limit - quotaInfo.remaining) : undefined}
+        currentUsage={
+          quotaInfo.limit && quotaInfo.remaining !== undefined
+            ? quotaInfo.limit - quotaInfo.remaining
+            : undefined
+        }
         limit={quotaInfo.limit}
       />
     </UploadErrorBoundary>

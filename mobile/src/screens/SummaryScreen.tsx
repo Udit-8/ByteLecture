@@ -49,18 +49,64 @@ export const SummaryScreen: React.FC = () => {
 
         try {
           // Get all content items and try to find one that matches this temporary one
-          const allContentResponse = await contentAPI.getContentItems();
+          const allContentResponse = await contentAPI.getContentItems({ limit: 100 });
 
           if (allContentResponse.success && allContentResponse.contentItems) {
             const matchingItem = allContentResponse.contentItems.find(
-              (item: ContentItem) =>
-                contentItem.fileUrl
-                  ?.toLowerCase()
-                  .includes(item.fileUrl?.toLowerCase()) ||
-                item.title
-                  .toLowerCase()
-                  .includes(contentItem.title.toLowerCase())
+              (item: ContentItem) => {
+                // For YouTube content, try multiple matching strategies
+                if (contentItem.contentType === 'youtube') {
+                  // Match by YouTube video ID (most reliable)
+                  if (contentItem.youtubeVideoId && item.youtubeVideoId) {
+                    return contentItem.youtubeVideoId === item.youtubeVideoId;
+                  }
+                  
+                  // Match by YouTube URL 
+                  if (contentItem.youtubeUrl && item.youtubeUrl) {
+                    return contentItem.youtubeUrl === item.youtubeUrl;
+                  }
+                  
+                  // Extract video ID from URLs and compare
+                  const tempVideoId = extractVideoIdFromUrl(contentItem.youtubeUrl || contentItem.fileUrl || '');
+                  const realVideoId = extractVideoIdFromUrl(item.youtubeUrl || '');
+                  if (tempVideoId && realVideoId && tempVideoId === realVideoId) {
+                    return true;
+                  }
+                }
+                
+                // For all content types, try exact title match (case insensitive)
+                if (contentItem.title && item.title) {
+                  const normalizeTitle = (title: string) => title.toLowerCase().trim().replace(/[^\w\s]/g, '');
+                  if (normalizeTitle(contentItem.title) === normalizeTitle(item.title)) {
+                    return true;
+                  }
+                }
+                
+                // For file-based content, match by file URL
+                if (contentItem.fileUrl && item.fileUrl) {
+                  // Try exact match first
+                  if (contentItem.fileUrl === item.fileUrl) {
+                    return true;
+                  }
+                  
+                  // Try partial matches for different URL formats
+                  const tempPath = contentItem.fileUrl.split('/').pop();
+                  const realPath = item.fileUrl.split('/').pop();
+                  if (tempPath && realPath && tempPath === realPath) {
+                    return true;
+                  }
+                }
+                
+                return false;
+              }
             );
+            
+            // Helper function to extract video ID from YouTube URL
+            function extractVideoIdFromUrl(url: string): string | null {
+              if (!url) return null;
+              const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/);
+              return match ? match[1] : null;
+            }
 
             if (matchingItem) {
               console.log(
@@ -217,40 +263,7 @@ export const SummaryScreen: React.FC = () => {
               }}
             />
 
-            <Card style={styles.sourceCard}>
-              <Text style={styles.sourceTitle}>Source Material</Text>
-              <View style={styles.sourceInfo}>
-                <View style={styles.sourceIcon}>
-                  <Ionicons
-                    name={
-                      selectedNote.type === 'PDF'
-                        ? 'document-text'
-                        : selectedNote.type === 'YouTube'
-                          ? 'logo-youtube'
-                          : 'headset'
-                    }
-                    size={20}
-                    color={theme.colors.primary[600]}
-                  />
-                </View>
-                <View style={styles.sourceDetails}>
-                  <Text style={styles.sourceName}>{selectedNote.title}</Text>
-                  <Text style={styles.sourceType}>
-                    {selectedNote.type} • {selectedNote.progress}% complete
-                  </Text>
-                  {contentItem.description && (
-                    <Text style={styles.sourceDescription} numberOfLines={2}>
-                      {contentItem.description}
-                    </Text>
-                  )}
-                  {fullContent && (
-                    <Text style={styles.contentLengthInfo}>
-                      Content: {fullContent.length.toLocaleString()} characters
-                    </Text>
-                  )}
-                </View>
-              </View>
-            </Card>
+            {/* Source material section removed for cleaner interface */}
           </View>
         ) : (
           <Card style={styles.placeholderCard}>
@@ -392,54 +405,14 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
   },
-  sourceCard: {
-    backgroundColor: theme.colors.gray[100],
-  },
-  sourceTitle: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.gray[900],
-    marginBottom: theme.spacing.md,
-  },
-  sourceInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-  },
-  sourceIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: theme.borderRadius.lg,
-    backgroundColor: theme.colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sourceDetails: {
-    flex: 1,
-  },
-  sourceName: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.gray[900],
-    marginBottom: theme.spacing.xs,
-  },
-  sourceType: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.gray[600],
-  },
+  // Source card styles removed - no longer needed
   summaryContainer: {
     flex: 1,
   },
   aiSummaryComponent: {
     marginBottom: theme.spacing.lg,
   },
-  sourceDescription: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.gray[600],
-    marginTop: theme.spacing.xs,
-    lineHeight:
-      theme.typography.lineHeight.relaxed * theme.typography.fontSize.sm,
-  },
+  // Removed unused source description styles
   placeholderCard: {
     marginTop: theme.spacing.xl,
   },
@@ -495,9 +468,5 @@ const styles = StyleSheet.create({
     color: theme.colors.error[600],
     marginTop: theme.spacing.xs,
   },
-  contentLengthInfo: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.gray[500],
-    marginTop: theme.spacing.xs,
-  },
+  // Removed contentLengthInfo style - no longer used
 });

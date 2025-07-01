@@ -98,6 +98,7 @@ export const createRateLimit = (options: RateLimitOptions) => {
 
       if (count > maxRequests) {
         res.status(429).json({
+          success: false,
           error: 'Rate limit exceeded',
           message,
           retryAfter: Math.ceil((resetTime - Date.now()) / 1000),

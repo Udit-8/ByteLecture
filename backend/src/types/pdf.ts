@@ -6,6 +6,7 @@ export interface PDFProcessingResult {
   fileSize?: number;
   processingTime?: number;
   metadata?: PDFMetadata;
+  smartTitle?: string; // AI-generated or enhanced title
   error?: string;
 }
 

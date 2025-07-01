@@ -117,10 +117,11 @@ export class PDFController {
         // Create content item for Recent Notes integration
         try {
           const contentService = new ContentService();
-          const fileName = filePath.split('/').pop() || 'Document';
-          const title = fileName.replace('.pdf', '').replace(/[-_]/g, ' ');
+          
+          // Use the AI-generated smart title from the processing result
+          const title = result.smartTitle || result.metadata?.title || `PDF Document ${new Date().toLocaleDateString()}`;
 
-          await contentService.createContentItem({
+          const newContentItem = await contentService.createContentItem({
             user_id: userId,
             title: title,
             description: `PDF document with ${result.pageCount || 0} pages`,
@@ -130,7 +131,9 @@ export class PDFController {
             processed: true,
             summary: result.extractedText?.substring(0, 500) + '...', // First 500 chars as preview
           });
-          console.log(`Created content item for PDF: ${filePath}`);
+          console.log(`Created content item for PDF: ${filePath} with AI-generated title: ${title} (id: ${newContentItem.id})`);
+          // Attach the content item ID to the result so the client doesn't need a temp-uuid
+          (result as any).contentItemId = newContentItem.id;
         } catch (contentError) {
           console.error('Error creating content item:', contentError);
           // Don't fail the whole operation for content item creation errors
@@ -144,6 +147,7 @@ export class PDFController {
             fileSize: result.fileSize,
             processingTime: result.processingTime,
             metadata: result.metadata,
+            contentItemId: (result as any).contentItemId || null,
           },
           message: 'PDF processed successfully',
         });

@@ -480,40 +480,56 @@ export class ContentController {
         }
 
         case 'youtube': {
-          // Get YouTube processed content
-          const { data: youtubeData, error: youtubeError } = await this.supabase
-            .from('processed_videos')
-            .select('transcript, video_metadata')
-            .eq('video_id', contentItem.youtube_video_id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+          // For YouTube videos, use the full transcript stored in content_items.summary
+          // This contains the complete transcript from our enhanced YouTube processing
+          fullContent = contentItem.summary || '';
+          
+          // Try to get additional metadata from processed_videos table if it exists (optional)
+          try {
+            const { data: youtubeData, error: youtubeError } = await this.supabase
+              .from('processed_videos')
+              .select('video_metadata')
+              .eq('video_id', contentItem.youtube_video_id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
 
-          if (!youtubeError && youtubeData) {
-            fullContent = youtubeData.transcript || '';
-            additionalData = {
-              metadata: youtubeData.video_metadata,
-            };
+            if (!youtubeError && youtubeData) {
+              additionalData = {
+                metadata: youtubeData.video_metadata,
+              };
+            }
+          } catch (error) {
+            // processed_videos table might not have metadata - that's fine, we have the content in summary
+            console.log('No additional YouTube metadata available (this is normal)');
           }
           break;
         }
 
         case 'lecture_recording': {
-          // Get audio transcription content
-          const { data: audioData, error: audioError } = await this.supabase
-            .from('transcriptions')
-            .select('transcript, confidence, processing_metadata')
-            .eq('file_url', contentItem.file_url)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+          // For audio recordings, use the full transcript stored in content_items.summary
+          // This contains the complete transcription from speech-to-text processing
+          fullContent = contentItem.summary || '';
+          
+          // Try to get additional metadata from transcriptions table if it exists (optional)
+          try {
+            const { data: audioData, error: audioError } = await this.supabase
+              .from('transcriptions')
+              .select('confidence, processing_metadata')
+              .eq('file_url', contentItem.file_url)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
 
-          if (!audioError && audioData) {
-            fullContent = audioData.transcript || '';
-            additionalData = {
-              confidence: audioData.confidence,
-              metadata: audioData.processing_metadata,
-            };
+            if (!audioError && audioData) {
+              additionalData = {
+                confidence: audioData.confidence,
+                metadata: audioData.processing_metadata,
+              };
+            }
+          } catch (error) {
+            // Transcriptions table might not exist - that's fine, we have the content in summary
+            console.log('No additional transcription metadata available (this is normal)');
           }
           break;
         }

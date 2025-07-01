@@ -6,7 +6,13 @@ import { rateLimitMiddleware } from '../middleware/rateLimit';
 const router = express.Router();
 const summaryController = new SummaryController();
 
-// Apply authentication middleware to all routes
+/**
+ * GET /api/summaries/health
+ * Health check for summarization service (public endpoint)
+ */
+router.get('/health', summaryController.healthCheck.bind(summaryController));
+
+// Apply authentication middleware to all routes except health
 router.use(authenticateToken);
 
 /**
@@ -92,10 +98,6 @@ router.post(
   summaryController.cleanupCache.bind(summaryController)
 );
 
-/**
- * GET /api/summaries/health
- * Health check for summarization service
- */
-router.get('/health', summaryController.healthCheck.bind(summaryController));
+
 
 export default router;

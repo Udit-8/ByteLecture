@@ -13,7 +13,6 @@ import { RegisterScreen } from '../screens/RegisterScreen';
 import { EmailVerificationScreen } from '../screens/EmailVerificationScreen';
 import { AITutorScreen } from '../screens/AITutorScreen';
 import { AudioRecordingScreen } from '../screens/AudioRecordingScreen';
-import { AuthDebugScreen } from '../screens/AuthDebugScreen';
 import { QuizPerformanceScreen } from '../screens/QuizPerformanceScreen';
 import { SyncSettingsScreen } from '../screens/SyncSettingsScreen';
 import { UsageOverviewScreen } from '../screens/UsageOverviewScreen';
@@ -29,9 +28,9 @@ export const AppNavigator: React.FC = () => {
   useEffect(() => {
     const deepLinkHandler = DeepLinkHandler.getInstance();
     deepLinkHandler.setNavigationRef(navigationRef);
-    
+
     const cleanup = deepLinkHandler.initialize();
-    
+
     return cleanup;
   }, []);
 
@@ -68,11 +67,6 @@ export const AppNavigator: React.FC = () => {
                 name="Subscription"
                 component={SubscriptionScreen}
               />
-              <Stack.Screen 
-                name="AuthDebug" 
-                component={AuthDebugScreen} 
-                options={{ headerShown: true, title: 'Auth Debug' }} 
-              />
             </>
           ) : (
             // User is not signed in
@@ -84,15 +78,10 @@ export const AppNavigator: React.FC = () => {
                 name="EmailVerification"
                 component={EmailVerificationScreen}
               />
-              <Stack.Screen 
-                name="AuthDebug" 
-                component={AuthDebugScreen} 
-                options={{ headerShown: true, title: 'Auth Debug' }} 
-              />
             </>
           )}
         </Stack.Navigator>
       </NavigationProvider>
     </NavigationContainer>
   );
-}; 
+};

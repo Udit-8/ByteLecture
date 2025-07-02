@@ -49,4 +49,8 @@ mobile/android/
 coverage/
 
 # Upload directories
-uploads/ 
+uploads/
+
+# Backend runtime temp files
+backend/temp/
+backend/temp/** 

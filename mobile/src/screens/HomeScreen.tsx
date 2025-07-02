@@ -16,9 +16,9 @@ import {
   PremiumBenefitsModal,
   PremiumCornerBadge,
 } from '../components';
-import SyncStatusIndicator from '../components/SyncStatusIndicator';
-import { theme } from '../constants/theme';
 import { useAuth } from '../contexts/AuthContextFallback';
+import { useContent } from '../hooks/useContent';
+import { theme } from '../constants/theme';
 
 interface HomeScreenProps {
   navigation: any;
@@ -26,7 +26,12 @@ interface HomeScreenProps {
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, signOut } = useAuth();
+  const { contentItems, fetchRecentItems } = useContent();
   const [showPremiumBenefits, setShowPremiumBenefits] = useState(false);
+
+  React.useEffect(() => {
+    fetchRecentItems();
+  }, [fetchRecentItems]);
 
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -60,11 +65,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         />
       ),
       color: theme.colors.primary[100],
-      onPress: () =>
-        Alert.alert(
-          'Coming Soon',
-          'AI Summaries will be available when you import content!'
-        ),
+      onPress: () => {},
     },
     {
       id: 'flashcards',
@@ -74,11 +75,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <Ionicons name="library" size={24} color={theme.colors.success[600]} />
       ),
       color: theme.colors.success[100],
-      onPress: () =>
-        Alert.alert(
-          'Coming Soon',
-          'Smart Flashcards will be available when you import content!'
-        ),
+      onPress: () => {},
     },
     {
       id: 'quiz',
@@ -92,11 +89,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         />
       ),
       color: theme.colors.warning[100],
-      onPress: () =>
-        Alert.alert(
-          'Coming Soon',
-          'Practice Quizzes will be available when you import content!'
-        ),
+      onPress: () => {},
     },
     {
       id: 'tutor',
@@ -110,26 +103,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         />
       ),
       color: theme.colors.error[100],
-      onPress: () =>
-        Alert.alert(
-          'Coming Soon',
-          'AI Tutor will be available when you import content!'
-        ),
-    },
-  ];
-
-  const recentContent = [
-    {
-      id: '1',
-      title: 'Quantum Physics Basics',
-      source: 'YouTube',
-      progress: 75,
-    },
-    {
-      id: '2',
-      title: 'Introduction to Psychology',
-      source: 'PDF',
-      progress: 30,
+      onPress: () => {},
     },
   ];
 
@@ -159,14 +133,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         }}
       />
 
-      {/* Sync Status Indicator */}
-      <View style={styles.syncStatusContainer}>
-        <SyncStatusIndicator
-          showDetails={true}
-          onPress={() => navigation.navigate('SyncSettings')}
-        />
-      </View>
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.welcomeCard}>
           <Text style={styles.welcomeTitle}>Welcome back!</Text>
@@ -176,12 +142,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <Text style={styles.userEmail}>{user?.email}</Text>
           <Button
             title="Import New Content"
-            onPress={() =>
-              Alert.alert(
-                'Coming Soon',
-                'Content import will be available soon!'
-              )
-            }
+            onPress={() => navigation.navigate('Import')}
             variant="secondary"
             style={styles.importButton}
           />
@@ -218,45 +179,54 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <Text style={styles.sectionTitle}>Recent Content</Text>
 
         <View style={styles.recentContent}>
-          {recentContent.map((content) => (
-            <Card key={content.id} style={styles.contentCard}>
-              <View style={styles.contentHeader}>
-                <Text style={styles.contentTitle} numberOfLines={2}>
-                  {content.title}
-                </Text>
-                <View style={styles.sourceTag}>
-                  <Ionicons
-                    name={
-                      content.source === 'YouTube'
-                        ? 'logo-youtube'
-                        : 'document-text'
-                    }
-                    size={12}
-                    color={
-                      content.source === 'YouTube'
-                        ? theme.colors.error[600]
-                        : theme.colors.primary[600]
-                    }
-                  />
-                  <Text style={styles.sourceText}>{content.source}</Text>
+          {contentItems.slice(0, 3).map((contentItem) => {
+            const sourceLabel =
+              contentItem.contentType === 'youtube'
+                ? 'YouTube'
+                : contentItem.contentType === 'pdf'
+                ? 'PDF'
+                : 'Audio';
+            const progressPercent = contentItem.processed ? 100 : 0;
+            return (
+              <Card key={contentItem.id} style={styles.contentCard}>
+                <View style={styles.contentHeader}>
+                  <Text style={styles.contentTitle} numberOfLines={2}>
+                    {contentItem.title}
+                  </Text>
+                  <View style={styles.sourceTag}>
+                    <Ionicons
+                      name={
+                        sourceLabel === 'YouTube'
+                          ? 'logo-youtube'
+                          : 'document-text'
+                      }
+                      size={12}
+                      color={
+                        sourceLabel === 'YouTube'
+                          ? theme.colors.error[600]
+                          : theme.colors.primary[600]
+                      }
+                    />
+                    <Text style={styles.sourceText}>{sourceLabel}</Text>
+                  </View>
                 </View>
-              </View>
 
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBar}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { width: `${content.progress}%` },
-                    ]}
-                  />
+                <View style={styles.progressContainer}>
+                  <View style={styles.progressBar}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { width: `${progressPercent}%` },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.progressText}>
+                    {progressPercent}% complete
+                  </Text>
                 </View>
-                <Text style={styles.progressText}>
-                  {content.progress}% complete
-                </Text>
-              </View>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </View>
 
         <Card style={styles.statsCard}>
@@ -309,10 +279,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.gray[50],
-  },
-  syncStatusContainer: {
-    paddingHorizontal: theme.spacing.base,
-    paddingBottom: theme.spacing.sm,
   },
   content: {
     flex: 1,

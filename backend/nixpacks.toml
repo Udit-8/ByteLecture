@@ -1,5 +1,5 @@
 # Nixpacks configuration for Railway deployment
-# This ensures yt-dlp, ffmpeg, and Python are available
+# Using shell script to properly handle Python virtual environment
 
 [providers]
 nodejs = "18"
@@ -10,9 +10,7 @@ aptPkgs = ["ffmpeg", "python3", "python3-pip", "python3-venv", "curl"]
 [phases.install]
 cmds = [
   "npm ci",
-  "python3 -m venv /opt/venv",
-  ". /opt/venv/bin/activate && pip install yt-dlp",
-  "ln -sf /opt/venv/bin/yt-dlp /usr/local/bin/yt-dlp"
+  "bash -c 'python3 -m venv /opt/yt-dlp-venv && source /opt/yt-dlp-venv/bin/activate && pip install yt-dlp && ln -sf /opt/yt-dlp-venv/bin/yt-dlp /usr/local/bin/yt-dlp'"
 ]
 
 [phases.build]

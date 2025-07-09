@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -19,6 +20,8 @@ import {
 import { useAuth } from '../contexts/AuthContextFallback';
 import { useContent } from '../hooks/useContent';
 import { theme } from '../constants/theme';
+import { useNavigation as useNavCtx, Note } from '../contexts/NavigationContext';
+import { permissionService } from '../services/permissionService';
 
 interface HomeScreenProps {
   navigation: any;
@@ -27,11 +30,24 @@ interface HomeScreenProps {
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { user, signOut } = useAuth();
   const { contentItems, fetchRecentItems } = useContent();
+  const { setNoteDetailMode } = useNavCtx();
   const [showPremiumBenefits, setShowPremiumBenefits] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
 
   React.useEffect(() => {
     fetchRecentItems();
   }, [fetchRecentItems]);
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const perms = await permissionService.getUserPermissions();
+        setIsPremium(perms.plan_type === 'premium' || perms.plan_type === 'enterprise');
+      } catch (e) {
+        console.warn('Failed to fetch user plan', e);
+      }
+    })();
+  }, []);
 
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -107,6 +123,33 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     },
   ];
 
+  const mapContentTypeToNoteType = (
+    type: string
+  ): Note['type'] => {
+    switch (type) {
+      case 'pdf':
+        return 'PDF';
+      case 'youtube':
+        return 'YouTube';
+      case 'lecture_recording':
+        return 'Audio';
+      default:
+        return 'Text';
+    }
+  };
+
+  const handleRecentPress = (item: any) => {
+    const note: Note = {
+      id: item.id,
+      title: item.title,
+      type: mapContentTypeToNoteType(item.contentType),
+      date: item.createdAt,
+      progress: item.processed ? 100 : 0,
+      content: { contentItem: item, processed: item.processed, summary: item.summary },
+    };
+    setNoteDetailMode(note);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Header
@@ -121,16 +164,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           ),
           onPress: handleLogout,
         }}
-        leftAction={{
-          icon: (
-            <Ionicons
-              name="diamond-outline"
-              size={24}
-              color={theme.colors.primary[600]}
-            />
-          ),
-          onPress: () => navigation.navigate('Subscription', { from: 'home' }),
-        }}
+        leftAction={
+          isPremium
+            ? undefined
+            : {
+                icon: (
+                  <Ionicons
+                    name="diamond-outline"
+                    size={24}
+                    color={theme.colors.primary[600]}
+                  />
+                ),
+                onPress: () => navigation.navigate('Subscription', { from: 'home' }),
+              }
+        }
       />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -164,14 +211,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 color={feature.color}
                 onPress={feature.onPress}
               />
-              {/* Add premium indicator to premium features */}
-              {(feature.id === 'flashcards' || feature.id === 'tutor') && (
-                <PremiumCornerBadge
-                  size="sm"
-                  text="Pro"
-                  style={styles.featureCornerBadge}
-                />
-              )}
+              {/* Premium badge removed */}
             </View>
           ))}
         </ScrollView>
@@ -188,76 +228,48 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 : 'Audio';
             const progressPercent = contentItem.processed ? 100 : 0;
             return (
-              <Card key={contentItem.id} style={styles.contentCard}>
-                <View style={styles.contentHeader}>
-                  <Text style={styles.contentTitle} numberOfLines={2}>
-                    {contentItem.title}
-                  </Text>
-                  <View style={styles.sourceTag}>
-                    <Ionicons
-                      name={
-                        sourceLabel === 'YouTube'
-                          ? 'logo-youtube'
-                          : 'document-text'
-                      }
-                      size={12}
-                      color={
-                        sourceLabel === 'YouTube'
-                          ? theme.colors.error[600]
-                          : theme.colors.primary[600]
-                      }
-                    />
-                    <Text style={styles.sourceText}>{sourceLabel}</Text>
+              <TouchableOpacity key={contentItem.id} activeOpacity={0.8} onPress={() => handleRecentPress(contentItem)}>
+                <Card style={styles.contentCard}>
+                  <View style={styles.contentHeader}>
+                    <Text style={styles.contentTitle} numberOfLines={2}>
+                      {contentItem.title}
+                    </Text>
+                    <View style={styles.sourceTag}>
+                      <Ionicons
+                        name={
+                          sourceLabel === 'YouTube'
+                            ? 'logo-youtube'
+                            : 'document-text'
+                        }
+                        size={12}
+                        color={
+                          sourceLabel === 'YouTube'
+                            ? theme.colors.error[600]
+                            : theme.colors.primary[600]
+                        }
+                      />
+                      <Text style={styles.sourceText}>{sourceLabel}</Text>
+                    </View>
                   </View>
-                </View>
 
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressBar}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { width: `${progressPercent}%` },
-                      ]}
-                    />
+                  <View style={styles.progressContainer}>
+                    <View style={styles.progressBar}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          { width: `${progressPercent}%` },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.progressText}>
+                      {progressPercent}% complete
+                    </Text>
                   </View>
-                  <Text style={styles.progressText}>
-                    {progressPercent}% complete
-                  </Text>
-                </View>
-              </Card>
+                </Card>
+              </TouchableOpacity>
             );
           })}
         </View>
-
-        <Card style={styles.statsCard}>
-          <Text style={styles.statsTitle}>Your Progress</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>2</Text>
-              <Text style={styles.statLabel}>Content Items</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>0</Text>
-              <Text style={styles.statLabel}>Flashcards</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>0</Text>
-              <Text style={styles.statLabel}>Quizzes</Text>
-            </View>
-          </View>
-          <Button
-            title="View Usage Details"
-            onPress={() => navigation.navigate('UsageOverview')}
-            variant="secondary"
-            style={styles.usageButton}
-          />
-          <Button
-            title="See Premium Benefits"
-            onPress={() => setShowPremiumBenefits(true)}
-            variant="outline"
-            style={styles.premiumButton}
-          />
-        </Card>
 
         {/* Premium Benefits Showcase */}
         <PremiumBenefitsModal
@@ -322,12 +334,6 @@ const styles = StyleSheet.create({
   featureCardContainer: {
     position: 'relative',
   },
-  featureCornerBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    zIndex: 1,
-  },
   recentContent: {
     gap: theme.spacing.md,
     marginBottom: theme.spacing.lg,
@@ -383,41 +389,5 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.xs,
     color: theme.colors.gray[500],
     fontWeight: theme.typography.fontWeight.medium,
-  },
-  statsCard: {
-    padding: theme.spacing.lg,
-  },
-  statsTitle: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: theme.colors.gray[900],
-    marginBottom: theme.spacing.base,
-    textAlign: 'center',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: theme.typography.fontSize['2xl'],
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.primary[600],
-    marginBottom: theme.spacing.xs,
-  },
-  statLabel: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.gray[600],
-    fontWeight: theme.typography.fontWeight.medium,
-  },
-  usageButton: {
-    backgroundColor: theme.colors.primary[600],
-    marginTop: theme.spacing.base,
-  },
-  premiumButton: {
-    borderColor: theme.colors.warning[500],
-    marginTop: theme.spacing.sm,
   },
 });

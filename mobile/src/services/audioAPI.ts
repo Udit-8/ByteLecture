@@ -1,5 +1,8 @@
 import { supabase } from '../config/supabase';
 import { QuotaInfo } from './usageService';
+import { getApiBaseUrl } from '../utils/networkConfig';
+
+const API_BASE_URL = getApiBaseUrl();
 
 export interface TranscriptionOptions {
   provider?: 'openai' | 'google';
@@ -39,12 +42,7 @@ class AudioAPI {
   private baseUrl: string;
 
   constructor() {
-    // Get the backend URL from environment or use default
-    // Strip /api from EXPO_PUBLIC_API_URL if present, since we add it in routes
-    const apiUrl =
-      process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
-    this.baseUrl = apiUrl.replace('/api', '');
-
+    this.baseUrl = API_BASE_URL;
     console.log('🔧 AudioAPI initialized with baseUrl:', this.baseUrl);
   }
 

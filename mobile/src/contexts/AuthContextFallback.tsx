@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../config/supabase';
+import { getApiBaseUrl, fetchWithTimeout, testApiConnectivity } from '../utils/networkConfig';
 
 interface User {
   id: string;
@@ -40,8 +41,7 @@ export const useAuth = () => {
   return context;
 };
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = getApiBaseUrl();
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -58,6 +58,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     checkStoredAuth();
+
+    // Test API connectivity on startup
+    testApiConnectivity().then(result => {
+      if (!result.success) {
+        console.warn('⚠️ API connectivity test failed:', result.error);
+      }
+    });
 
     // Listen for Supabase auth state changes
     console.log('🔄 Setting up auth state listener...');
@@ -304,8 +311,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       console.log('🔐 Attempting login for:', email);
+      console.log('🔗 API URL:', API_BASE_URL);
 
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -314,7 +322,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           email,
           password,
         }),
-      });
+      }, 15000, 2); // 15 second timeout, 2 retries
 
       const data = await response.json();
       console.log('🔐 Backend login response:', {
@@ -359,10 +367,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return {};
     } catch (error) {
       console.error('🔐 Login error:', error);
-      return {
-        error:
-          error instanceof Error ? error.message : 'Network error occurred',
-      };
+      
+      let errorMessage = 'Network error occurred';
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorMessage = 'Request timed out. Please check your internet connection and try again.';
+        } else if (error.message.includes('Network request failed')) {
+          errorMessage = 'Cannot connect to server. Please ensure the backend is running and try again.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      return { error: errorMessage };
     } finally {
       setLoading(false);
     }

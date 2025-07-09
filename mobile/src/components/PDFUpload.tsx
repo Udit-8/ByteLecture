@@ -464,17 +464,6 @@ export const PDFUpload: React.FC<PDFUploadProps> = ({
               >
                 Maximum file size: {maxFileSize}MB
               </Text>
-              {quotaInfo.limit !== undefined && !quotaInfo.isPremium && (
-                <Text style={styles.quotaText}>
-                  {quotaInfo.remaining} of {quotaInfo.limit} uploads remaining
-                  today
-                </Text>
-              )}
-              {quotaInfo.isPremium && (
-                <Text style={styles.quotaPremiumText}>
-                  ✨ Unlimited uploads
-                </Text>
-              )}
             </View>
           </TouchableOpacity>
         ) : (
@@ -764,17 +753,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: theme.borderRadius.lg,
-  },
-  quotaText: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.gray[600],
-    textAlign: 'center',
-    marginTop: theme.spacing.xs,
-  },
-  quotaPremiumText: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.primary[600],
-    textAlign: 'center',
-    marginTop: theme.spacing.xs,
   },
 });

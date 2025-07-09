@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getApiBaseUrl } from '../utils/networkConfig';
 
 // Define types for content items
 export interface ContentItem {
@@ -62,14 +63,13 @@ class ContentAPI {
   private baseURL: string;
 
   constructor() {
-    // Get the backend URL from environment or use default
-    // Strip /api from EXPO_PUBLIC_API_URL if present, since we add it in routes
-    const apiUrl =
-      process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
-    const baseUrl = apiUrl.replace('/api', '');
-    this.baseURL = `${baseUrl}/api/content`;
+    // Use the shared network utility so simulator/device differences are handled consistently
+    const apiUrl = getApiBaseUrl(); // e.g. http://localhost:3000/api
 
-    console.log('🔧 ContentAPI initialized with baseUrl:', baseUrl);
+    // apiUrl already contains /api – append the content path directly
+    this.baseURL = `${apiUrl}/content`;
+
+    console.log('🔧 ContentAPI initialized with apiUrl:', apiUrl);
     console.log('🔧 ContentAPI full endpoint base:', this.baseURL);
   }
 

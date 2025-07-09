@@ -1,7 +1,8 @@
 import { supabase } from '../config/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getApiBaseUrl } from '../utils/networkConfig';
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = getApiBaseUrl();
 
 export interface PDFProcessingOptions {
   extractText?: boolean;

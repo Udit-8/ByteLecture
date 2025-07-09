@@ -1,5 +1,7 @@
 import { paymentService } from './paymentService';
 import { usageService } from './usageService';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 export type FeatureType =
   | 'pdf_processing'
@@ -342,11 +344,15 @@ class PermissionService {
     resourceType?: string
   ): Promise<PermissionResult> {
     try {
+      console.log(`🔍 Checking feature usage for: ${feature}`);
       const permissions = await this.getUserPermissions();
+      console.log(`👤 User permissions:`, permissions);
       const featureLimits = permissions.features[feature];
+      console.log(`📋 Feature limits for ${feature}:`, featureLimits);
 
       // Check if feature is enabled
       if (!featureLimits.feature_enabled) {
+        console.log(`❌ Feature ${feature} is not enabled for plan: ${permissions.plan_type}`);
         return {
           allowed: false,
           reason: `${feature.replace('_', ' ')} is not available for ${permissions.plan_type} users`,
@@ -423,14 +429,39 @@ class PermissionService {
     quota?: any;
   }> {
     try {
+      console.log(`🚀 Starting backend quota check for: ${feature}`);
+      
+      // Skip backend quota check for iOS simulator in development
+      const isDevice = Constants.isDevice;
+      const isSimulator = !isDevice && Platform.OS === 'ios';
+      const isDevelopment = __DEV__;
+      
+      if (isSimulator && isDevelopment) {
+        console.log(`🚀 iOS simulator detected in dev mode - skipping backend quota check for ${feature}`);
+        return {
+          allowed: true,
+          quota: {
+            current_usage: 0,
+            daily_limit: 10,
+            remaining: 10,
+            allowed: true,
+          },
+        };
+      }
+      
       // Get current user from Supabase auth
       const { supabase } = await import('../config/supabase');
+      console.log(`🔗 Supabase imported successfully`);
+      
       const {
         data: { user },
         error: authError,
       } = await supabase.auth.getUser();
+      
+      console.log(`👤 Got user from auth:`, user ? 'Present' : 'Missing', authError ? `Error: ${authError.message}` : 'No error');
 
       if (authError || !user) {
+        console.log(`❌ Auth failed:`, authError?.message);
         return {
           allowed: false,
           reason: 'Authentication required to check quota',
@@ -452,13 +483,21 @@ class PermissionService {
       };
 
       const resourceType = resourceTypeMap[feature] || feature;
-      console.log(`🔄 Calling backend check_user_quota for: ${resourceType}`);
+      console.log(`🔄 About to call check_user_quota RPC for: ${resourceType} (user_id: ${user.id})`);
 
-      // Call the backend function to check quota for specific resource type
-      const { data, error } = await supabase.rpc('check_user_quota', {
+      // Add timeout to the RPC call
+      const rpcPromise = supabase.rpc('check_user_quota', {
         p_user_id: user.id,
         p_resource_type: resourceType,
       });
+
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('RPC timeout after 10 seconds')), 10000);
+      });
+
+      console.log(`⏱️ Starting RPC call with 10s timeout...`);
+      const { data, error } = await Promise.race([rpcPromise, timeoutPromise]) as any;
+      console.log(`✅ RPC call completed:`, { hasData: !!data, hasError: !!error });
 
       if (error) {
         console.error(`❌ Backend quota check error for ${feature}:`, error);
@@ -478,6 +517,28 @@ class PermissionService {
 
       return { allowed: true, quota };
     } catch (error) {
+      console.log(`💥 Exception in checkFeatureUsageWithBackend:`, error);
+      
+      // Network fallback: if Supabase RPC fails (e.g., offline), assume allowed but unknown usage
+      if (
+        error instanceof Error &&
+        (error.message.includes('Network request failed') ||
+          error.message.includes('Failed to fetch') ||
+          error.message.includes('RPC timeout'))
+      ) {
+        console.warn(
+          `⚠️ Network/timeout error while checking quota for ${feature}. Falling back to local limits.`
+        );
+        return {
+          allowed: true,
+          quota: {
+            current_usage: 0,
+            daily_limit: -1,
+            remaining: -1,
+            allowed: true,
+          },
+        };
+      }
       console.error(`Error checking ${feature} usage with backend:`, error);
       return {
         allowed: false,

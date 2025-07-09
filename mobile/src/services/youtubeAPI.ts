@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getApiBaseUrl } from '../utils/networkConfig';
 
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = getApiBaseUrl();
 
 export interface YouTubeVideoInfo {
   videoId: string;
@@ -79,6 +79,7 @@ class YouTubeAPI {
     try {
       const { getAuthToken } = await import('./authHelper');
       const token = await getAuthToken();
+      console.log(`🔐 Auth token for ${endpoint}:`, token ? 'Present' : 'Missing');
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -86,6 +87,8 @@ class YouTubeAPI {
 
       if (token) {
         headers.Authorization = `Bearer ${token}`;
+      } else {
+        console.warn('⚠️ No auth token available for API request');
       }
 
       // Set timeout based on operation type

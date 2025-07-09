@@ -192,20 +192,35 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
   };
 
   const handleProcess = useCallback(async () => {
+    console.log('🎬 Process button clicked!');
+    
     const videoId = handleValidation();
-    if (!videoId || !inputValue.trim()) return;
+    if (!videoId || !inputValue.trim()) {
+      console.log('❌ Validation failed - videoId:', videoId, 'inputValue:', inputValue);
+      return;
+    }
+
+    console.log('✅ Validation passed - videoId:', videoId);
 
     // Check permissions before processing
     try {
+      console.log('🔐 Checking permissions...');
       const permissionResult =
         await permissionService.checkFeatureUsage('youtube_processing');
 
+      console.log('📋 Permission result:', permissionResult);
+
       if (!permissionResult.allowed) {
+        console.log('❌ Permission denied - showing premium upsell');
         setShowPremiumUpsell(true);
         return;
       }
+      
+      console.log('✅ Permission granted - proceeding with processing');
     } catch (error) {
-      console.error('Error checking permissions:', error);
+      console.error('❌ Error checking permissions:', error);
+      Alert.alert('Error', 'Failed to check permissions. Please try again.');
+      return;
     }
 
     setIsProcessing(true);
@@ -217,11 +232,16 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
 
       // Step 1: Validate video
       updateProgress(0.1, 'Validating YouTube video...');
+      console.log('🔍 Validating video with API:', inputValue.trim());
       const validation = await youtubeAPI.validateVideo(inputValue.trim());
+      console.log('📹 Validation result:', validation);
 
       if (!validation.isValid) {
+        console.error('❌ Video validation failed:', validation.error);
         throw new Error(validation.error || 'Video validation failed');
       }
+      
+      console.log('✅ Video validation successful');
 
       if (!validation.hasTranscript) {
         Alert.alert(
@@ -378,10 +398,7 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
 
       <Text style={styles.hint}>
         Supports YouTube videos with captions/transcripts.
-        {quotaInfo.limit !== undefined &&
-          !quotaInfo.isPremium &&
-          ` Daily limit: ${quotaInfo.remaining} of ${quotaInfo.limit} videos remaining.`}
-        {quotaInfo.isPremium && ' ✨ Unlimited processing.'}
+        {/* Hide quota info for production */}
       </Text>
 
       {videoPreview && (

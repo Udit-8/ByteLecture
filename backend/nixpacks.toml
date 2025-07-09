@@ -1,23 +1,26 @@
 # Nixpacks configuration for Railway deployment
-# Using shell script to properly handle Python virtual environment
-
 [providers]
 nodejs = "18"
 
 [phases.setup]
-aptPkgs = ["ffmpeg", "python3", "python3-pip", "python3-venv", "curl"]
+# lightweight system tools only
+apkPkgs = ["ffmpeg", "curl", "python3"]  # python3 is needed to execute the binary
 
 [phases.install]
 cmds = [
+  # 1. install node deps
   "npm ci",
-  "bash -c 'python3 -m venv /opt/yt-dlp-venv && source /opt/yt-dlp-venv/bin/activate && pip install yt-dlp && ln -sf /opt/yt-dlp-venv/bin/yt-dlp /usr/local/bin/yt-dlp'"
+
+  # 2. fetch the standalone yt-dlp executable and make it runnable
+  "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
+        -o /usr/local/bin/yt-dlp && chmod +x /usr/local/bin/yt-dlp"
 ]
 
 [phases.build]
 cmds = ["npm run build"]
 
 [start]
-cmd = "npm start"
+cmd  = "npm start"
 
 [variables]
-NODE_ENV = "production" 
+NODE_ENV = "production"

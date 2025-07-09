@@ -1,6 +1,4 @@
 # Nixpacks configuration for Railway deployment
-[providers]
-nodejs = "22"
 
 [phases.setup]
 # System and build dependencies (canvas, ffmpeg, yt-dlp)
@@ -34,3 +32,4 @@ cmd = "npm start"
 
 [variables]
 NODE_ENV = "production"
+NIXPACKS_NODE_VERSION = "22"

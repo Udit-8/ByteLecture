@@ -1,16 +1,13 @@
 # Use Node.js 18 Alpine for smaller image size
 FROM node:18-alpine
 
-# Install system dependencies for audio processing (yt-dlp installed via apk to avoid PEP 668 restrictions)
+# Install system dependencies and download yt-dlp standalone binary (avoids pip and unavailable apk packages)
 RUN apk add --no-cache \
     ffmpeg \
     python3 \
-    py3-yt-dlp \
     curl \
-    && rm -rf /var/cache/apk/*
-
-# Remove global pip installation (no longer needed)
-# yt-dlp already installed with apk as a standalone script
+ && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
+ && chmod +x /usr/local/bin/yt-dlp
 
 # Create app directory
 WORKDIR /app

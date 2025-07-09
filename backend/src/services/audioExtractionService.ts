@@ -164,6 +164,7 @@ class AudioExtractionService {
         '--audio-format', 'm4a',
         '--audio-quality', this.getAudioQuality(options.quality || 'medium'),
         '--output', tempFileTemplate,
+        '--no-part', // Avoid .part files that cause rename race conditions
         '--no-playlist',
         '--max-filesize', '100M', // Limit file size to 100MB
         '--no-warnings',
@@ -328,7 +329,7 @@ class AudioExtractionService {
    * Wait for file to be completely written to disk and return the actual file path
    */
   private async waitForFileCompletion(expectedFile: string, baseFileName: string): Promise<string> {
-    const maxWaitTime = 10000; // 10 seconds max
+    const maxWaitTime = 60000; // 60 seconds max – large videos need more time for yt-dlp to finish writing
     const checkInterval = 100; // Check every 100ms
     const startTime = Date.now();
 
@@ -504,6 +505,7 @@ class AudioExtractionService {
         '--audio-format', 'm4a',
         '--audio-quality', this.getAudioQuality(options.quality || 'medium'),
         '--output', tempFileTemplate,
+        '--no-part', // Avoid .part files that cause rename race conditions
         '--no-playlist',
         '--max-filesize', '200M', // Allow larger files for chunked processing
         '--no-warnings',

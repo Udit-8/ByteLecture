@@ -396,6 +396,17 @@ Generate only the title, nothing else:`;
           });
           console.log(`Created content item for audio recording: ${filePath} with AI-generated title: ${smartTitle} (id: ${newContentItem.id})`);
           (result as any).contentItemId = newContentItem.id;
+          
+          // 🗑️ DELETE original audio file to save storage costs
+          try {
+            await supabaseAdmin.storage
+              .from('audio-recordings')
+              .remove([filePath]);
+            console.log(`🗑️ Deleted audio file after processing: ${filePath}`);
+          } catch (deleteError) {
+            console.warn('⚠️ Could not delete audio file:', deleteError);
+            // Don't fail the request if cleanup fails
+          }
         } catch (contentError) {
           console.error('Error creating content item:', contentError);
           // Don't fail the whole operation for content item creation errors

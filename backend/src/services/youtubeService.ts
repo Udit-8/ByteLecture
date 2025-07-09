@@ -86,8 +86,43 @@ class YouTubeService {
    * Get video metadata from YouTube API
    */
   async getVideoInfo(videoId: string): Promise<YouTubeVideoInfo> {
+    // If no official YouTube API key is configured we gracefully fall back to
+    // yt-dlp metadata extraction. This provides enough information for the
+    // preview screen (title, duration, thumbnail, etc.) and avoids a hard
+    // blocker in development environments.
     if (!this.apiKey) {
-      throw new Error('YouTube API key not configured');
+      console.warn('⚠️ No YouTube API key – falling back to yt-dlp for metadata');
+
+      try {
+        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+        const meta = await audioExtractionService.getVideoMetadata(videoUrl);
+
+        return {
+          videoId: meta.videoId,
+          title: meta.title,
+          description: meta.description || '',
+          channelTitle: meta.channelTitle || '',
+          publishedAt: meta.publishedAt,
+          duration: meta.duration,
+          viewCount: meta.viewCount,
+          thumbnails: {
+            default: meta.thumbnails.default,
+            medium: meta.thumbnails.medium,
+            high: meta.thumbnails.high,
+          },
+          categoryId: meta.categoryId,
+          tags: meta.tags,
+          defaultLanguage: undefined,
+          caption: true, // We assume True since we extract audio later
+        };
+      } catch (fallbackError) {
+        console.error('❌ yt-dlp metadata fallback failed:', fallbackError);
+        throw new Error(
+          fallbackError instanceof Error
+            ? fallbackError.message
+            : 'Failed to fetch video metadata'
+        );
+      }
     }
 
     // Check cache first

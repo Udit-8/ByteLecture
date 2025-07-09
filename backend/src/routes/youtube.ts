@@ -15,20 +15,14 @@ import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
-// Apply authentication middleware to all routes
-router.use(authenticateToken);
-
 /**
- * POST /api/youtube/validate
- * Validate a YouTube URL and check if it's processable
+ * Public endpoints (no auth required) – used by mobile preview before login
  */
 router.post('/validate', validateYouTubeVideo);
-
-/**
- * GET /api/youtube/metadata/:videoId
- * Get metadata for a specific YouTube video
- */
 router.get('/metadata/:videoId', getVideoMetadata);
+
+// All routes below this line require authentication
+router.use(authenticateToken);
 
 /**
  * POST /api/youtube/process

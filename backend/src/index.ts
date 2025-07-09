@@ -4,6 +4,20 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 
+// -------------------------------------------------------------
+// Global error handlers – keep the server alive during dev 🛡️
+// -------------------------------------------------------------
+
+process.on('uncaughtException', (err) => {
+  console.error('💥 Uncaught Exception:', err);
+  // Prevent hard crash in development; in production you might want to exit(1)
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('💥 Unhandled Rejection:', reason);
+  // Prevent hard crash in development
+});
+
 // Import routes
 import authRoutes from './routes/auth';
 import pdfRoutes from './routes/pdfRoutes';

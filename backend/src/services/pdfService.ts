@@ -31,6 +31,26 @@ export class PDFProcessingService {
   };
 
   /**
+   * Clean up PDF file from Supabase storage after processing
+   */
+  private async cleanupPDFFromStorage(filePath: string): Promise<void> {
+    try {
+      const { error } = await supabaseAdmin.storage
+        .from(this.bucketName)
+        .remove([filePath]);
+
+      if (error) {
+        console.warn(`⚠️ Could not delete PDF file: ${filePath}`, error);
+      } else {
+        console.log(`🗑️ Deleted PDF file after processing: ${filePath}`);
+      }
+    } catch (error) {
+      console.warn(`⚠️ Failed to cleanup PDF file: ${filePath}`, error);
+      // Don't throw - cleanup failure shouldn't fail the main operation
+    }
+  }
+
+  /**
    * Process a PDF file from Supabase Storage
    */
   async processPDFFromStorage(
@@ -117,6 +137,9 @@ export class PDFProcessingService {
         `PDF processing completed in ${processingTime}ms for: ${filePath} with title: "${smartTitle}"`
       );
 
+      // 🗑️ Clean up the original PDF file from storage after successful processing
+      await this.cleanupPDFFromStorage(filePath);
+
       return {
         success: true,
         documentId,
@@ -136,6 +159,9 @@ export class PDFProcessingService {
 
       // Store failure record
       await this.storeProcessingFailure(filePath, errorMessage);
+
+      // 🗑️ Clean up the PDF file even on failure to avoid accumulating failed uploads
+      await this.cleanupPDFFromStorage(filePath);
 
       return {
         success: false,
@@ -644,7 +670,10 @@ Generate only the title, nothing else:`;
       })
       .eq('file_path', filePath);
 
-    return this.processPDFFromStorage(filePath);
+    const result = await this.processPDFFromStorage(filePath);
+    
+    // Note: cleanup is already handled in processPDFFromStorage method
+    return result;
   }
 
   /**

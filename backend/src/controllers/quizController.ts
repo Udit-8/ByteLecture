@@ -118,6 +118,24 @@ export class QuizController {
         contentItemId
       );
 
+      // Fetch questions from DB to include IDs
+      const savedQuestions = await this.quizService.getQuizQuestions(
+        savedSet.id
+      );
+
+      // Map to client-friendly structure
+      const questionsWithIds = savedQuestions.map((question) => ({
+        id: question.id,
+        question: question.question,
+        options: question.options,
+        correctAnswer: question.correct_answer,
+        explanation: question.explanation,
+        difficulty_level: question.difficulty_level,
+        question_type: question.question_type,
+        tags: question.tags,
+        source_section: question.source_section,
+      }));
+
       // Record quiz generation usage
       await usageTrackingService.recordQuizGeneration(userId);
       console.log('📊 Usage incremented for quiz generation');
@@ -128,7 +146,7 @@ export class QuizController {
           id: savedSet.id,
           title: result.quizSet.title,
           description: result.quizSet.description,
-          questions: result.quizSet.questions,
+          questions: questionsWithIds,
           totalQuestions: result.quizSet.totalQuestions,
           estimatedDuration: result.quizSet.estimatedDuration,
           difficulty: result.quizSet.difficulty,

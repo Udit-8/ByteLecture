@@ -1,11 +1,18 @@
-# Use Node.js 18 Alpine for smaller image size
-FROM node:18-alpine
+# Use Node.js 22 Alpine (meets pdfjs-dist engine requirement)
+FROM node:22-alpine
 
-# Install system dependencies and download yt-dlp standalone binary (avoids pip and unavailable apk packages)
+# Install system and build dependencies, plus yt-dlp standalone binary
 RUN apk add --no-cache \
     ffmpeg \
     python3 \
     curl \
+    build-base \
+    cairo-dev \
+    pango-dev \
+    libjpeg-turbo-dev \
+    giflib-dev \
+    pixman-dev \
+    pkgconf \
  && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
  && chmod +x /usr/local/bin/yt-dlp
 
@@ -15,8 +22,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (omit dev deps for production build)
+RUN npm ci --omit=dev
 
 # Copy source code
 COPY . .

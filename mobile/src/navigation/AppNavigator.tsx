@@ -1,9 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContextFallback';
 import { NavigationProvider } from '../contexts/NavigationContext';
-import { LoadingIndicator } from '../components';
+import { LoadingIndicator, SplashScreen } from '../components';
 import { DeepLinkHandler } from '../utils/deepLinkHandler';
 
 // Import screens
@@ -24,6 +24,7 @@ const Stack = createNativeStackNavigator();
 export const AppNavigator: React.FC = () => {
   const { user, loading } = useAuth();
   const navigationRef = useRef<any>(null);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     const deepLinkHandler = DeepLinkHandler.getInstance();
@@ -33,6 +34,14 @@ export const AppNavigator: React.FC = () => {
 
     return cleanup;
   }, []);
+
+  const handleSplashFinish = () => {
+    setShowSplash(false);
+  };
+
+  if (showSplash) {
+    return <SplashScreen onFinish={handleSplashFinish} />;
+  }
 
   if (loading) {
     return <LoadingIndicator text="Loading..." />;

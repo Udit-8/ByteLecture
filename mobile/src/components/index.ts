@@ -20,3 +20,4 @@ export {
   PremiumBannerBadge,
 } from './PremiumBadge';
 export type { PremiumBadgeVariant, PremiumBadgeSize } from './PremiumBadge';
+export { SplashScreen } from './SplashScreen';

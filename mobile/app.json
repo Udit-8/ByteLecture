@@ -8,23 +8,35 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "bytelecture",
-
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/appstore.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FAFAFA"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bytelecture.app"
+      "bundleIdentifier": "com.bytelecture.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses camera to capture documents for AI processing.",
+        "NSMicrophoneUsageDescription": "This app uses microphone to record audio for AI-powered summaries.",
+        "NSPhotoLibraryUsageDescription": "This app accesses photo library to upload documents for processing."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#FAFAFA"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.bytelecture.app",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -38,12 +50,20 @@
               "scheme": "bytelecture"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "7edcee34-112c-4334-9abe-4de4a2d5acd1"
+      }
     }
   }
 }

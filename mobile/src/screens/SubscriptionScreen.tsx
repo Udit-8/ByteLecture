@@ -21,8 +21,14 @@ import {
   SubscriptionProduct,
   SubscriptionStatus,
   SubscriptionType,
-  SUBSCRIPTION_PRICING,
 } from '../types/payment';
+import { 
+  detectUserRegion, 
+  getRegionalPricing, 
+  formatPrice, 
+  Region,
+  getRegionName 
+} from '../utils/regionHelper';
 
 interface SubscriptionScreenProps {
   navigation: any;
@@ -43,10 +49,17 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [userRegion, setUserRegion] = useState<Region>('us');
+  const [regionalPricing, setRegionalPricing] = useState(getRegionalPricing('us'));
 
   const fromScreen = route?.params?.from;
 
   useEffect(() => {
+    // Detect user region and set pricing
+    const region = detectUserRegion();
+    setUserRegion(region);
+    setRegionalPricing(getRegionalPricing(region));
+    
     initializePayments();
   }, []);
 
@@ -178,10 +191,20 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
   };
 
   const renderSubscriptionCard = (type: SubscriptionType) => {
-    const pricing = SUBSCRIPTION_PRICING[type];
     const product = products.find((p) => p.type === type);
     const isPurchasing = purchasing === type;
     const isRecommended = type === 'yearly';
+
+    // Use product data if available, otherwise fall back to regional pricing
+    const price = product ? product.localizedPrice : formatPrice(
+      type === 'monthly' ? regionalPricing.monthly : regionalPricing.yearly, 
+      userRegion
+    );
+    
+    const monthlyEquivalent = type === 'yearly' ? formatPrice(
+      regionalPricing.yearlyMonthlyEquivalent,
+      userRegion
+    ) : null;
 
     return (
       <Card
@@ -199,18 +222,22 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
 
         <View style={styles.planHeader}>
           <Text style={styles.planTitle}>
-            {type === 'monthly' ? 'Monthly' : 'Yearly'}
+            {type === 'monthly' ? 'Monthly Plan' : 'Yearly Plan'}
           </Text>
           <View style={styles.priceContainer}>
-            <Text style={styles.priceSymbol}>{pricing.symbol}</Text>
-            <Text style={styles.priceAmount}>{pricing.price}</Text>
+            <Text style={styles.priceAmount}>{price}</Text>
             <Text style={styles.pricePeriod}>
               /{type === 'monthly' ? 'month' : 'year'}
             </Text>
           </View>
-          {type === 'yearly' && 'savings' in pricing && (
+          {type === 'yearly' && monthlyEquivalent && (
+            <Text style={styles.monthlyEquivalentText}>
+              Just {monthlyEquivalent} per month
+            </Text>
+          )}
+          {type === 'yearly' && (
             <Text style={styles.savingsText}>
-              Save {pricing.savings} per year!
+              Save {regionalPricing.savings} per year!
             </Text>
           )}
         </View>
@@ -250,12 +277,6 @@ const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({
             ...(isRecommended && styles.recommendedButton),
           }}
         />
-
-        {product && (
-          <Text style={styles.storePrice}>
-            Store Price: {product.localizedPrice}
-          </Text>
-        )}
       </Card>
     );
   };
@@ -472,11 +493,6 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     marginBottom: theme.spacing.xs,
   },
-  priceSymbol: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.primary[500],
-  },
   priceAmount: {
     fontSize: 36,
     fontWeight: 'bold',
@@ -519,6 +535,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.textSecondary,
     textAlign: 'center',
+  },
+  monthlyEquivalentText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginTop: theme.spacing.xs,
   },
   trialInfo: {
     alignItems: 'center',

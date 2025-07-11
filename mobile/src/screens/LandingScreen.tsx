@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { makeRedirectUri } from 'expo-auth-session';
@@ -113,9 +114,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
     };
   }, []);
 
-  const handleSignIn = () => {
-    navigation.navigate('Login');
-  };
+
 
   // Google OAuth function following Supabase React Native documentation
   const performOAuth = async () => {
@@ -198,10 +197,10 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
           {/* App Icon */}
           <View style={styles.iconContainer}>
             <View style={styles.appIcon}>
-              <Ionicons
-                name="school"
-                size={64}
-                color={theme.colors.primary[600]}
+              <Image
+                source={require('../../assets/appstore.png')}
+                style={styles.appIconImage}
+                resizeMode="contain"
               />
             </View>
             <View style={styles.badgeContainer}>
@@ -256,10 +255,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Alternative Sign In */}
-          <Text style={styles.alternativeText} onPress={handleSignIn}>
-            Already have an account? <Text style={styles.signInLink}>Sign in</Text>
-          </Text>
+
         </View>
       </View>
     </SafeAreaView>
@@ -335,6 +331,10 @@ const styles = StyleSheet.create({
     elevation: 6,
     marginBottom: theme.spacing.lg,
   },
+  appIconImage: {
+    width: 80,
+    height: 80,
+  },
   badgeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -408,13 +408,5 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.gray[700],
   },
-  alternativeText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.gray[600],
-    textAlign: 'center',
-  },
-  signInLink: {
-    color: theme.colors.primary[600],
-    fontWeight: theme.typography.fontWeight.medium,
-  },
+
 });

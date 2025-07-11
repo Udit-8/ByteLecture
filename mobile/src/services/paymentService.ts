@@ -26,19 +26,32 @@ import {
   SubscriptionType,
   ReceiptValidationRequest,
   ReceiptValidationResponse,
+  getProductId,
 } from '../types/payment';
+import { 
+  detectUserRegion, 
+  getRegionalPricing, 
+  formatPrice, 
+  Region,
+  RegionalPricing 
+} from '../utils/regionHelper';
 
 class PaymentService {
   private isInitialized = false;
   private platform: PlatformType;
   private configuration: PaymentConfiguration;
+  private userRegion: Region;
+  private regionalPricing: RegionalPricing;
 
   constructor() {
     this.platform = Platform.OS as PlatformType;
+    this.userRegion = detectUserRegion();
+    this.regionalPricing = getRegionalPricing(this.userRegion);
+    
     this.configuration = {
       platform: this.platform,
-      monthlyProductId: PRODUCT_IDS[this.platform].monthly,
-      yearlyProductId: PRODUCT_IDS[this.platform].yearly,
+      monthlyProductId: getProductId(this.userRegion, 'monthly', this.platform),
+      yearlyProductId: getProductId(this.userRegion, 'yearly', this.platform),
     };
   }
 
@@ -453,6 +466,10 @@ class PaymentService {
     // Handle different property names between Product and Subscription types
     const isProduct = 'price' in product;
 
+    const numericPrice = type === 'monthly' 
+      ? this.regionalPricing.monthly 
+      : this.regionalPricing.yearly;
+
     return {
       productId: product.productId,
       type,
@@ -460,13 +477,15 @@ class PaymentService {
         ? product.price
         : (product as any).oneTimePurchaseOfferDetails?.priceAmountMicros ||
           '0',
-      currency: isProduct ? product.currency : 'INR',
+      currency: isProduct ? product.currency : this.regionalPricing.currency,
       localizedPrice: isProduct
         ? product.localizedPrice
-        : (product as any).oneTimePurchaseOfferDetails?.formattedPrice || '₹0',
+        : formatPrice(numericPrice, this.userRegion),
       title: product.title || 'Subscription',
       description: product.description || '',
       platform: this.platform,
+      region: this.userRegion,
+      numericPrice,
     };
   }
 
@@ -497,23 +516,26 @@ class PaymentService {
       {
         productId: this.configuration.monthlyProductId,
         type: 'monthly',
-        price: '99',
-        currency: 'INR',
-        localizedPrice: '₹99',
+        price: this.regionalPricing.monthly.toString(),
+        currency: this.regionalPricing.currency,
+        localizedPrice: formatPrice(this.regionalPricing.monthly, this.userRegion),
         title: 'ByteLecture Premium Monthly',
         description: 'Monthly subscription to ByteLecture Premium features',
         platform: this.platform,
+        region: this.userRegion,
+        numericPrice: this.regionalPricing.monthly,
       },
       {
         productId: this.configuration.yearlyProductId,
         type: 'yearly',
-        price: '999',
-        currency: 'INR',
-        localizedPrice: '₹999',
+        price: this.regionalPricing.yearly.toString(),
+        currency: this.regionalPricing.currency,
+        localizedPrice: formatPrice(this.regionalPricing.yearly, this.userRegion),
         title: 'ByteLecture Premium Yearly',
-        description:
-          'Yearly subscription to ByteLecture Premium features (Save ₹189)',
+        description: `Yearly subscription to ByteLecture Premium features (Save ${this.regionalPricing.savings})`,
         platform: this.platform,
+        region: this.userRegion,
+        numericPrice: this.regionalPricing.yearly,
       },
     ];
   }

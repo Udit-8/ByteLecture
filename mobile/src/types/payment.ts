@@ -1,4 +1,5 @@
 // Payment Types and Interfaces for Google Play & Apple Pay Integration
+import { Region, RegionalPricing } from '../utils/regionHelper';
 
 export interface SubscriptionProduct {
   productId: string;
@@ -9,6 +10,8 @@ export interface SubscriptionProduct {
   title: string;
   description: string;
   platform: 'ios' | 'android';
+  region: Region;
+  numericPrice: number;
 }
 
 export interface PurchaseResult {
@@ -53,32 +56,37 @@ export interface PaymentConfiguration {
   platform: 'ios' | 'android';
 }
 
-// Product IDs for both platforms
+// Product IDs for both platforms - these will be mapped to regional products
 export const PRODUCT_IDS = {
   ios: {
-    monthly: 'com.bytelecture.monthly',
-    yearly: 'com.bytelecture.yearly',
+    // India products
+    monthly_india: 'com.bytelecture.monthly.india',
+    yearly_india: 'com.bytelecture.yearly.india',
+    // US products  
+    monthly_us: 'com.bytelecture.monthly.us',
+    yearly_us: 'com.bytelecture.yearly.us',
+    // Other regions (same as US)
+    monthly_other: 'com.bytelecture.monthly.other',
+    yearly_other: 'com.bytelecture.yearly.other',
   },
   android: {
-    monthly: 'monthly_subscription',
-    yearly: 'yearly_subscription',
+    // India products
+    monthly_india: 'monthly_subscription_india',
+    yearly_india: 'yearly_subscription_india',
+    // US products
+    monthly_us: 'monthly_subscription_us', 
+    yearly_us: 'yearly_subscription_us',
+    // Other regions (same as US)
+    monthly_other: 'monthly_subscription_other',
+    yearly_other: 'yearly_subscription_other',
   },
 } as const;
 
-// Subscription pricing (in INR)
-export const SUBSCRIPTION_PRICING = {
-  monthly: {
-    price: 99,
-    currency: 'INR',
-    symbol: '₹',
-  },
-  yearly: {
-    price: 999,
-    currency: 'INR',
-    symbol: '₹',
-    savings: '₹189', // 12 months * 99 - 999
-  },
-} as const;
+// Helper function to get product ID for a region and type
+export function getProductId(region: Region, type: 'monthly' | 'yearly', platform: 'ios' | 'android'): string {
+  const key = `${type}_${region}` as keyof typeof PRODUCT_IDS[typeof platform];
+  return PRODUCT_IDS[platform][key];
+}
 
 export type PlatformType = 'ios' | 'android';
 export type SubscriptionType = 'monthly' | 'yearly';

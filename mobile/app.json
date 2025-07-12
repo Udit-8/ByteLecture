@@ -62,6 +62,14 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "react-native-iap",
+        {
+          "paymentProvider": "play"
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "7edcee34-112c-4334-9abe-4de4a2d5acd1"

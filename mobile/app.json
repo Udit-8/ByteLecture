@@ -4,7 +4,7 @@
     "slug": "bytelecture",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/appstore.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "bytelecture",
@@ -20,7 +20,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses camera to capture documents for AI processing.",
         "NSMicrophoneUsageDescription": "This app uses microphone to record audio for AI-powered summaries.",
-        "NSPhotoLibraryUsageDescription": "This app accesses photo library to upload documents for processing."
+        "NSPhotoLibraryUsageDescription": "This app accesses photo library to upload documents for processing.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -35,7 +36,8 @@
         "CAMERA",
         "RECORD_AUDIO",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "com.android.vending.BILLING"
       ],
       "intentFilters": [
         {

@@ -60,14 +60,14 @@ export interface PaymentConfiguration {
 export const PRODUCT_IDS = {
   ios: {
     // India products
-    monthly_india: 'com.bytelecture.monthly.india',
-    yearly_india: 'com.bytelecture.yearly.india',
+    monthly_india: 'com_bytelecture_monthly_india',
+    yearly_india: 'com_bytelecture_yearly_india',
     // US products  
-    monthly_us: 'com.bytelecture.monthly.us',
-    yearly_us: 'com.bytelecture.yearly.us',
+    monthly_us: 'com_bytelecture_monthly_us',
+    yearly_us: 'com_bytelecture_yearly_us',
     // Other regions (same as US)
-    monthly_other: 'com.bytelecture.monthly.other',
-    yearly_other: 'com.bytelecture.yearly.other',
+    monthly_other: 'com_bytelecture_monthly_other',
+    yearly_other: 'com_bytelecture_yearly_other',
   },
   android: {
     // India products
@@ -97,6 +97,7 @@ export interface ReceiptValidationRequest {
   platform: PlatformType;
   productId: string;
   transactionId: string;
+  userId: string;
 }
 
 export interface ReceiptValidationResponse {

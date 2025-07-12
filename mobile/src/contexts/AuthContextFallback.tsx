@@ -340,28 +340,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           '✅ Got session from backend, setting up Supabase session...'
         );
 
-        // Set up the Supabase session with the tokens from backend
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token || '',
-        });
-
-        if (sessionError) {
-          console.error('❌ Failed to set Supabase session:', sessionError);
-          // Still proceed with our auth context even if Supabase session fails
-        } else {
-          console.log('✅ Supabase session established successfully');
-        }
-
-        // Store token for backward compatibility
-        await AsyncStorage.setItem('auth_token', data.session.access_token);
-
+        // First, immediately update our auth context (critical path)
         setSession({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
           expires_in: data.session.expires_in,
         });
         setUser(data.user);
+
+        // Store token for backward compatibility
+        await AsyncStorage.setItem('auth_token', data.session.access_token);
+        console.log('✅ Auth context and token storage complete');
+
+        // Set up Supabase session in background with timeout (non-blocking)
+        Promise.race([
+          supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token || '',
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Supabase session timeout')), 5000)
+          )
+        ]).then((result: any) => {
+          if (result?.error) {
+            console.warn('⚠️ Supabase session setup warning:', result.error);
+          } else {
+            console.log('✅ Supabase session established successfully');
+          }
+        }).catch((error) => {
+          console.warn('⚠️ Supabase session setup failed (non-critical):', error.message);
+        });
       }
 
       return {};

@@ -114,7 +114,9 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
     };
   }, []);
 
-
+  const handleSignIn = () => {
+    navigation.navigate('Login');
+  };
 
   // Google OAuth function following Supabase React Native documentation
   const performOAuth = async () => {
@@ -255,7 +257,10 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-
+          {/* Alternative Sign In */}
+          <Text style={styles.alternativeText} onPress={handleSignIn}>
+            Already have an account? <Text style={styles.signInLink}>Sign in</Text>
+          </Text>
         </View>
       </View>
     </SafeAreaView>
@@ -407,6 +412,15 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.gray[700],
+  },
+  alternativeText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.gray[600],
+    textAlign: 'center',
+  },
+  signInLink: {
+    color: theme.colors.primary[600],
+    fontWeight: theme.typography.fontWeight.medium,
   },
 
 });

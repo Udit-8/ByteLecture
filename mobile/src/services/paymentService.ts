@@ -226,12 +226,26 @@ class PaymentService {
         );
       }
 
+      // Get current user ID
+      const { getCurrentUser } = await import('./authHelper');
+      const user = await getCurrentUser();
+      
+      if (!user?.id) {
+        throw this.createPaymentError(
+          'USER_NOT_AUTHENTICATED',
+          'User not authenticated'
+        );
+      }
+      
+      const userId = user.id;
+
       // Validate the receipt with our backend
       const validationResult = await this.validateReceipt({
         receipt: purchase.transactionReceipt || '',
         platform: this.platform,
         productId: purchase.productId,
         transactionId: purchase.transactionId || '',
+        userId,
       });
 
       if (!validationResult.valid) {
@@ -305,6 +319,23 @@ class PaymentService {
 
       const restoredPurchases: PurchaseResult[] = [];
 
+      // Get current user ID for validation
+      const { getCurrentUser } = await import('./authHelper');
+      const user = await getCurrentUser();
+      
+      if (!user?.id) {
+        return {
+          success: false,
+          restoredPurchases: [],
+          error: this.createPaymentError(
+            'USER_NOT_AUTHENTICATED',
+            'User not authenticated'
+          ),
+        };
+      }
+      
+      const userId = user.id;
+
       for (const purchase of purchases) {
         // Validate each restored purchase
         const validationResult = await this.validateReceipt({
@@ -312,6 +343,7 @@ class PaymentService {
           platform: this.platform,
           productId: purchase.productId,
           transactionId: purchase.transactionId || '',
+          userId,
         });
 
         if (validationResult.valid) {
@@ -358,6 +390,16 @@ class PaymentService {
 
       const purchases = await getAvailablePurchases();
 
+      // Get current user ID for validation
+      const { getCurrentUser } = await import('./authHelper');
+      const user = await getCurrentUser();
+      
+      if (!user?.id) {
+        return { isActive: false };
+      }
+      
+      const userId = user.id;
+
       // Find the most recent active subscription
       const validSubscriptions = [];
       for (const purchase of purchases) {
@@ -366,6 +408,7 @@ class PaymentService {
           platform: this.platform,
           productId: purchase.productId,
           transactionId: purchase.transactionId || '',
+          userId,
         });
 
         if (
@@ -402,37 +445,59 @@ class PaymentService {
     request: ReceiptValidationRequest
   ): Promise<ReceiptValidationResponse> {
     try {
-      // TODO: Replace with actual backend endpoint
-      const response = await fetch('/api/payments/validate-receipt', {
+      // Import network config to get API base URL
+      const { getApiBaseUrl } = await import('../utils/networkConfig');
+      const baseUrl = getApiBaseUrl();
+      
+      // Import auth helper to get user token
+      const { getAuthToken } = await import('./authHelper');
+      const token = await getAuthToken();
+      
+      if (!token) {
+        throw new Error('User not authenticated');
+      }
+
+      const response = await fetch(`${baseUrl}/payments/validate-receipt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Add authentication headers
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(request),
       });
 
       if (!response.ok) {
-        throw new Error('Receipt validation failed');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Receipt validation failed');
       }
 
-      return await response.json();
+      const data = await response.json();
+      
+      return {
+        valid: data.success,
+        subscriptionStatus: data.subscription,
+        error: data.error,
+      };
     } catch (error) {
       console.error('[PaymentService] Receipt validation failed:', error);
 
-      // For now, return a mock successful validation
-      // TODO: Remove this and implement proper backend validation
-      return {
-        valid: true,
-        subscriptionStatus: {
-          isActive: true,
-          productId: request.productId,
-          platform: request.platform,
-          expiryDate: new Date(
-            Date.now() + 30 * 24 * 60 * 60 * 1000
-          ).toISOString(), // 30 days from now
-        },
-      };
+      // In development mode, return mock validation
+      if (this.isDevelopmentMode()) {
+        return {
+          valid: true,
+          subscriptionStatus: {
+            isActive: true,
+            productId: request.productId,
+            platform: request.platform,
+            expiryDate: new Date(
+              Date.now() + 30 * 24 * 60 * 60 * 1000
+            ).toISOString(), // 30 days from now
+          },
+        };
+      }
+
+      // In production, throw the error
+      throw error;
     }
   }
 

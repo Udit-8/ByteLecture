@@ -46,10 +46,9 @@ class AudioExtractionService {
   private tempDir: string;
 
   constructor() {
-    // Initialize yt-dlp wrapper with explicit binary path
-    // On Railway/production, use the full path; locally it should find it in PATH
-    const ytDlpPath = process.env.NODE_ENV === 'production' ? '/usr/local/bin/yt-dlp' : 'yt-dlp';
-    this.ytDlp = new YTDlpWrap(ytDlpPath);
+    // Initialize yt-dlp wrapper
+    // Use default path since yt-dlp is installed via pip and should be in PATH
+    this.ytDlp = new YTDlpWrap();
     this.tempDir = join(process.cwd(), 'temp');
     
     // Ensure temp directory exists

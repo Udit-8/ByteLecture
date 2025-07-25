@@ -6,6 +6,7 @@ apkPkgs = [
   "ffmpeg",
   "curl",
   "python3",
+  "py3-pip",
   "build-base",
   "cairo-dev",
   "pango-dev",
@@ -20,8 +21,8 @@ cmds = [
   # Install Node deps without dev packages for prod
   "npm ci --omit=dev",
 
-  # Fetch the standalone yt-dlp executable and make it runnable
-  "curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && chmod +x /usr/local/bin/yt-dlp"
+  # Install yt-dlp via pip (more reliable with Alpine Python)
+  "pip3 install --break-system-packages yt-dlp"
 ]
 
 [phases.build]

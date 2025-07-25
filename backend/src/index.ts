@@ -93,6 +93,17 @@ app.use('/api/mindmaps', mindMapRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/cron', cronRoutes);
 
+// API root endpoint
+app.get('/api', (req, res) => {
+  res.json({
+    success: true,
+    message: 'ByteLecture API is running!',
+    version: '1.0.0',
+    endpoints: ['/api/health', '/api/auth', '/api/pdf', '/api/youtube'],
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'healthy', uptime: process.uptime() });
 });

@@ -1,13 +1,10 @@
 # Nixpacks configuration for Railway deployment
 
 [phases.setup]
-# System and build dependencies (canvas, ffmpeg, yt-dlp)
+# System and build dependencies (canvas, ffmpeg)
 apkPkgs = [
   "ffmpeg",
   "curl",
-  "python3",
-  "py3-pip",
-  "yt-dlp",
   "build-base",
   "cairo-dev",
   "pango-dev",

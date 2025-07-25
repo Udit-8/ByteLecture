@@ -52,7 +52,7 @@
     "puppeteer": "^24.10.2",
     "sharp": "^0.34.2",
     "youtube-transcript": "^1.2.1",
-    "yt-dlp-wrap": "^2.1.1"
+    "yt-dlp-exec": "^1.0.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

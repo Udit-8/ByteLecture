@@ -1,4 +1,4 @@
-import YTDlpWrap from 'yt-dlp-wrap';
+import YTDlpExec from 'yt-dlp-exec';
 import { createWriteStream, unlinkSync, existsSync } from 'fs';
 import { join } from 'path';
 import { speechToTextService } from './speechToTextService';
@@ -42,13 +42,9 @@ export interface VideoMetadata {
 }
 
 class AudioExtractionService {
-  private ytDlp: YTDlpWrap;
   private tempDir: string;
 
   constructor() {
-    // Initialize yt-dlp wrapper
-    // Use default path since yt-dlp is installed via pip and should be in PATH
-    this.ytDlp = new YTDlpWrap();
     this.tempDir = join(process.cwd(), 'temp');
     
     // Ensure temp directory exists
@@ -69,7 +65,10 @@ class AudioExtractionService {
       // Get video info without downloading
       let videoInfo;
       try {
-        videoInfo = await this.ytDlp.getVideoInfo(videoUrl);
+        videoInfo = await YTDlpExec(videoUrl, {
+          dumpJson: true,
+          noWarnings: true
+        });
       } catch (ytDlpError) {
         console.error('❌ yt-dlp failed to extract metadata:', ytDlpError);
         
@@ -159,18 +158,17 @@ class AudioExtractionService {
       console.log('🎵 Extracting audio with yt-dlp...');
       console.log(`📁 Expected output file: ${expectedAudioFile}`);
       
-      await this.ytDlp.exec([
-        videoUrl,
-        '--extract-audio',
-        '--audio-format', 'm4a',
-        '--audio-quality', this.getAudioQuality(options.quality || 'medium'),
-        '--output', tempFileTemplate,
-        '--no-part', // Avoid .part files that cause rename race conditions
-        '--no-playlist',
-        '--max-filesize', '100M', // Limit file size to 100MB
-        '--no-warnings',
-        '--quiet', // Reduce output noise
-      ]);
+      await YTDlpExec(videoUrl, {
+        extractAudio: true,
+        audioFormat: 'm4a',
+        audioQuality: parseInt(this.getAudioQuality(options.quality || 'medium')),
+        output: tempFileTemplate,
+        noPart: true, // Avoid .part files that cause rename race conditions
+        noPlaylist: true,
+        maxFilesize: '100M', // Limit file size to 100MB
+        noWarnings: true,
+        quiet: true, // Reduce output noise
+      });
 
       const audioExtractionTime = Date.now() - audioExtractionStart;
       console.log(`✅ Audio extraction completed in ${audioExtractionTime}ms`);
@@ -451,7 +449,8 @@ class AudioExtractionService {
    */
   async healthCheck(): Promise<{ available: boolean; version?: string; error?: string }> {
     try {
-      const version = await this.ytDlp.getVersion();
+      const result = await YTDlpExec('', { version: true });
+      const version = String(result).trim();
       return { available: true, version };
     } catch (error) {
       return { 
@@ -500,18 +499,17 @@ class AudioExtractionService {
       
       console.log('🎵 Extracting full audio with yt-dlp...');
       
-      await this.ytDlp.exec([
-        videoUrl,
-        '--extract-audio',
-        '--audio-format', 'm4a',
-        '--audio-quality', this.getAudioQuality(options.quality || 'medium'),
-        '--output', tempFileTemplate,
-        '--no-part', // Avoid .part files that cause rename race conditions
-        '--no-playlist',
-        '--max-filesize', '200M', // Allow larger files for chunked processing
-        '--no-warnings',
-        '--quiet',
-      ]);
+      await YTDlpExec(videoUrl, {
+        extractAudio: true,
+        audioFormat: 'm4a',
+        audioQuality: parseInt(this.getAudioQuality(options.quality || 'medium')),
+        output: tempFileTemplate,
+        noPart: true, // Avoid .part files that cause rename race conditions
+        noPlaylist: true,
+        maxFilesize: '200M', // Allow larger files for chunked processing
+        noWarnings: true,
+        quiet: true,
+      });
 
       const audioExtractionTime = Date.now() - audioExtractionStart;
       const actualAudioFile = await this.waitForFileCompletion(expectedAudioFile, baseFileName);

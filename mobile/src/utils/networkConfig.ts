@@ -6,7 +6,10 @@ import Constants from 'expo-constants';
  * This handles differences between simulator, physical device, and production
  */
 export function getApiBaseUrl(): string {
-  const envApiUrl = process.env.EXPO_PUBLIC_API_URL;
+  // Prefer value embedded in app.json (available in production) and
+  // fall back to the environment variable for dev builds / Metro bundler.
+  const extra = (Constants.expoConfig?.extra || (Constants as any).manifest?.extra || {}) as Record<string, any>;
+  const envApiUrl = extra.API_URL || process.env.EXPO_PUBLIC_API_URL;
 
   // Detect simulator / emulator first
   const isDevice = Constants.isDevice;

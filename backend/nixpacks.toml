@@ -7,6 +7,7 @@ apkPkgs = [
   "curl",
   "python3",
   "py3-pip",
+  "yt-dlp",
   "build-base",
   "cairo-dev",
   "pango-dev",
@@ -19,10 +20,7 @@ apkPkgs = [
 [phases.install]
 cmds = [
   # Install Node deps without dev packages for prod
-  "npm ci --omit=dev",
-
-  # Install yt-dlp via pip (more reliable with Alpine Python)
-  "pip3 install --break-system-packages yt-dlp"
+  "npm ci --omit=dev"
 ]
 
 [phases.build]

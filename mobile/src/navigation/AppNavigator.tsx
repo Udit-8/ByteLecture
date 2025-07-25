@@ -24,7 +24,7 @@ const Stack = createNativeStackNavigator();
 export const AppNavigator: React.FC = () => {
   const { user, loading } = useAuth();
   const navigationRef = useRef<any>(null);
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(false); // Temporarily skip splash
 
   useEffect(() => {
     const deepLinkHandler = DeepLinkHandler.getInstance();

@@ -8,10 +8,27 @@ apkPkgs = [
   "build-base",
   "cairo-dev",
   "pango-dev",
+  "python3",
+  "py3-pip",
   "libjpeg-turbo-dev",
   "giflib-dev",
   "pixman-dev",
   "pkgconf"
+]
+
+# The same packages for Debian/Ubuntu images
+aptPkgs = [
+  "ffmpeg",
+  "curl",
+  "python3",
+  "python3-pip",
+  "build-essential",
+  "libcairo2-dev",
+  "libpango1.0-dev",
+  "libjpeg-dev",
+  "libgif-dev",
+  "libpixman-1-dev",
+  "pkg-config"
 ]
 
 [phases.install]

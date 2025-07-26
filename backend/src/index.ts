@@ -32,6 +32,7 @@ import chatRoutes from './routes/chatRoutes';
 import mindMapRoutes from './routes/mindMapRoutes';
 import syncRoutes from './routes/syncRoutes';
 import cronRoutes from './routes/cronRoutes';
+import debugRoutes from './routes/debugRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -92,6 +93,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/mindmaps', mindMapRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/cron', cronRoutes);
+app.use('/api/debug', debugRoutes);
 
 // API root endpoint
 app.get('/api', (req, res) => {

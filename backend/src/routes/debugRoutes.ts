@@ -19,13 +19,17 @@ debugRoutes.post('/yt-dlp', async (req, res) => {
   }
 
   try {
-    const result = await YTDlpExec(url, {
+    const common: Record<string, any> = {
       dumpJson: true,
       noWarnings: true,
       verbose: true,
       forceIpv4: true,
       geoBypassCountry: 'US',
-    });
+    };
+    if (process.env.YTDLP_COOKIES) {
+      common.cookies = '/app/cookies.txt';
+    }
+    const result = await YTDlpExec(url, common);
     res.json({ success: true, data: result });
   } catch (e: any) {
     res.json({

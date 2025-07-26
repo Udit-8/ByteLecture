@@ -34,6 +34,8 @@ aptPkgs = [
 
 [phases.install]
 cmds = [
+  # If YTDLP_COOKIES is set in Railway variables, write it to a file for yt-dlp
+  "if [ -n \"$YTDLP_COOKIES\" ]; then printf '%s' \"$YTDLP_COOKIES\" > /app/cookies.txt; fi",
   # Ensure /usr/bin/python exists (yt-dlp-exec postinstall)
   "if [ -x /usr/bin/python3 ] && [ ! -e /usr/bin/python ]; then ln -s /usr/bin/python3 /usr/bin/python; fi",
   # Install Node deps without dev packages for prod

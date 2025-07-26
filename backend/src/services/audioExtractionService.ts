@@ -4,6 +4,21 @@ import { join } from 'path';
 import { speechToTextService } from './speechToTextService';
 import { usageTrackingService } from './usageTrackingService';
 
+// ---------------------------------------------
+// Global yt-dlp options
+// ---------------------------------------------
+const COOKIES_PATH = process.env.YTDLP_COOKIES ? '/app/cookies.txt' : undefined;
+
+function buildCommonFlags() {
+  const flags: Record<string, any> = {
+    forceIpv4: true,
+  };
+  if (COOKIES_PATH) {
+    flags.cookies = COOKIES_PATH;
+  }
+  return flags;
+}
+
 export interface AudioExtractionResult {
   success: boolean;
   transcript?: string;
@@ -66,6 +81,7 @@ class AudioExtractionService {
       let videoInfo;
       try {
         videoInfo = await YTDlpExec(videoUrl, {
+          ...buildCommonFlags(),
           dumpJson: true,
           noWarnings: true
         });
@@ -159,6 +175,7 @@ class AudioExtractionService {
       console.log(`📁 Expected output file: ${expectedAudioFile}`);
       
       await YTDlpExec(videoUrl, {
+        ...buildCommonFlags(),
         extractAudio: true,
         audioFormat: 'm4a',
         audioQuality: parseInt(this.getAudioQuality(options.quality || 'medium')),
@@ -500,6 +517,7 @@ class AudioExtractionService {
       console.log('🎵 Extracting full audio with yt-dlp...');
       
       await YTDlpExec(videoUrl, {
+        ...buildCommonFlags(),
         extractAudio: true,
         audioFormat: 'm4a',
         audioQuality: parseInt(this.getAudioQuality(options.quality || 'medium')),

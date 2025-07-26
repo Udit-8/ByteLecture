@@ -25,8 +25,6 @@ debugRoutes.post('/yt-dlp', async (req, res) => {
       verbose: true,
       forceIpv4: true,
       geoBypassCountry: 'US',
-      // @ts-ignore - flag not in type definitions but supported by yt-dlp
-      geoBypassIpBlocks: true
     });
     res.json({ success: true, data: result });
   } catch (e: any) {

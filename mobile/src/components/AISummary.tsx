@@ -125,6 +125,7 @@ export const AISummary: React.FC<AISummaryProps> = ({
         contentType,
         contentItemId,
         options: {
+          length: 'long', // Always generate detailed summaries
           temperature: 0.3,
         },
       });
@@ -342,7 +343,7 @@ export const AISummary: React.FC<AISummaryProps> = ({
       {!currentSummary && !loading && (
           <View style={styles.actionsContainer}>
             <Text style={styles.description}>
-            Generate a comprehensive AI-powered summary of your {contentType} content
+            Generate a detailed AI-powered summary of your {contentType} content
             </Text>
 
               <Button
@@ -432,6 +433,7 @@ const styles = StyleSheet.create({
   summaryTextContainer: {
     marginBottom: 24,
   },
+
   summaryLine: {
     marginBottom: 4,
   },

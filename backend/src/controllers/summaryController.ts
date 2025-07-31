@@ -12,8 +12,8 @@ export class SummaryController {
     // Initialize OpenAI service with configuration
     this.openAIService = new OpenAIService({
       apiKey: process.env.OPENAI_API_KEY!,
-      model: 'gpt-4o-mini',
-      maxTokens: Number(process.env.SUMMARY_MAX_TOKENS ?? 2500),
+      model: 'gpt-4o',
+      maxTokens: Number(process.env.SUMMARY_MAX_TOKENS ?? 4000),
       temperature: 0.3,
     });
 

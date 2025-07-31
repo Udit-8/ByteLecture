@@ -34,10 +34,7 @@ export interface VideoData {
   videoId: string;
   url: string;
   title?: string;
-  description?: string;
-  duration?: string;
   thumbnailUrl?: string;
-  channelName?: string;
   transcript?: string;
   recordId?: string;
   processed?: boolean;
@@ -139,10 +136,7 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
         videoId,
         url: `https://www.youtube.com/watch?v=${videoId}`,
         title: metadata.title,
-        description: metadata.description,
-        duration: metadata.duration,
-        thumbnailUrl: metadata.thumbnails.medium || metadata.thumbnails.default,
-        channelName: metadata.channelTitle,
+        thumbnailUrl: metadata.thumbnail,
       });
     } catch (error) {
       console.warn('Could not fetch video metadata for preview:', error);
@@ -308,12 +302,7 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
           videoId: result.videoInfo.videoId,
           url: inputValue.trim(),
           title: result.videoInfo.title,
-          description: result.videoInfo.description,
-          duration: result.videoInfo.duration,
-          thumbnailUrl:
-            result.videoInfo.thumbnails.medium ||
-            result.videoInfo.thumbnails.default,
-          channelName: result.videoInfo.channelTitle,
+          thumbnailUrl: result.videoInfo.thumbnail,
           transcript: result.fullTranscriptText,
           recordId: result.recordId,
           processed: true,
@@ -323,10 +312,7 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
         setInputValue('');
         setVideoPreview(null);
 
-        const cacheMessage = result.fromCache
-          ? ' (retrieved from cache)'
-          : ' (newly processed and stored)';
-        Alert.alert('Success', `Video processed successfully${cacheMessage}!`);
+        // Video processed successfully - no dialog needed
 
         // Refresh quota info after successful processing
         try {
@@ -423,16 +409,7 @@ export const YouTubeInput: React.FC<YouTubeInputProps> = ({
               <Text style={styles.videoTitle} numberOfLines={2}>
                 {videoPreview.title}
               </Text>
-              {videoPreview.channelName && (
-                <Text style={styles.channelName} numberOfLines={1}>
-                  {videoPreview.channelName}
-                </Text>
-              )}
-              {videoPreview.duration && (
-                <Text style={styles.videoDuration}>
-                  Duration: {videoPreview.duration}
-                </Text>
-              )}
+
               <Text style={styles.videoId}>ID: {videoPreview.videoId}</Text>
             </View>
           </View>

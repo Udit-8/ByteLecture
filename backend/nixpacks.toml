@@ -3,41 +3,18 @@
 [phases.setup]
 # System and build dependencies (canvas, ffmpeg)
 apkPkgs = [
-  "ffmpeg",
-  "curl",
-  "build-base",
-  "cairo-dev",
-  "pango-dev",
-  "python3",
-  "py3-pip",
-  "libjpeg-turbo-dev",
-  "giflib-dev",
-  "pixman-dev",
-  "pkgconf"
+  "ffmpeg", "curl", "build-base", "cairo-dev", "pango-dev",
+  "libjpeg-turbo-dev", "giflib-dev", "pixman-dev", "pkgconf"
 ]
-
 # The same packages for Debian/Ubuntu images
 aptPkgs = [
-  "ffmpeg",
-  "curl",
-  "python3",
-  "python3-pip",
-  "python-is-python3", # provides /usr/bin/python symlink
-  "build-essential",
-  "libcairo2-dev",
-  "libpango1.0-dev",
-  "libjpeg-dev",
-  "libgif-dev",
-  "libpixman-1-dev",
-  "pkg-config"
+  "ffmpeg", "curl",
+  "build-essential", "libcairo2-dev", "libpango1.0-dev", "libjpeg-dev",
+  "libgif-dev", "libpixman-1-dev", "pkg-config"
 ]
 
 [phases.install]
 cmds = [
-  # If YTDLP_COOKIES is set in Railway variables, write it to a file for yt-dlp
-  "if [ -n \"$YTDLP_COOKIES\" ]; then printf '%s' \"$YTDLP_COOKIES\" > /app/cookies.txt; fi",
-  # Ensure /usr/bin/python exists (yt-dlp-exec postinstall)
-  "if [ -x /usr/bin/python3 ] && [ ! -e /usr/bin/python ]; then ln -s /usr/bin/python3 /usr/bin/python; fi",
   # Install Node deps without dev packages for prod
   "npm ci --omit=dev"
 ]

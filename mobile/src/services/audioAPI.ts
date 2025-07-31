@@ -109,7 +109,7 @@ class AudioAPI {
     try {
       const headers = await this.getAuthHeaders();
 
-      const response = await fetch(`${this.baseUrl}/api/audio/transcribe`, {
+      const response = await fetch(`${this.baseUrl}/audio/transcribe`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -154,7 +154,7 @@ class AudioAPI {
       console.log('🔍 Starting quota info request...');
       const headers = await this.getAuthHeaders();
 
-      const url = `${this.baseUrl}/api/audio/quota`;
+      const url = `${this.baseUrl}/audio/quota`;
       console.log('📡 Making request to:', url);
       console.log('📋 Request headers:', Object.keys(headers));
 
@@ -211,7 +211,7 @@ class AudioAPI {
       const headers = await this.getAuthHeaders();
 
       const response = await fetch(
-        `${this.baseUrl}/api/audio/history?limit=${limit}&offset=${offset}`,
+        `${this.baseUrl}/audio/history?limit=${limit}&offset=${offset}`,
         {
           method: 'GET',
           headers,
@@ -251,7 +251,7 @@ class AudioAPI {
     error?: string;
   }> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/audio/health`, {
+      const response = await fetch(`${this.baseUrl}/audio/health`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

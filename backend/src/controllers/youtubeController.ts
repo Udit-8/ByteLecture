@@ -199,13 +199,7 @@ export const processYouTubeVideo = async (
       // Process the video with progress updates
       console.log(`🚀 Starting video processing for: ${videoId}`);
       
-      // First check if yt-dlp is working
-      const { audioExtractionService } = await import('../services/audioExtractionService');
-      const healthCheck = await audioExtractionService.healthCheck();
-      
-      if (!healthCheck.available) {
-        throw new Error(`Video processing service is unavailable: ${healthCheck.error}`);
-      }
+
       
       const result = await youtubeService.processVideo(url, userId, {
         onProgress: (stage, progress) => {
@@ -235,30 +229,76 @@ export const processYouTubeVideo = async (
       await usageTrackingService.recordYouTubeProcessing(userId);
 
       // Store the processed video data in database
-      const { data: videoRecord, error: dbError } = await supabaseAdmin
+      console.log('🔍 Debug: video_id being inserted:', result.videoInfo.videoId, 'length:', result.videoInfo.videoId.length);
+      
+      // Check if video already exists for this user
+      const { data: existingVideo } = await supabaseAdmin
         .from('processed_videos')
-        .insert({
-          user_id: userId,
-          video_id: result.videoInfo.videoId,
-          title: result.videoInfo.title,
-          description: result.videoInfo.description,
-          channel_title: result.videoInfo.channelTitle,
-          duration: result.videoInfo.duration,
-          url: url,
-          thumbnail_url: result.videoInfo.thumbnails.medium,
-          transcript: result.fullTranscriptText,
-          metadata: {
-            viewCount: result.videoInfo.viewCount,
-            publishedAt: result.videoInfo.publishedAt,
-            tags: result.videoInfo.tags,
-            categoryId: result.videoInfo.categoryId,
-            processingTimestamp: result.processingTimestamp,
-            transcriptLength: result.fullTranscriptText.length,
-          },
-          processed_at: new Date().toISOString(),
-        })
-        .select()
+        .select('id')
+        .eq('user_id', userId)
+        .eq('video_id', result.videoInfo.videoId)
         .single();
+      
+      let videoRecord: any;
+      let dbError: any;
+      
+      if (existingVideo) {
+        console.log('⚠️ Video already processed for this user, updating existing record');
+        // Update existing record
+        const dbResult = await supabaseAdmin
+          .from('processed_videos')
+          .update({
+            title: result.videoInfo.title,
+            description: '', // No description in simplified interface
+            channel_title: '', // No channel title in simplified interface
+            duration: '0', // No duration in simplified interface
+            url: url,
+            thumbnail_url: result.videoInfo.thumbnail,
+            transcript: result.fullTranscriptText,
+            metadata: {
+              viewCount: 0, // No view count in simplified interface
+              publishedAt: '', // No published date in simplified interface
+              tags: [], // No tags in simplified interface
+              categoryId: '', // No category ID in simplified interface
+              processingTimestamp: result.processingTimestamp,
+              transcriptLength: result.fullTranscriptText.length,
+            },
+            processed_at: new Date().toISOString(),
+          })
+          .eq('id', existingVideo.id)
+          .select()
+          .single();
+        videoRecord = dbResult.data;
+        dbError = dbResult.error;
+      } else {
+        // Insert new record
+        const dbResult = await supabaseAdmin
+          .from('processed_videos')
+          .insert({
+            user_id: userId,
+            video_id: result.videoInfo.videoId,
+            title: result.videoInfo.title,
+            description: '', // No description in simplified interface
+            channel_title: '', // No channel title in simplified interface
+            duration: '0', // No duration in simplified interface
+            url: url,
+            thumbnail_url: result.videoInfo.thumbnail,
+            transcript: result.fullTranscriptText,
+            metadata: {
+              viewCount: 0, // No view count in simplified interface
+              publishedAt: '', // No published date in simplified interface
+              tags: [], // No tags in simplified interface
+              categoryId: '', // No category ID in simplified interface
+              processingTimestamp: result.processingTimestamp,
+              transcriptLength: result.fullTranscriptText.length,
+            },
+            processed_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+        videoRecord = dbResult.data;
+        dbError = dbResult.error;
+      }
 
       if (dbError) {
         console.error('Error storing video data:', dbError);
@@ -284,11 +324,11 @@ export const processYouTubeVideo = async (
           await contentService.createContentItem({
             user_id: userId,
             title: result.videoInfo.title,
-            description: result.videoInfo.description,
+            description: '', // No description in simplified interface
             content_type: 'youtube',
             youtube_url: url,
             youtube_video_id: videoId,
-            duration: parseDurationToSeconds(result.videoInfo.duration),
+            duration: 0, // No duration in simplified interface
             processed: true,
             summary: result.fullTranscriptText, // Store full transcript for flashcard generation and AI features
           });

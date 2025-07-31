@@ -1,6 +1,5 @@
 import { google } from 'googleapis';
-import { YoutubeTranscript } from 'youtube-transcript';
-import { audioExtractionService } from './audioExtractionService';
+import { getSubtitles } from 'youtube-caption-extractor';
 import cacheService from './cacheService';
 import { usageTrackingService } from './usageTrackingService';
 
@@ -9,21 +8,7 @@ const youtube = google.youtube('v3');
 export interface YouTubeVideoInfo {
   videoId: string;
   title: string;
-  description: string;
-  channelTitle: string;
-  publishedAt: string;
-  duration: string;
-  viewCount: string;
-  thumbnails: {
-    default: string;
-    medium: string;
-    high: string;
-    standard?: string;
-    maxres?: string;
-  };
-  categoryId: string;
-  tags?: string[];
-  defaultLanguage?: string;
+  thumbnail: string;
   caption: boolean;
 }
 
@@ -47,7 +32,7 @@ class YouTubeService {
   constructor() {
     this.apiKey = process.env.YOUTUBE_API_KEY || '';
     if (!this.apiKey) {
-      console.warn('⚠️ YouTube API key not configured - falling back to yt-dlp only');
+      console.warn('⚠️ YouTube API key not configured - using Python transcript wrapper only');
     }
   }
 
@@ -86,45 +71,6 @@ class YouTubeService {
    * Get video metadata from YouTube API
    */
   async getVideoInfo(videoId: string): Promise<YouTubeVideoInfo> {
-    // If no official YouTube API key is configured we gracefully fall back to
-    // yt-dlp metadata extraction. This provides enough information for the
-    // preview screen (title, duration, thumbnail, etc.) and avoids a hard
-    // blocker in development environments.
-    if (!this.apiKey) {
-      console.warn('⚠️ No YouTube API key – falling back to yt-dlp for metadata');
-
-      try {
-        const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-        const meta = await audioExtractionService.getVideoMetadata(videoUrl);
-
-        return {
-          videoId: meta.videoId,
-          title: meta.title,
-          description: meta.description || '',
-          channelTitle: meta.channelTitle || '',
-          publishedAt: meta.publishedAt,
-          duration: meta.duration,
-          viewCount: meta.viewCount,
-          thumbnails: {
-            default: meta.thumbnails.default,
-            medium: meta.thumbnails.medium,
-            high: meta.thumbnails.high,
-          },
-          categoryId: meta.categoryId,
-          tags: meta.tags,
-          defaultLanguage: undefined,
-          caption: true, // We assume True since we extract audio later
-        };
-      } catch (fallbackError) {
-        console.error('❌ yt-dlp metadata fallback failed:', fallbackError);
-        throw new Error(
-          fallbackError instanceof Error
-            ? fallbackError.message
-            : 'Failed to fetch video metadata'
-        );
-      }
-    }
-
     // Check cache first
     const cachedMetadata = await cacheService.getVideoMetadata(videoId);
     if (cachedMetadata) {
@@ -132,102 +78,82 @@ class YouTubeService {
       return {
         videoId,
         title: cachedMetadata.title,
-        description: cachedMetadata.description,
-        channelTitle: cachedMetadata.channelTitle,
-        publishedAt: cachedMetadata.publishedAt,
-        duration: cachedMetadata.duration,
-        viewCount: cachedMetadata.viewCount.toString(),
-        thumbnails: {
-          default: cachedMetadata.thumbnailUrl,
-          medium: cachedMetadata.thumbnailUrl,
-          high: cachedMetadata.thumbnailUrl,
-        },
-        categoryId: '0',
-        tags: [],
-        defaultLanguage: undefined,
+        thumbnail: cachedMetadata.thumbnailUrl,
         caption: true, // Assume true if cached
       };
     }
 
-    try {
-      // Make YouTube API call more resilient
-      let response;
+    // Try YouTube API first if available
+    if (this.apiKey) {
       try {
-        response = await youtube.videos.list({
+        const response = await youtube.videos.list({
           key: this.apiKey,
           part: ['snippet', 'contentDetails', 'statistics'],
           id: [videoId],
         });
-      } catch (apiError) {
-        console.warn(`⚠️ YouTube API call failed for ${videoId}:`, apiError instanceof Error ? apiError.message : 'Unknown error');
-        throw new Error(`YouTube API temporarily unavailable: ${apiError instanceof Error ? apiError.message : 'Unknown error'}`);
-      }
 
-      if (!response.data.items || response.data.items.length === 0) {
-        throw new Error('Video not found or unavailable');
-      }
+        if (!response.data.items || response.data.items.length === 0) {
+          throw new Error('Video not found or unavailable');
+        }
 
-      const video = response.data.items[0];
-      const snippet = video.snippet!;
-      const contentDetails = video.contentDetails!;
-      const statistics = video.statistics!;
+        const video = response.data.items[0];
+        const snippet = video.snippet!;
 
-      // Check if captions are available (make this call resilient)
-      let hasCaptions = false;
-      try {
-        const captionsResponse = await youtube.captions.list({
-          key: this.apiKey,
-          part: ['snippet'],
-          videoId: videoId,
+        // Check if captions are available
+        let hasCaptions = false;
+        try {
+          const captionsResponse = await youtube.captions.list({
+            key: this.apiKey,
+            part: ['snippet'],
+            videoId: videoId,
+          });
+          hasCaptions = !!(captionsResponse.data.items && captionsResponse.data.items.length > 0);
+        } catch (captionsError) {
+          console.warn(`⚠️ Could not check captions for ${videoId}:`, captionsError instanceof Error ? captionsError.message : 'Unknown error');
+          // Assume captions might be available
+          hasCaptions = true;
+        }
+
+        const videoInfo: YouTubeVideoInfo = {
+          videoId,
+          title: snippet.title || 'Unknown Title',
+          thumbnail: snippet.thumbnails?.high?.url || '',
+          caption: hasCaptions || false,
+        };
+
+        // Cache the metadata
+        cacheService.setVideoMetadata(videoId, {
+          title: videoInfo.title,
+          thumbnailUrl: videoInfo.thumbnail,
+          duration: '0', // No duration in this API call
+          viewCount: 0, // Not available in this API call
         });
-        hasCaptions = !!(captionsResponse.data.items && captionsResponse.data.items.length > 0);
-      } catch (captionsError) {
-        console.warn(`⚠️ Could not check captions for ${videoId}:`, captionsError instanceof Error ? captionsError.message : 'Unknown error');
-        // Assume captions might be available since we can extract audio anyway
-        hasCaptions = true; 
+
+        return videoInfo;
+      } catch (apiError) {
+        console.warn(`⚠️ YouTube API failed for ${videoId}:`, apiError instanceof Error ? apiError.message : 'Unknown error');
+        // Fall through to caption extractor
       }
+    }
 
-      const videoInfo: YouTubeVideoInfo = {
+    // Fallback: Use youtube-caption-extractor to check if video has captions
+    console.warn('⚠️ No YouTube API key or API failed – using youtube-caption-extractor for metadata');
+    try {
+      const subtitles = await getSubtitles({ videoID: videoId, lang: 'en' });
+      const hasCaptions = subtitles && subtitles.length > 0;
+      
+      return {
         videoId,
-        title: snippet.title || 'Unknown Title',
-        description: snippet.description || '',
-        channelTitle: snippet.channelTitle || 'Unknown Channel',
-        publishedAt: snippet.publishedAt || '',
-        duration: this.parseDuration(contentDetails.duration || ''),
-        viewCount: statistics.viewCount || '0',
-        thumbnails: {
-          default: snippet.thumbnails?.default?.url || '',
-          medium: snippet.thumbnails?.medium?.url || '',
-          high: snippet.thumbnails?.high?.url || '',
-          standard: snippet.thumbnails?.standard?.url || undefined,
-          maxres: snippet.thumbnails?.maxres?.url || undefined,
-        },
-        categoryId: snippet.categoryId || '0',
-        tags: snippet.tags || [],
-        defaultLanguage: snippet.defaultLanguage || undefined,
-        caption: hasCaptions || false,
+        title: '', // Cannot get title without API
+        thumbnail: '', // Cannot get thumbnail without API
+        caption: hasCaptions,
       };
-
-      // Cache the metadata
-      cacheService.setVideoMetadata(videoId, {
-        title: videoInfo.title,
-        description: videoInfo.description,
-        channelTitle: videoInfo.channelTitle,
-        duration: videoInfo.duration,
-        thumbnailUrl:
-          videoInfo.thumbnails.high ||
-          videoInfo.thumbnails.medium ||
-          videoInfo.thumbnails.default,
-        publishedAt: videoInfo.publishedAt,
-        viewCount: parseInt(videoInfo.viewCount) || 0,
-        likeCount: 0, // Not available in this API call
-      });
-
-      return videoInfo;
-    } catch (error) {
-      console.error('Error fetching video info:', error);
+    } catch (fallbackError) {
+      console.error('❌ youtube-caption-extractor fallback failed:', fallbackError);
       throw new Error(
-        `Failed to fetch video information: ${error instanceof Error ? error.message : 'Unknown error'}`
+        fallbackError instanceof Error
+          ? fallbackError.message
+          : 'Failed to fetch video metadata'
       );
     }
   }
@@ -236,158 +162,29 @@ class YouTubeService {
    * Get video transcript using audio extraction (reliable for any video)
    */
   async getVideoTranscript(
-    videoId: string, 
+    videoId: string,
     userId: string,
     options: {
       onProgress?: (stage: string, progress: number) => void;
       tryYouTubeFirst?: boolean;
     } = {}
   ): Promise<YouTubeTranscript[]> {
-    const { onProgress = () => {}, tryYouTubeFirst = true } = options;
-    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
+    const { onProgress = () => {} } = options;
     try {
-      console.log(`🎯 Getting transcript for video: ${videoId}`);
-
-      // Option 1: Try YouTube's official transcript first (faster if available)
-      if (tryYouTubeFirst) {
-        try {
-          onProgress('Checking for YouTube transcript...', 10);
-          console.log(`📋 Trying YouTube transcript for: ${videoId}`);
-          
-          const transcriptData = await YoutubeTranscript.fetchTranscript(videoId);
-          
-          if (transcriptData && transcriptData.length > 0) {
-            console.log(`✅ Found YouTube transcript with ${transcriptData.length} segments`);
-            
-            const mappedTranscript = transcriptData.map((item: any) => ({
-              text: item.text || '',
-              start: parseFloat(item.offset) || 0,
-              duration: parseFloat(item.duration) || 0,
-            }));
-
-            onProgress('YouTube transcript found!', 100);
-            return mappedTranscript;
-          }
-        } catch (transcriptError) {
-          console.log(`⚠️ YouTube transcript not available: ${transcriptError instanceof Error ? transcriptError.message : 'Unknown error'}`);
-          // Continue to audio extraction fallback
-        }
-      }
-
-      // Get video metadata to determine duration and choose processing method
-      console.log(`🔍 Getting video metadata to determine processing strategy...`);
-      onProgress('Analyzing video...', 15);
-      
-      const videoMetadata = await audioExtractionService.getVideoMetadata(videoUrl);
-      const durationMinutes = Math.ceil(videoMetadata.durationSeconds / 60);
-      
-      console.log(`📊 Video duration: ${durationMinutes} minutes`);
-
-      // Option 2a: Use chunked processing for long videos (>20 minutes)
-      if (durationMinutes > 20) {
-        console.log(`🚀 Using CHUNKED processing for long video (${durationMinutes} minutes)`);
-        onProgress('Long video detected. Using optimized chunked processing...', 20);
-
-        try {
-          const audioResult = await audioExtractionService.extractAudioAndTranscribeChunked(
-            videoUrl,
-            userId,
-            {
-              quality: 'medium',
-              language: 'en',
-              chunkDurationMinutes: Number(process.env.YT_CHUNK_MINUTES ?? 10), // configurable chunk size (default 10-min)
-              maxConcurrentJobs: 3, // Process 3 chunks at once
-              onProgress: (stage, progress) => {
-                // Map chunked processing progress to 20-80% range (leave room for fallback)
-                const mappedProgress = 20 + (progress * 0.6);
-                onProgress(`${stage} (Chunked)`, mappedProgress);
-              }
-            }
-          );
-
-          if (audioResult.success && audioResult.transcript) {
-            console.log(`✅ CHUNKED transcript generated: ${audioResult.transcript.length} characters`);
-            return this.convertFullTranscriptToSegments(audioResult.transcript);
-          } else {
-            throw new Error(audioResult.error || 'Chunked audio extraction failed');
-          }
-        } catch (chunkedError) {
-          console.warn(`⚠️ Chunked processing failed, falling back to standard method:`, chunkedError);
-          onProgress('Chunked processing failed, using standard method...', 80);
-          
-          // Fallback to standard processing
-          const audioResult = await audioExtractionService.extractAudioAndTranscribe(
-            videoUrl,
-            userId,
-            {
-              quality: 'medium',
-              language: 'en',
-              onProgress: (stage, progress) => {
-                // Map fallback progress to 80-100% range
-                const mappedProgress = 80 + (progress * 0.2);
-                onProgress(`${stage} (Fallback)`, mappedProgress);
-              }
-            }
-          );
-
-          if (audioResult.success && audioResult.transcript) {
-            console.log(`✅ FALLBACK transcript generated: ${audioResult.transcript.length} characters`);
-            return this.convertFullTranscriptToSegments(audioResult.transcript);
-          } else {
-            throw new Error(audioResult.error || 'Both chunked and standard audio extraction failed');
-          }
-        }
-      }
-
-      // Option 2b: Use standard processing for shorter videos
-      console.log(`🎵 Using STANDARD processing for short video (${durationMinutes} minutes)`);
-      onProgress('Standard audio extraction...', 20);
-
-      const audioResult = await audioExtractionService.extractAudioAndTranscribe(
-        videoUrl,
-        userId,
-        {
-          quality: 'medium',
-          language: 'en',
-          onProgress: (stage, progress) => {
-            // Map audio extraction progress to 20-100% range
-            const mappedProgress = 20 + (progress * 0.8);
-            onProgress(stage, mappedProgress);
-          }
-        }
-      );
-
-      if (audioResult.success && audioResult.transcript) {
-        console.log(`✅ Generated transcript via audio extraction: ${audioResult.transcript.length} characters`);
-        return this.convertFullTranscriptToSegments(audioResult.transcript);
+      onProgress('Fetching transcript using youtube-caption-extractor...', 10);
+      const subtitles = await getSubtitles({ videoID: videoId, lang: 'en' });
+      if (subtitles && subtitles.length > 0) {
+        onProgress('Transcript found!', 100);
+        return subtitles.map(line => ({
+          text: line.text,
+          start: Number(line.start),
+          duration: Number(line.dur),
+        }));
       } else {
-        throw new Error(audioResult.error || 'Audio extraction failed');
+        throw new Error('No transcript found');
       }
-
-    } catch (error) {
-      console.error('❌ All transcript methods failed:', error);
-      
-      // Log error for tracking
-      await usageTrackingService.logError({
-        user_id: userId,
-        error_type: 'processing_error',
-        error_message: `YouTube transcript extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        error_details: {
-          videoId,
-          videoUrl,
-          tryYouTubeFirst,
-        },
-      });
-
-      // Return error message as transcript
-      return [
-        {
-          text: `[Transcript generation failed: ${error instanceof Error ? error.message : 'Unknown error'}]`,
-          start: 0,
-          duration: 0,
-        },
-      ];
+    } catch (err) {
+      throw new Error('Transcript fetch failed: ' + (err instanceof Error ? err.message : String(err)));
     }
   }
 
@@ -462,18 +259,7 @@ class YouTubeService {
             videoInfo: {
               videoId,
               title: cachedVideo.title,
-              description: cachedVideo.description || '',
-              channelTitle: cachedVideo.channelTitle || '',
-              publishedAt: cachedVideo.publishedAt || '',
-              duration: cachedVideo.duration || '',
-              viewCount: cachedVideo.viewCount?.toString() || '0',
-              thumbnails: {
-                default: cachedVideo.thumbnailUrl || '',
-                medium: cachedVideo.thumbnailUrl || '',
-                high: cachedVideo.thumbnailUrl || '',
-              },
-              categoryId: '0',
-              tags: [],
+              thumbnail: cachedVideo.thumbnailUrl || '',
               caption: true,
             },
             transcript: [], // Don't store individual segments in cache for performance
@@ -485,10 +271,10 @@ class YouTubeService {
 
       onProgress('Getting video info...', 20);
 
-      // Get video metadata using yt-dlp (no API limits, more reliable)
+      // Get video metadata using youtube-caption-extractor (no API limits, more reliable)
       let videoMetadata;
       try {
-        videoMetadata = await audioExtractionService.getVideoMetadata(videoIdOrUrl);
+        videoMetadata = await this.getVideoInfo(videoId);
       } catch (metadataError) {
         console.error('❌ Failed to get video metadata:', metadataError);
         throw new Error(`Unable to access video. It may be private, deleted, or region-restricted: ${metadataError instanceof Error ? metadataError.message : 'Unknown error'}`);
@@ -498,14 +284,7 @@ class YouTubeService {
       const videoInfo: YouTubeVideoInfo = {
         videoId: videoMetadata.videoId,
         title: videoMetadata.title,
-        description: videoMetadata.description || '',
-        channelTitle: videoMetadata.channelTitle || '',
-        publishedAt: videoMetadata.publishedAt,
-        duration: videoMetadata.duration,
-        viewCount: videoMetadata.viewCount,
-        thumbnails: videoMetadata.thumbnails,
-        categoryId: videoMetadata.categoryId,
-        tags: videoMetadata.tags,
+        thumbnail: videoMetadata.thumbnail,
         caption: true, // Assume true since we can extract audio
       };
 
@@ -551,12 +330,9 @@ class YouTubeService {
         try {
           await cacheService.setProcessedVideo(videoId, userId, {
             title: videoInfo.title,
-            description: videoInfo.description,
-            channelTitle: videoInfo.channelTitle,
-            duration: videoInfo.duration,
-            thumbnailUrl: videoInfo.thumbnails.high || videoInfo.thumbnails.medium || videoInfo.thumbnails.default,
-            publishedAt: videoInfo.publishedAt,
-            viewCount: parseInt(videoInfo.viewCount) || 0,
+            thumbnailUrl: videoInfo.thumbnail,
+            duration: '0', // No duration in this API call
+            viewCount: 0, // Not available in this API call
             transcript: fullTranscriptText,
             processingTimestamp: result.processingTimestamp,
           });
@@ -662,9 +438,9 @@ class YouTubeService {
   }> {
     const videoInfo = await this.getVideoInfo(videoId);
     return {
-      duration: videoInfo.duration,
-      viewCount: parseInt(videoInfo.viewCount, 10),
-      language: videoInfo.defaultLanguage,
+      duration: '0', // No duration in this API call
+      viewCount: 0, // Not available in this API call
+      language: undefined,
     };
   }
 

@@ -14,13 +14,9 @@ interface CacheEntry {
 
 interface VideoMetadata {
   title: string;
-  description: string;
-  channelTitle: string;
-  duration: string;
   thumbnailUrl: string;
-  publishedAt: string;
+  duration: string;
   viewCount: number;
-  likeCount: number;
 }
 
 class CacheService {
@@ -50,7 +46,7 @@ class CacheService {
       const { data, error } = await supabase
         .from('processed_videos')
         .select(
-          'title, description, channel_title, duration, thumbnail_url, metadata'
+          'title, thumbnail_url, duration, metadata'
         )
         .eq('video_id', videoId)
         .single();
@@ -58,13 +54,9 @@ class CacheService {
       if (!error && data) {
         const metadata: VideoMetadata = {
           title: data.title,
-          description: data.description,
-          channelTitle: data.channel_title,
-          duration: data.duration,
           thumbnailUrl: data.thumbnail_url,
-          publishedAt: data.metadata?.publishedAt || '',
+          duration: data.duration,
           viewCount: data.metadata?.viewCount || 0,
-          likeCount: data.metadata?.likeCount || 0,
         };
 
         // Cache in memory for faster subsequent access

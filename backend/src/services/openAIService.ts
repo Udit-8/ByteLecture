@@ -52,8 +52,8 @@ export class OpenAIService {
     // Set default configuration
     this.config = {
       apiKey: config.apiKey,
-      model: config.model || 'gpt-4o-mini',
-      maxTokens: config.maxTokens || 1000,
+      model: config.model || 'gpt-4o',
+      maxTokens: config.maxTokens || 4000,
       temperature: config.temperature || 0.3,
       timeout: config.timeout || 60000, // 60 seconds
     };
@@ -126,7 +126,7 @@ export class OpenAIService {
     content: string,
     options: SummarizationOptions
   ): string {
-    const { contentType = 'text' } = options;
+    const { contentType = 'text', length = 'long' } = options;
 
     // Content type context mapping
     const contentTypeContext = {
@@ -139,20 +139,29 @@ export class OpenAIService {
 
     const contentTypeForPrompt = contentTypeContext[contentType as keyof typeof contentTypeContext] || 'content';
 
-    return `You are an expert content summarizer for a note-taking app. Given a transcript from a ${contentTypeForPrompt}, your task is to extract key takeaways and present them in a clear, well-structured, visually appealing note format. Follow these strict rules:
+    // Length-specific instructions
+    const lengthInstructions = {
+      short: 'Create a concise summary with 3-5 key points. Focus on the most important takeaways only.',
+      medium: 'Create a comprehensive summary with 5-8 sections. Include important details and examples.',
+      long: 'Create a detailed, thorough summary with 8-12 sections. Include extensive details, examples, quotes, and actionable insights. Be comprehensive and leave no important point uncovered.'
+    };
+
+    return `You are an expert content summarizer for a note-taking app. Given a transcript from a ${contentTypeForPrompt}, your task is to extract key takeaways and present them in a clear, well-structured, visually appealing note format.
+
+🔹 **LENGTH REQUIREMENT**: ${lengthInstructions[length]}
 
 🔹 Structure:
 1. Break the summary into **dynamic section titles** that reflect the flow of content (not fixed titles like "Introduction" or "Conclusion").
 2. For each section, provide:
    - A **bolded heading** using engaging, reader-friendly phrasing.
-   - **Concise, bullet-pointed explanations** under each heading.
+   - **Detailed explanations** under each heading (${length === 'long' ? 'include specific examples, quotes, and detailed analysis' : 'concise bullet points'}).
    - Use **bold** for important concepts, **italic** for examples, and emojis if appropriate for style.
 3. Add tables or diagrams if content naturally supports it (e.g., comparisons, financials).
 4. Ensure each section is **self-contained** and can be understood on its own.
 
 🔹 Style:
 - Use formatting like: \`**bold**\`, \`_italic_\`, bullet points (\`•\`), and numbered lists where needed.
-- No long paragraphs. Use bullet points and short phrases for **fast consumption**.
+- ${length === 'long' ? 'Include detailed paragraphs with specific examples and quotes when relevant.' : 'No long paragraphs. Use bullet points and short phrases for fast consumption.'}
 - Focus on **clarity**, **completeness**, and **actionability**.
 
 🔹 Objective:
@@ -166,6 +175,9 @@ Transform the content into **digestible notes** that a student or professional c
 - 📊 Example Scenario
 - 🧠 Tips for Success
 - ⚠️ Common Pitfalls
+- 📝 Key Quotes & Insights
+- 🎯 Actionable Takeaways
+- 🔗 Related Concepts
 
 🔹 Final Output:
 Just return the formatted notes. No intro, no outro, no commentary. Format cleanly with markdown-ready text or simple HTML if applicable.
@@ -222,6 +234,26 @@ ${content}`;
     const prompt = this.generatePrompt(content, options);
     const startTime = Date.now();
 
+    // Determine max tokens based on length option
+    let maxTokens = options.maxTokens || this.config.maxTokens;
+    if (!options.maxTokens) {
+      switch (options.length) {
+        case 'short':
+          maxTokens = 1500;
+          break;
+        case 'long':
+          maxTokens = 10000;
+          break;
+        case 'medium':
+          maxTokens = 4000;
+          break;
+        case 'long':
+        default:
+          maxTokens = 10000;
+          break;
+      }
+    }
+
     const params: ChatCompletionCreateParams = {
       model: this.config.model,
       messages: [
@@ -230,7 +262,7 @@ ${content}`;
           content: prompt,
         },
       ],
-      max_tokens: options.maxTokens || this.config.maxTokens,
+      max_tokens: maxTokens,
       temperature: options.temperature || this.config.temperature,
     };
 
@@ -269,7 +301,17 @@ ${content}`;
 
     try {
       // Determine max tokens per chunk based on model and options
-      const maxTokensPerChunk = 3000; // Safe limit for GPT-3.5
+      let maxTokensPerChunk: number;
+      
+      // GPT-4o models have 128K context window, so we can use much larger chunks
+      if (this.config.model.includes('gpt-4o')) {
+        maxTokensPerChunk = 100000; // 100K tokens for GPT-4o (leaving room for response)
+      } else if (this.config.model.includes('gpt-4')) {
+        maxTokensPerChunk = 8000; // 8K for other GPT-4 models
+      } else {
+        maxTokensPerChunk = 3000; // Safe limit for GPT-3.5 and other models
+      }
+      
       const { chunks, totalTokens } = this.chunkContent(
         content,
         maxTokensPerChunk

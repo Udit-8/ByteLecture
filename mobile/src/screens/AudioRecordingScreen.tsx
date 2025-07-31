@@ -644,28 +644,9 @@ export const AudioRecordingScreen: React.FC<AudioRecordingScreenProps> = ({
             });
           };
 
-          Alert.alert(
-            'Transcription Complete!',
-            `Successfully transcribed ${Math.round((transcription.duration || 0) / 60)} minutes of audio.`,
-            [
-              {
-                text: 'View Details',
-                onPress: () => showTranscriptionResult(transcription),
-              },
-              {
-                text: 'Later',
-                style: 'cancel',
-                onPress: () => {
-                  console.log('User chose to view transcription later');
-                },
-              },
-              {
-                text: 'View Summary',
-                style: 'default',
-                onPress: onViewSummary,
-              },
-            ]
-          );
+          // Automatically navigate to summary view after successful transcription
+          console.log('✅ Audio transcription completed, navigating to summary view');
+          onViewSummary();
         } else {
           clearInterval(progressInterval);
           await usageService.logError({

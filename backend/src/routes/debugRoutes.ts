@@ -1,40 +1,31 @@
 import { Router } from 'express';
-import YTDlpExec from 'yt-dlp-exec';
+import { getSubtitles } from 'youtube-caption-extractor';
 
 export const debugRoutes = Router();
 
-/**
- * POST /api/debug/yt-dlp
- * {
- *   "url": "https://www.youtube.com/watch?v=..."
- * }
- *
- * Returns raw stdout/stderr from yt-dlp so we can see why Railway fails.
- */
-debugRoutes.post('/yt-dlp', async (req, res) => {
-  const { url } = req.body as { url?: string };
-
-  if (!url) {
-    return res.status(400).json({ success: false, error: 'url required' });
+debugRoutes.post('/youtube-caption-extractor', async (req, res) => {
+  const { videoId, lang = 'en' } = req.body as { videoId?: string; lang?: string };
+  if (!videoId) {
+    return res.status(400).json({ success: false, error: 'videoId required' });
   }
-
   try {
-    const common: Record<string, any> = {
-      dumpJson: true,
-      noWarnings: true,
-      verbose: true,
-      forceIpv4: true,
-      geoBypassCountry: 'US',
-    };
-    if (process.env.YTDLP_COOKIES) {
-      common.cookies = '/app/cookies.txt';
-    }
-    const result = await YTDlpExec(url, common);
-    res.json({ success: true, data: result });
+    console.log(`🔍 Testing youtube-caption-extractor for video: ${videoId}`);
+    const subtitles = await getSubtitles({ videoID: videoId, lang });
+    
+    res.json({
+      success: true,
+      data: {
+        videoId,
+        lang,
+        subtitleCount: subtitles.length,
+        subtitles: subtitles.slice(0, 3), // Show first 3 subtitles as preview
+      },
+      exitCode: 0
+    });
   } catch (e: any) {
     res.json({
       success: false,
-      error: e?.message ?? 'yt-dlp error',
+      error: e?.message ?? 'youtube-caption-extractor error',
       stderr: e?.stderr ?? null,
     });
   }

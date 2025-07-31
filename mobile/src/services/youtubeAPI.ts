@@ -6,20 +6,7 @@ const API_BASE_URL = getApiBaseUrl();
 export interface YouTubeVideoInfo {
   videoId: string;
   title: string;
-  description: string;
-  channelTitle: string;
-  publishedAt: string;
-  duration: string;
-  viewCount: string;
-  thumbnails: {
-    default: string;
-    medium: string;
-    high: string;
-    standard?: string;
-    maxres?: string;
-  };
-  categoryId: string;
-  tags: string[];
+  thumbnail: string;
   caption: boolean;
 }
 

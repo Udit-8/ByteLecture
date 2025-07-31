@@ -343,13 +343,9 @@ export const ImportScreen: React.FC<ImportScreenProps> = ({ navigation }) => {
             navigateToSummary({
               title: videoData.title || 'YouTube Video',
               contentType: 'youtube',
-              description: videoData.description,
               summary: videoData.transcript || undefined,
               videoId: videoData.videoId,
               url: videoData.url,
-              duration: videoData.duration
-                ? parseInt(videoData.duration)
-                : undefined,
             });
           },
         },
